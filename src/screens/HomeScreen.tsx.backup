@@ -1,0 +1,877 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, SafeAreaView, Alert, Animated, useWindowDimensions, Image, ActivityIndicator, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import MysticVisualizer from '../components/MysticVisualizer';
+import { HomeScreenNavigationProp, HomeScreenRouteProp } from '../types/navigation';
+import { api } from '../services/api';
+import * as ImagePicker from 'expo-image-picker';
+
+interface HomeScreenProps {
+  route: HomeScreenRouteProp;
+  navigation: HomeScreenNavigationProp;
+}
+
+interface JournalEntry {
+  day: number;
+  content: string;
+  date: string;
+  imageUri?: string;
+}
+
+const HomeScreen: React.FC<HomeScreenProps> = ({ route, navigation }) => {
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+
+  const [name, setName] = useState(route.params?.name || '구도자');
+  const [deficit, setDeficit] = useState(route.params?.deficit || '성장');
+
+  const [dayCount, setDayCount] = useState(1);
+  const [savedJournal, setSavedJournal] = useState('');
+  const [journalModalVisible, setJournalModalVisible] = useState(false);
+  const [journalInput, setJournalInput] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [introModalVisible, setIntroModalVisible] = useState(false);
+  const [analysisModalVisible, setAnalysisModalVisible] = useState(false);
+
+  const [currentAnalysis, setCurrentAnalysis] = useState<{ result: string; feedback: string } | null>(null);
+
+  const [journalHistory, setJournalHistory] = useState<JournalEntry[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [missionStatus, setMissionStatus] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [userGender, setUserGender] = useState<string>('알 수 없음');
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
+  const [currentMissionText, setCurrentMissionText] = useState<string>('');
+  const [nextMissionUnlockTime, setNextMissionUnlockTime] = useState<string | null>(null);
+
+  const sparkleAnim1 = useRef(new Animated.Value(0)).current;
+  const sparkleAnim2 = useRef(new Animated.Value(0)).current;
+  const sparkleAnim3 = useRef(new Animated.Value(0)).current;
+
+  const visualizerMode = isAnalyzing ? 'thinking' : (dayCount === 10 ? 'speaking' : 'listening');
+
+  const missions = [
+    "오늘 하루 당신이 느낀 가장 강렬한 감정을 기록하십시오.",
+    "당신이 가장 회피하고 싶은 질문을 스스로에게 던지십시오.",
+    "오늘 만난 사람 중 한 명의 눈빛을 기억하고 그 의미를 성찰하십시오.",
+    "당신의 결핍이 준 가장 큰 선물이 무엇인지 기록하십시오.",
+    "오늘 하루 중 가장 고요했던 순간을 포착하여 그 감각을 기록하십시오.",
+    "당신이 가장 사랑하는 사람에게 전하지 못한 말을 적으십시오.",
+    "오늘의 실패를 하나 선택하고 그것이 가르쳐준 교훈을 기록하십시오.",
+    "당신의 내면에서 가장 큰 소리를 내는 두려움을 직면하십시오.",
+    "오늘 당신이 누군가에게 베푼 사소한 친절을 기억하십시오.",
+  ];
+
+  const sparkles = [
+    { anim: sparkleAnim1, style: { top: '20%', left: '15%' } },
+    { anim: sparkleAnim2, style: { top: '25%', right: '20%' } },
+    { anim: sparkleAnim3, style: { top: '35%', left: '25%' } },
+  ];
+
+  const loadJournalHistory = async () => {
+    try {
+      const allJournals = await AsyncStorage.getItem('journalHistory');
+      if (allJournals) {
+        setJournalHistory(JSON.parse(allJournals));
+      }
+    } catch (e) {
+      console.error('기록 로드 실패:', e);
+    }
+  };
+
+  const checkDayProgression = async () => {
+    const lastCompletedDate = await AsyncStorage.getItem('lastCompletedDate');
+    if (!lastCompletedDate) return true;
+
+    const lastDate = new Date(lastCompletedDate);
+    const now = new Date();
+
+    const nextDay9AM = new Date(lastDate);
+    nextDay9AM.setDate(lastDate.getDate() + 1);
+    nextDay9AM.setHours(9, 0, 0, 0);
+
+    if (now < nextDay9AM) {
+      setNextMissionUnlockTime(nextDay9AM.toLocaleString());
+      return false;
+    }
+    return true;
+  };
+
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        const isCoupled = await AsyncStorage.getItem('isCoupled');
+        if (isCoupled === 'coupled') {
+          navigation.replace('CouplesMission', {});
+          return;
+        }
+
+        const storedDay = await AsyncStorage.getItem('dayCount');
+        const currentDayCount = storedDay ? parseInt(storedDay, 10) : 1;
+        setDayCount(currentDayCount);
+
+        const storedJournal = await AsyncStorage.getItem('savedJournal');
+        const storedMissionStatus = await AsyncStorage.getItem('missionStatus');
+        const storedGender = await AsyncStorage.getItem('userGender');
+        const storedPhoto = await AsyncStorage.getItem('userPhoto');
+        const hasSeenIntro = await AsyncStorage.getItem('hasSeenIntro');
+
+        const storedName = await AsyncStorage.getItem('userName');
+        const storedDeficit = await AsyncStorage.getItem('userDeficit');
+
+        if (storedJournal) setSavedJournal(storedJournal);
+        if (storedMissionStatus) setMissionStatus(storedMissionStatus);
+        if (storedGender) setUserGender(storedGender);
+        if (storedPhoto) setUserPhoto(storedPhoto);
+
+        if (!route.params?.name && storedName) setName(storedName);
+        if (!route.params?.deficit && storedDeficit) setDeficit(storedDeficit);
+
+        if (!hasSeenIntro) {
+          setIntroModalVisible(true);
+        }
+
+        const storedMission = await AsyncStorage.getItem(`mission_day_${currentDayCount}`);
+        if (storedMission) {
+          setCurrentMissionText(storedMission);
+        } else {
+          const defaultMission = currentDayCount <= 9 ? missions[currentDayCount - 1] : "당신의 영혼이 준비되었습니다.";
+          setCurrentMissionText(defaultMission);
+        }
+
+        await loadJournalHistory();
+
+        const genderForAnalysis = storedGender || '알 수 없음';
+        const fullProfile = {
+          name: name,
+          gender: genderForAnalysis,
+          age: await AsyncStorage.getItem('userAge') || '알 수 없음',
+          location: await AsyncStorage.getItem('userLocation') || '',
+          idealType: await AsyncStorage.getItem('userIdealType') || '',
+          hobbies: await AsyncStorage.getItem('userHobbies') || '',
+          job: await AsyncStorage.getItem('userJob') || '',
+          growth: await AsyncStorage.getItem('userGrowth') || '',
+          complex: await AsyncStorage.getItem('userComplex') || '',
+          deficit: deficit
+        };
+
+        const analysisResult = await api.analyzeProfile(fullProfile);
+        if (analysisResult.success) {
+          setAiAnalysis(analysisResult.analysis);
+          if (analysisResult.matchRecommendation) {
+            await AsyncStorage.setItem('matchRecommendation', analysisResult.matchRecommendation);
+          }
+        }
+      } catch (e) {
+        console.error('데이터 로드 실패:', e);
+      }
+    };
+    initializeData();
+  }, []);
+
+  const pickImage = async () => {
+    Alert.alert(
+      "사진 추가",
+      "사진을 가져올 방법을 선택하세요.",
+      [
+        {
+          text: "카메라로 촬영",
+          onPress: async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+              return;
+            }
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: false,
+              aspect: [4, 3],
+              quality: 0.8,
+            });
+            if (!result.canceled) {
+              setSelectedImage(result.assets[0].uri);
+            }
+          }
+        },
+        {
+          text: "앨범에서 선택",
+          onPress: async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: false,
+              aspect: [4, 3],
+              quality: 0.8,
+            });
+            if (!result.canceled) {
+              setSelectedImage(result.assets[0].uri);
+            }
+          }
+        },
+        { text: "취소", style: "cancel" }
+      ]
+    );
+  };
+
+  const handleCompleteReflection = async () => {
+    if (journalInput.trim().length < 1) {
+      Alert.alert('알림', '내용을 입력해주세요.');
+      return;
+    }
+
+    const canProceed = await checkDayProgression();
+    if (!canProceed && nextMissionUnlockTime) {
+      Alert.alert('알림', `다음 미션은 ${nextMissionUnlockTime}에 열립니다.`);
+      return;
+    }
+
+    setIsAnalyzing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('journalText', journalInput);
+      formData.append('name', name);
+      formData.append('deficit', deficit);
+      formData.append('dayCount', dayCount.toString());
+
+      if (selectedImage) {
+        const filename = selectedImage.split('/').pop();
+        const match = /(\.\w+)$/.exec(filename || '');
+        const type = match ? `image/${match[1]}` : `image`;
+        formData.append('image', { uri: selectedImage, name: filename, type } as any);
+      }
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT')), 15000)
+      );
+
+      const response: any = await Promise.race([
+        api.analyzeJournal(formData),
+        timeoutPromise
+      ]);
+
+      if (response.success) {
+        setCurrentAnalysis({ result: response.result, feedback: response.feedback });
+
+        const newEntry: JournalEntry = {
+          day: dayCount,
+          content: journalInput,
+          date: new Date().toLocaleDateString(),
+          imageUri: selectedImage || undefined
+        };
+
+        const updatedHistory = [newEntry, ...journalHistory];
+        setJournalHistory(updatedHistory);
+        await AsyncStorage.setItem('journalHistory', JSON.stringify(updatedHistory));
+
+        const newDay = dayCount + 1;
+        setDayCount(newDay);
+        setMissionStatus(null);
+        await AsyncStorage.setItem('dayCount', newDay.toString());
+        await AsyncStorage.removeItem('missionStatus');
+        await AsyncStorage.setItem('lastCompletedDate', new Date().toISOString());
+
+        if (response.recommendedMission) {
+          await AsyncStorage.setItem(`mission_day_${newDay}`, response.recommendedMission);
+        }
+
+        setJournalModalVisible(false);
+        setJournalInput('');
+        setSelectedImage(null);
+
+        const fullProfile = {
+          name: name,
+          deficit: deficit,
+          recentJournal: journalInput,
+          previousAnalysis: aiAnalysis
+        };
+        api.analyzeProfile(fullProfile).then(reAnalysis => {
+          if (reAnalysis.success) {
+            setAiAnalysis(reAnalysis.analysis);
+          }
+        });
+
+        setAnalysisModalVisible(true);
+
+      } else {
+        Alert.alert('오류', '분석 실패: ' + (response.message || '알 수 없는 오류'));
+      }
+    } catch (e: any) {
+      console.error('Analysis Error:', e);
+      if (e.message === 'TIMEOUT') {
+        Alert.alert('오류', '서버 응답 시간이 초과되었습니다. (15초)');
+      } else {
+        Alert.alert('오류', '네트워크 오류가 발생했습니다.\n' + (e.message || ''));
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleDay10Navigation = () => {
+    if (userGender === '남성') {
+      Alert.alert('심판의 시간', '당신의 자격을 증명하기 위해 마지막 기록을 남기십시오.', [
+        { text: '확인', onPress: () => setJournalModalVisible(true) }
+      ]);
+    } else {
+      Alert.alert('매칭 시작', '운명의 상대를 찾기 위한 여정을 시작합니다.', [
+        {
+          text: '확인', onPress: () => {
+            Alert.alert('알림', '매칭 시스템이 곧 활성화됩니다.');
+          }
+        }
+      ]);
+    }
+  };
+
+  useEffect(() => {
+    if (dayCount === 10) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(sparkleAnim1, { toValue: 1, duration: 1000, useNativeDriver: true }),
+          Animated.timing(sparkleAnim1, { toValue: 0, duration: 1000, useNativeDriver: true }),
+        ])
+      ).start();
+
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(300),
+          Animated.timing(sparkleAnim2, { toValue: 1, duration: 1000, useNativeDriver: true }),
+          Animated.timing(sparkleAnim2, { toValue: 0, duration: 1000, useNativeDriver: true }),
+        ])
+      ).start();
+
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(600),
+          Animated.timing(sparkleAnim3, { toValue: 1, duration: 1000, useNativeDriver: true }),
+          Animated.timing(sparkleAnim3, { toValue: 0, duration: 1000, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [dayCount]);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.visualizerBackground}>
+        <MysticVisualizer isActive={true} mode={visualizerMode} />
+      </View>
+
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>THE INNER CIRCLE</Text>
+          <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings', {})}>
+            <Text style={styles.settingsIcon}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+          <View style={styles.visualizerSpacer} />
+
+          <View style={styles.infoContainer}>
+            {userPhoto && (
+              <View style={styles.photoContainer}>
+                <Image source={{ uri: userPhoto }} style={styles.userPhoto} />
+              </View>
+            )}
+            <Text style={styles.nameText}>{name}</Text>
+            <Text style={styles.dayText}>Day {dayCount}</Text>
+            <View style={styles.divider} />
+            <Text style={styles.deficitText}>당신의 결핍: {deficit}</Text>
+
+            {aiAnalysis && (
+              <View style={styles.analysisContainer}>
+                <Text style={styles.analysisTitle}>🧠 AI 영혼 분석</Text>
+                <Text style={styles.analysisText}>{aiAnalysis}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.missionContainer}>
+            {dayCount === 10 ? (
+              missionStatus === 'accepted' ? (
+                <>
+                  <Text style={styles.specialMissionTitle}>🤫 비밀 지령 수행</Text>
+                  <Text style={styles.specialMissionText}>
+                    상대방과의 약속된 시간이 되었습니다.{'\n'}
+                    이제 지령을 수행하고 결과를 확인하세요.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.matchButton, { backgroundColor: '#FF4500', borderColor: '#FF4500' }]}
+                    onPress={() => setJournalModalVisible(true)}
+                    disabled={isAnalyzing}
+                  >
+                    <Text style={styles.matchButtonText}>{isAnalyzing ? "AI 정밀 분석 중..." : "🔥 지령 수행 및 분석"}</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.specialMissionTitle}>
+                    {userGender === '남성' ? '⚖️ 운명의 심판' : '🌟 영혼의 매칭'}
+                  </Text>
+                  <Text style={styles.specialMissionText}>
+                    {userGender === '남성'
+                      ? '당신의 여정을 평가할 시간입니다.\n진정한 자격을 갖추었는지 확인하십시오.'
+                      : '당신의 내면은 충분히 성숙했습니다.\n이제 같은 여정을 걷는 영혼과의\n만남을 시작할 준비가 되었습니다.'}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.matchButton, userGender === '남성' && { backgroundColor: '#333', borderColor: '#555' }]}
+                    onPress={handleDay10Navigation}
+                  >
+                    <Text style={styles.matchButtonText}>
+                      {userGender === '남성' ? '⚖️ 최종 심판 받기' : '✨ 매칭 시작하기'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )
+            ) : (
+              <>
+                <Text style={styles.missionTitle}>오늘의 미션</Text>
+                <View style={styles.missionBox}>
+                  <Text style={styles.missionText}>{currentMissionText}</Text>
+                </View>
+                <TouchableOpacity style={styles.reflectButton} onPress={() => setJournalModalVisible(true)}>
+                  <Text style={styles.reflectButtonText}>✍️ 수행 기록 남기기</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity style={styles.viewJournalButton} onPress={() => setHistoryModalVisible(true)}>
+              <Text style={styles.viewJournalButtonText}>📜 지난 여정 보기</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.devButton} onPress={async () => {
+              const newDay = 10;
+              setDayCount(newDay);
+              setMissionStatus('accepted');
+              await AsyncStorage.setItem('dayCount', newDay.toString());
+              await AsyncStorage.setItem('missionStatus', 'accepted');
+              Alert.alert('개발자 모드', 'Day 10으로 이동 및 미션 성공 처리 완료.');
+            }}>
+              <Text style={styles.devButtonText}>[개발용] Day 10으로 이동</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+
+      <Modal visible={journalModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.modalWrapper]}>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              <Text style={styles.modalTitle}>오늘의 기록</Text>
+              <Text style={styles.modalSubtitle}>당신의 내면을 솔직하게 털어놓으세요.</Text>
+
+              <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
+                {selectedImage ? (
+                  <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="cover" />
+                ) : (
+                  <Text style={styles.imagePickerText}>📷 사진 추가하기</Text>
+                )}
+              </TouchableOpacity>
+
+              <TextInput
+                style={styles.journalInput}
+                placeholder="여기에 작성하세요..."
+                placeholderTextColor="#666"
+                multiline
+                value={journalInput}
+                onChangeText={setJournalInput}
+              />
+              {isAnalyzing ? (
+                <ActivityIndicator size="large" color="#FFD700" style={{ marginBottom: 20 }} />
+              ) : (
+                <TouchableOpacity style={styles.saveButton} onPress={handleCompleteReflection}>
+                  <Text style={styles.saveButtonText}>제출 및 분석</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setJournalModalVisible(false)}>
+                <Text style={styles.cancelButtonText}>취소</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={analysisModalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={{ marginTop: 10 }}>
+              <Text style={[styles.introText, { fontSize: 16, lineHeight: 26, textAlign: 'center', color: '#FFD700' }]}>{currentAnalysis?.feedback}</Text>
+            </View>
+            <TouchableOpacity style={styles.saveButton} onPress={() => setAnalysisModalVisible(false)}>
+              <Text style={styles.saveButtonText}>확인</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={historyModalVisible} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.historyModalContent}>
+            <Text style={styles.modalTitle}>지난 여정의 기록</Text>
+            <ScrollView style={styles.historyScroll}>
+              {journalHistory.length === 0 ? (
+                <Text style={styles.emptyHistoryText}>아직 기록된 여정이 없습니다.</Text>
+              ) : (
+                journalHistory.map((entry, index) => (
+                  <View key={index} style={styles.historyEntry}>
+                    <Text style={styles.historyDay}>Day {entry.day}</Text>
+                    {entry.imageUri && (
+                      <Image source={{ uri: entry.imageUri }} style={styles.historyImage} resizeMode="cover" />
+                    )}
+                    <Text style={styles.historyContent}>{entry.content}</Text>
+                    <Text style={styles.historyDate}>{entry.date}</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setHistoryModalVisible(false)}>
+              <Text style={styles.closeButtonText}>닫기</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={introModalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>환영합니다</Text>
+            <Text style={styles.introText}>
+              당신은 이제 내면의 성장을 위한 10일간의 여정을 시작합니다.{'\n\n'}
+              매일 주어지는 미션을 수행하고, 당신의 영혼을 기록하세요.{'\n\n'}
+              진정한 자신을 마주할 때, 운명의 상대를 만날 자격이 주어집니다.
+            </Text>
+            <TouchableOpacity style={styles.saveButton} onPress={async () => {
+              await AsyncStorage.setItem('hasSeenIntro', 'true');
+              setIntroModalVisible(false);
+            }}>
+              <Text style={styles.saveButtonText}>여정 시작하기</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#050510' },
+  visualizerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+          < View style={ styles.visualizerSpacer } />
+
+          <View style={styles.infoContainer}>
+            {userPhoto && (
+              <View style={styles.photoContainer}>
+                <Image source={{ uri: userPhoto }} style={styles.userPhoto} />
+              </View>
+            )}
+            <Text style={styles.nameText}>{name}</Text>
+            <Text style={styles.dayText}>Day {dayCount}</Text>
+            <View style={styles.divider} />
+            <Text style={styles.deficitText}>당신의 결핍: {deficit}</Text>
+
+            {aiAnalysis && (
+              <View style={styles.analysisContainer}>
+                <Text style={styles.analysisTitle}>🧠 AI 영혼 분석</Text>
+                <Text style={styles.analysisText}>{aiAnalysis}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.missionContainer}>
+            {dayCount === 10 ? (
+              missionStatus === 'accepted' ? (
+                <>
+                  <Text style={styles.specialMissionTitle}>🤫 비밀 지령 수행</Text>
+                  <Text style={styles.specialMissionText}>
+                    상대방과의 약속된 시간이 되었습니다.{'\n'}
+                    이제 지령을 수행하고 결과를 확인하세요.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.matchButton, { backgroundColor: '#FF4500', borderColor: '#FF4500' }]}
+                    onPress={() => setJournalModalVisible(true)}
+                    disabled={isAnalyzing}
+                  >
+                    <Text style={styles.matchButtonText}>{isAnalyzing ? "AI 정밀 분석 중..." : "🔥 지령 수행 및 분석"}</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.specialMissionTitle}>
+                    {userGender === '남성' ? '⚖️ 운명의 심판' : '🌟 영혼의 매칭'}
+                  </Text>
+                  <Text style={styles.specialMissionText}>
+                    {userGender === '남성'
+                      ? '당신의 여정을 평가할 시간입니다.\n진정한 자격을 갖추었는지 확인하십시오.'
+                      : '당신의 내면은 충분히 성숙했습니다.\n이제 같은 여정을 걷는 영혼과의\n만남을 시작할 준비가 되었습니다.'}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.matchButton, userGender === '남성' && { backgroundColor: '#333', borderColor: '#555' }]}
+                    onPress={handleDay10Navigation}
+                  >
+                    <Text style={styles.matchButtonText}>
+                      {userGender === '남성' ? '⚖️ 최종 심판 받기' : '✨ 매칭 시작하기'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )
+            ) : (
+              <>
+                <Text style={styles.missionTitle}>오늘의 미션</Text>
+                <View style={styles.missionBox}>
+                  <Text style={styles.missionText}>{currentMissionText}</Text>
+                </View>
+                <TouchableOpacity style={styles.reflectButton} onPress={() => setJournalModalVisible(true)}>
+                  <Text style={styles.reflectButtonText}>✍️ 수행 기록 남기기</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity style={styles.viewJournalButton} onPress={() => setHistoryModalVisible(true)}>
+              <Text style={styles.viewJournalButtonText}>📜 지난 여정 보기</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.devButton} onPress={async () => {
+              const newDay = 10;
+              setDayCount(newDay);
+              setMissionStatus('accepted');
+              await AsyncStorage.setItem('dayCount', newDay.toString());
+              await AsyncStorage.setItem('missionStatus', 'accepted');
+              Alert.alert('개발자 모드', 'Day 10으로 이동 및 미션 성공 처리 완료.');
+            }}>
+              <Text style={styles.devButtonText}>[개발용] Day 10으로 이동</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView >
+      </SafeAreaView >
+
+      <Modal visible={journalModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.modalWrapper]}>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              <Text style={styles.modalTitle}>오늘의 기록</Text>
+              <Text style={styles.modalSubtitle}>당신의 내면을 솔직하게 털어놓으세요.</Text>
+
+              <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
+                {selectedImage ? (
+                  <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="cover" />
+                ) : (
+                  <Text style={styles.imagePickerText}>📷 사진 추가하기</Text>
+                )}
+              </TouchableOpacity>
+
+              <TextInput
+                style={styles.journalInput}
+                placeholder="여기에 작성하세요..."
+                placeholderTextColor="#666"
+                multiline
+                value={journalInput}
+                onChangeText={setJournalInput}
+              />
+              {isAnalyzing ? (
+                <ActivityIndicator size="large" color="#FFD700" style={{ marginBottom: 20 }} />
+              ) : (
+                <TouchableOpacity style={styles.saveButton} onPress={handleCompleteReflection}>
+                  <Text style={styles.saveButtonText}>제출 및 분석</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setJournalModalVisible(false)}>
+                <Text style={styles.cancelButtonText}>취소</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={analysisModalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={{ marginTop: 10 }}>
+              <Text style={[styles.introText, { fontSize: 16, lineHeight: 26, textAlign: 'center', color: '#FFD700' }]}>{currentAnalysis?.feedback}</Text>
+            </View>
+            <TouchableOpacity style={styles.saveButton} onPress={() => setAnalysisModalVisible(false)}>
+              <Text style={styles.saveButtonText}>확인</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={historyModalVisible} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.historyModalContent}>
+            <Text style={styles.modalTitle}>지난 여정의 기록</Text>
+            <ScrollView style={styles.historyScroll}>
+              {journalHistory.length === 0 ? (
+                <Text style={styles.emptyHistoryText}>아직 기록된 여정이 없습니다.</Text>
+              ) : (
+                journalHistory.map((entry, index) => (
+                  <View key={index} style={styles.historyEntry}>
+                    <Text style={styles.historyDay}>Day {entry.day}</Text>
+                    {entry.imageUri && (
+                      <Image source={{ uri: entry.imageUri }} style={styles.historyImage} resizeMode="cover" />
+                    )}
+                    <Text style={styles.historyContent}>{entry.content}</Text>
+                    <Text style={styles.historyDate}>{entry.date}</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setHistoryModalVisible(false)}>
+              <Text style={styles.closeButtonText}>닫기</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={introModalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>환영합니다</Text>
+            <Text style={styles.introText}>
+              당신은 이제 내면의 성장을 위한 10일간의 여정을 시작합니다.{'\n\n'}
+              매일 주어지는 미션을 수행하고, 당신의 영혼을 기록하세요.{'\n\n'}
+              진정한 자신을 마주할 때, 운명의 상대를 만날 자격이 주어집니다.
+            </Text>
+            <TouchableOpacity style={styles.saveButton} onPress={async () => {
+              await AsyncStorage.setItem('hasSeenIntro', 'true');
+              setIntroModalVisible(false);
+            }}>
+              <Text style={styles.saveButtonText}>여정 시작하기</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View >
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#050510' },
+  visualizerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  safeArea: { flex: 1, paddingTop: Platform.OS === 'android' ? 40 : 0, zIndex: 10 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15 },
+  headerTitle: { color: '#FFD700', fontSize: 18, fontWeight: '700', letterSpacing: 4 },
+  settingsButton: { padding: 10 },
+  settingsIcon: { fontSize: 22, color: '#FFD700' },
+
+  scrollContent: { flexGrow: 1, paddingBottom: 100 },
+  visualizerSpacer: { height: 280 },
+
+  infoContainer: { alignItems: 'center', marginBottom: 35, paddingHorizontal: 25, width: '100%' },
+  photoContainer: { width: 100, height: 100, borderRadius: 50, overflow: 'hidden', marginBottom: 18, borderWidth: 3, borderColor: '#FFD700', shadowColor: '#FFD700', shadowOpacity: 0.7, shadowRadius: 20, elevation: 12 },
+  userPhoto: { width: '100%', height: '100%' },
+  nameText: { color: '#FFF', fontSize: 32, fontWeight: '700', marginBottom: 6, textShadowColor: 'rgba(255, 215, 0, 0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 25 },
+  dayText: { color: '#FFD700', fontSize: 56, fontWeight: '200', marginBottom: 12, letterSpacing: 6 },
+  divider: { width: 50, height: 1, backgroundColor: '#FFD700', marginBottom: 18, opacity: 0.9 },
+  deficitText: { color: '#C1C8E4', fontSize: 16, fontStyle: 'normal', textAlign: 'center', marginBottom: 22, fontWeight: '300' },
+
+  analysisContainer: {
+    marginTop: 18,
+    padding: 22,
+    backgroundColor: 'rgba(15, 15, 30, 0.9)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10
+  },
+  analysisTitle: { color: '#FFD700', fontSize: 14, fontWeight: '600', marginBottom: 14, textAlign: 'center', letterSpacing: 3 },
+  analysisText: { color: '#E8EAF6', fontSize: 14, lineHeight: 23, textAlign: 'center', fontWeight: '300' },
+
+  missionContainer: { paddingHorizontal: 28, alignItems: 'center', marginBottom: 30, width: '100%' },
+  missionTitle: { color: '#FFD700', fontSize: 20, fontWeight: '700', marginBottom: 22, letterSpacing: 3 },
+  missionBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    padding: 28,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.25)',
+    marginBottom: 35,
+    width: '100%'
+  },
+  missionText: { color: '#F5F5F5', fontSize: 17, textAlign: 'center', lineHeight: 30, fontWeight: '300' },
+
+  reflectButton: {
+    backgroundColor: 'rgba(255, 215, 0, 0.12)',
+    paddingVertical: 18,
+    paddingHorizontal: 55,
+    borderRadius: 35,
+    borderWidth: 1.5,
+    borderColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 15,
+    elevation: 10,
+    marginBottom: 20
+  },
+  reflectButtonText: { color: '#FFD700', fontSize: 16, fontWeight: '600', letterSpacing: 2.5 },
+
+  specialMissionTitle: { color: '#FFD700', fontSize: 26, fontWeight: '700', textAlign: 'center', marginBottom: 22, textShadowColor: '#FFD700', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 25 },
+  specialMissionText: { color: '#F5F5F5', fontSize: 16, textAlign: 'center', lineHeight: 27, marginBottom: 35, fontWeight: '300' },
+  matchButton: {
+    backgroundColor: '#FFD700',
+    paddingVertical: 17,
+    paddingHorizontal: 48,
+    borderRadius: 35,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.75,
+    shadowRadius: 22,
+    elevation: 14,
+    width: '100%',
+    alignItems: 'center'
+  },
+  matchButtonText: { color: '#050510', fontSize: 18, fontWeight: '700', letterSpacing: 2.5 },
+
+  viewJournalButton: { marginTop: 18, paddingVertical: 12 },
+  viewJournalButtonText: { color: '#9CA3AF', fontSize: 13, textDecorationLine: 'underline', fontWeight: '400' },
+
+  devButton: { marginTop: 50, padding: 12, backgroundColor: 'rgba(255, 69, 0, 0.08)', borderRadius: 10 },
+  devButtonText: { color: '#FF4500', fontSize: 12 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '88%', backgroundColor: '#0D0D1A', borderRadius: 28, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: '#2A2A40' },
+  modalWrapper: { height: '82%' },
+  modalScrollContent: { alignItems: 'center', paddingBottom: 25 },
+  modalTitle: { color: '#FFD700', fontSize: 22, fontWeight: '700', marginBottom: 18 },
+  modalSubtitle: { color: '#9CA3AF', fontSize: 13, marginBottom: 28, fontWeight: '300' },
+  journalInput: { width: '100%', height: 210, backgroundColor: '#1A1A2E', borderRadius: 18, padding: 22, color: '#fff', fontSize: 15, textAlignVertical: 'top', marginBottom: 28, borderWidth: 1, borderColor: '#2A2A40', fontWeight: '300' },
+  saveButton: { backgroundColor: '#FFD700', paddingVertical: 16, paddingHorizontal: 48, borderRadius: 30, marginBottom: 14, shadowColor: '#FFD700', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 },
+  saveButtonText: { color: '#050510', fontSize: 16, fontWeight: '700', letterSpacing: 1 },
+  cancelButton: { padding: 14 },
+  cancelButtonText: { color: '#6B7280', fontSize: 13, fontWeight: '400' },
+
+  historyModalContent: { width: '90%', height: '85%', backgroundColor: '#0A0A15', borderRadius: 25, padding: 25, borderWidth: 1, borderColor: '#333' },
+  historyScroll: { marginTop: 15 },
+  historyEntry: { marginBottom: 30, borderBottomWidth: 1, borderBottomColor: '#222', paddingBottom: 25 },
+  historyDay: { color: '#FFD700', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
+  historyContent: { color: '#ddd', fontSize: 16, lineHeight: 24 },
+  historyDate: { color: '#555', fontSize: 12, marginTop: 12, textAlign: 'right' },
+  historyImage: { width: '100%', height: 220, borderRadius: 15, marginBottom: 20 },
+  emptyHistoryText: { color: '#666', textAlign: 'center', marginTop: 120, fontSize: 16 },
+  closeButton: { alignSelf: 'center', marginTop: 20, padding: 12 },
+  closeButtonText: { color: '#fff', fontSize: 16 },
+
+  introText: { color: '#E5E7EB', fontSize: 15, lineHeight: 25, textAlign: 'center', marginBottom: 32, fontWeight: '300' },
+
+  imagePickerButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A2E', borderRadius: 18, marginBottom: 24, width: '100%', justifyContent: 'center', height: 170, overflow: 'hidden', borderWidth: 1.5, borderColor: '#2A2A40', borderStyle: 'dashed' },
+  imagePickerText: { color: '#9CA3AF', marginLeft: 10, fontSize: 14, fontWeight: '400' },
+  previewImage: { width: '100%', height: '100%' },
+});
+
+export default HomeScreen;

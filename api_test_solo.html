@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solo Mission API Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Solo Mission API Test</h1>
+
+    <div class="container">
+        <h2>1. Profile Analysis Test</h2>
+        <button onclick="testProfile()">Test Profile Analysis</button>
+        <div id="profileResult"></div>
+    </div>
+
+    <!DOCTYPE html>
+    <html lang="ko">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Solo Mission API Test</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                padding: 20px;
+            }
+
+            .container {
+                margin-bottom: 20px;
+                border: 1px solid #ccc;
+                padding: 10px;
+            }
+
+            button {
+                padding: 10px 20px;
+                cursor: pointer;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 5px;
+            }
+
+            button:hover {
+                background-color: #0056b3;
+            }
+
+            pre {
+                background: #f4f4f4;
+                padding: 10px;
+                white-space: pre-wrap;
+            }
+        </style>
+    </head>
+
+    <body>
+        <h1>Solo Mission API Test</h1>
+
+        <div class="container">
+            <h2>1. Profile Analysis Test</h2>
+            <button onclick="testProfile()">Test Profile Analysis</button>
+            <div id="profileResult"></div>
+        </div>
+
+        <div class="container">
+            <h2>2. Journal Analysis Test</h2>
+            <button onclick="testJournal()">Test Journal Analysis</button>
+            <div id="journalResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Couple Chat Analysis (Secret Mission)</h2>
+            <button onclick="testCoupleChat()">Test Couple Chat</button>
+            <div id="coupleResult" class="result"></div>
+        </div>
+
+        <script>
+            async function testProfile() {
+                const resultDiv = document.getElementById('profileResult');
+                resultDiv.textContent = 'Testing...';
+                try {
+                    const response = await fetch('http://localhost:3000/api/analysis/profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: '테스트유저',
+                            gender: '남성',
+                            age: 30,
+                            job: '개발자',
+                            location: '서울',
+                            idealType: '지혜로운 사람',
+                            hobbies: '독서',
+                            growthGoal: '내면의 평화',
+                            complex: '조급함',
+                            deficit: '여유'
+                        })
+                    });
+                    const data = await response.json();
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } catch (e) {
+                    resultDiv.textContent = 'Error: ' + e.message;
+                }
+            }
+
+            async function testJournal() {
+                const resultDiv = document.getElementById('journalResult');
+                resultDiv.textContent = 'Testing...';
+                try {
+                    const response = await fetch('http://localhost:3000/api/analysis/journal', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: 'test_user',
+                            journalText: '오늘 용기를 내어 친구에게 먼저 연락했다.',
+                            name: '테스트유저',
+                            deficit: '용기',
+                            dayCount: 1
+                        })
+                    });
+                    const data = await response.json();
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } catch (e) {
+                    resultDiv.textContent = 'Error: ' + e.message;
+                }
+            }
+
+            async function testCoupleChat() {
+                const resultDiv = document.getElementById('coupleResult');
+                resultDiv.textContent = 'Testing...';
+                try {
+                    const response = await fetch('http://localhost:3000/api/analysis/couple-chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user1Name: '테스트유저',
+                            user2Name: '상대방',
+                            chatContent: '우리 오늘 뭐 할까? 맛있는 거 먹으러 갈까?'
+                        })
+                    });
+                    const data = await response.json();
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } catch (e) {
+                    resultDiv.textContent = 'Error: ' + e.message;
+                }
+            }
+        </script>
+    </body>
+
+    </html>
