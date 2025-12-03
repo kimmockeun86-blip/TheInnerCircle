@@ -110,6 +110,17 @@ export const api = {
         }
     },
 
+    // K. 연결 테스트 (디버깅용)
+    checkConnection: async () => {
+        try {
+            console.log('[API] Checking connection to:', BASE_URL);
+            const response = await client.get('/health');
+            return { success: true, url: BASE_URL, data: response.data };
+        } catch (error: any) {
+            return { success: false, url: BASE_URL, error: error.message };
+        }
+    },
+
     // J. 커플 프로필 분석 (Day 1 초기화)
     analyzeCoupleProfile: async (profile: any) => {
         try {
