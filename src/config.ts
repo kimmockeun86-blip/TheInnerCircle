@@ -13,7 +13,7 @@ const CONFIG = {
     tunnel: {
         // 👉 여기에 Ngrok 또는 Localtunnel 주소를 입력하세요!
         // 예: 'https://your-tunnel-url.ngrok-free.app/api'
-        url: 'https://REPLACE_WITH_YOUR_TUNNEL_URL/api'
+        url: 'https://theinnercircle-test.loca.lt/api'
     },
     production: {
         // 배포된 Render 서버
