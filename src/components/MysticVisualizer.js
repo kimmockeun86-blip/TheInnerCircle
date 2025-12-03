@@ -55,6 +55,7 @@ const MysticVisualizer = ({ isActive = true, mode = 'listening', sceneUrl, style
       <LinearGradient
         colors={COLORS.backgroundGradient}
         style={[styles.container, style]}
+        pointerEvents="none"
       >
         <Animated.View style={[styles.webViewContainer, { opacity: fadeAnim }]} pointerEvents="none">
           <iframe
@@ -71,8 +72,9 @@ const MysticVisualizer = ({ isActive = true, mode = 'listening', sceneUrl, style
     <LinearGradient
       colors={COLORS.backgroundGradient}
       style={[styles.container, style]}
+      pointerEvents="none"
     >
-      <Animated.View style={[styles.webViewContainer, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.webViewContainer, { opacity: fadeAnim }]} pointerEvents="none">
         <WebView
           originWhitelist={['*']}
           source={{ html: htmlContent }}

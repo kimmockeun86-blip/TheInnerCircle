@@ -330,37 +330,25 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
         console.log(`[Couple Chat] Analyzing conversation between ${user1Name} and ${user2Name}`);
 
         const prompt = `
-        You are a SECRET MISSION GENERATOR.
-        
-        **OBJECTIVE**: Generate a secret mission for ONE partner to perform for the other.
-        
-        **CONSTRAINTS (MUST PASS ALL):**
-        1. [ ] Length: **MAXIMUM 5 WORDS** (Keep it extremely short).
-        2. [ ] Tone: **IMPERATIVE** (Command).
-        3. [ ] Secret: **PARTNER MUST NOT KNOW**.
-        4. [ ] Action: **SOLO ACTION** (No "together").
+        너는 인간의 내면을 꿰뚫어보는 신비로운 현자이자, 운명을 인도하는 예언자야.
+        두 남녀의 대화를 분석하여, 그들의 관계를 더욱 깊고 애틋하게 만들 수 있는 '비밀 지령(Secret Mission)'을 내려줘.
 
-        **BAD EXAMPLES (DO NOT USE):**
-        - "함께 맛있는 걸 먹어라" (Contains "together")
-        - "서로 대화를 나눠라" (Joint action)
-        - "사랑한다고 말해주세요" (Too polite)
-
-        **GOOD EXAMPLES (USE THESE PATTERNS):**
-        - "몰래 편지 써라"
-        - "간식 사다줘라"
-        - "발 씻겨줘라"
-        - "어깨 주물러줘라"
-        - "먼저 사과해라"
-
-        **OUTPUT JSON:**
-        {
-          "nextMission": "COMMAND_STRING",
-          "analysis": "Brief analysis.",
-          "feedback": "Brief feedback."
-        }
-
-        [Chat Log]
+        [대화 내용]
         ${chatContent}
+
+        1. **분석 (Analysis)**: 두 사람의 감정 흐름과 관계의 깊이를 신비롭고 시적인 언어로 분석해줘. (3문장 이내)
+           - **언어**: **오직 한국어만 사용해라. 영어 설명은 절대 포함하지 마라.**
+        2. **비밀 지령 (Secret Mission)**: 상대방 몰래 수행할 수 있는, **아주 짧고 강렬한 행동**을 하나 제안해라.
+           - **길이**: **공백 포함 15자 이내**. (절대 길게 쓰지 마라)
+           - **말투**: **단호한 명령조** (예: "조용히 뽀뽀해라", "손을 꽉 잡아라").
+           - **내용**: **상대방이 모르게** 할 수 있는 스킨십이나 배려.
+           - **언어**: **오직 한국어만 사용해라. 영어 설명은 절대 포함하지 마라.**
+
+        반드시 **JSON 형식**으로 답해줘:
+        {
+            "analysis": "분석 내용 (한국어)",
+            "nextMission": "미션 내용 (한국어)"
+        }
         `;
 
         const model = genAI.getGenerativeModel({
@@ -407,22 +395,32 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
         ];
 
         let finalMission = jsonResponse.nextMission;
+        let finalAnalysis = jsonResponse.analysis;
 
         // Robust check for forbidden concepts
         const forbiddenWords = ["함께", "같이", "서로", "우리", "나누", "즐기", "데이트", "시간을"];
         const hasForbiddenWord = forbiddenWords.some(word => finalMission.includes(word));
 
+        // Check for English characters (a-z, A-Z) in Mission OR Analysis
+        const hasEnglishInMission = /[a-zA-Z]/.test(finalMission);
+        const hasEnglishInAnalysis = /[a-zA-Z]/.test(finalAnalysis);
+
         // Check for length > 15, forbidden words, or complex sentence structure (comma, period)
-        if (!finalMission || finalMission.length > 15 || hasForbiddenWord ||
+        if (!finalMission || finalMission.length > 15 || hasForbiddenWord || hasEnglishInMission ||
             finalMission.includes(",") || finalMission.includes(".")) {
 
             console.log(`[Mission Override] AI mission '${finalMission}' was invalid. Using fallback.`);
             finalMission = validMissions[Math.floor(Math.random() * validMissions.length)];
         }
 
+        if (hasEnglishInAnalysis) {
+            console.log(`[Analysis Override] AI analysis contained English. Using fallback.`);
+            finalAnalysis = "두 사람의 마음이 깊어지고 있습니다. 서로를 향한 진심이 느껴집니다.";
+        }
+
         res.json({
             success: true,
-            analysis: jsonResponse.analysis,
+            analysis: finalAnalysis,
             feedback: jsonResponse.feedback,
             nextMission: finalMission
         });

@@ -279,11 +279,24 @@ const styles = StyleSheet.create({
         zIndex: 0,
     },
     safeArea: { flex: 1, zIndex: 10 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 10,
+        zIndex: 30 // High zIndex for header
+    },
     headerTitle: { color: COLORS.gold, fontSize: 18, fontWeight: 'bold', letterSpacing: 2 },
     backButton: { padding: 10 },
     backButtonText: { color: COLORS.gold, fontSize: 24 },
-    scrollContent: { flexGrow: 1, justifyContent: 'center', paddingBottom: 40 },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        paddingBottom: 40,
+        zIndex: 20 // High zIndex for content
+    },
     contentContainer: { paddingHorizontal: 20, alignItems: 'center', width: '100%' },
 
     title: { color: COLORS.gold, fontSize: 28, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
