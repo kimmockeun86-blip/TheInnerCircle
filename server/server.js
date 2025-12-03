@@ -31,18 +31,18 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// API Key Configuration - Environment Variable Priority
-const API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBnio5R8jKvguClPe5-e6_rtk1t3Z-VEZk';
+// API Key Configuration - Environment Variable Required
+const API_KEY = process.env.GEMINI_API_KEY;
 
-if (!process.env.GEMINI_API_KEY) {
-    console.warn('⚠️  WARNING: GEMINI_API_KEY environment variable not set!');
-    console.warn('⚠️  Using fallback API key. This is NOT recommended for production.');
-    console.warn('⚠️  Set GEMINI_API_KEY in your deployment environment (Render/Vercel dashboard).');
-} else {
-    console.log('✅ Using GEMINI_API_KEY from environment variables');
+if (!API_KEY) {
+    console.error('❌ FATAL ERROR: GEMINI_API_KEY environment variable is required!');
+    console.error('❌ Please set GEMINI_API_KEY in your deployment environment (Render/Vercel dashboard).');
+    console.error('❌ Get your API key from: https://aistudio.google.com/app/apikey');
+    process.exit(1); // Stop server startup
 }
 
-console.log('Initializing Gemini with Key:', API_KEY ? 'Present' : 'Missing');
+console.log('✅ GEMINI_API_KEY loaded from environment variables');
+console.log('Initializing Gemini with Key: Present');
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 console.log('Gemini Model Initialized.');
