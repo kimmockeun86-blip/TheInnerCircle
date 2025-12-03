@@ -285,16 +285,13 @@ const CouplesMissionScreen = () => {
 
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
-                    <View style={{ width: 40 }} /> {/* Spacer to balance the right side buttons */}
+                    <TouchableOpacity onPress={() => setHistoryModalVisible(true)} style={styles.iconButton}>
+                        <Text style={styles.iconButtonText}>📜</Text>
+                    </TouchableOpacity>
                     <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>커플 미션</Text>
-                    <View style={{ flexDirection: 'row', width: 80, justifyContent: 'flex-end' }}>
-                        <TouchableOpacity onPress={() => setHistoryModalVisible(true)} style={styles.iconButton}>
-                            <Text style={styles.iconButtonText}>📜</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.iconButton}>
-                            <Text style={styles.iconButtonText}>⚙️</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.iconButton}>
+                        <Text style={styles.iconButtonText}>⚙️</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <ScrollView contentContainerStyle={styles.scrollContent}>
