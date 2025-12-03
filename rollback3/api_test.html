@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <div id="result">Waiting...</div>
+    <script>
+        fetch('http://localhost:3000/api/analysis/couple-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chatContent: "요즘 너무 지치고 힘들어. 너랑 같이 맛있는 거 먹고 싶다.",
+                user1Name: "철수",
+                user2Name: "영희"
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+        })
+        .catch(error => {
+            document.getElementById('result').innerText = 'Error: ' + error;
+        });
+    </script>
+</body>
+</html>
