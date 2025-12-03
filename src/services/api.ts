@@ -22,8 +22,18 @@ export const api = {
             console.log('[API] analyzeProfile success:', response.data);
             return response.data;
         } catch (error: any) {
-            console.error('API Error [analyzeProfile]:', error.message);
-            throw error; // Fail loudly as requested
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('[API Error] analyzeProfile failed');
+            console.error('[API Error] Message:', error.message);
+            if (error.response) {
+                console.error('[API Error] Server Response:', error.response.status, error.response.statusText);
+                console.error('[API Error] Server Data:', error.response.data);
+            } else if (error.request) {
+                console.error('[API Error] Network Error - No response received');
+                console.error('[API Error] Request:', error.request);
+            }
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            throw error;
         }
     },
 
@@ -36,8 +46,17 @@ export const api = {
             const response = await client.post('/analysis/journal', data, { headers });
             return response.data;
         } catch (error: any) {
-            console.error('API Error [analyzeJournal]:', error.message);
-            throw error; // Fail loudly as requested
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('[API Error] analyzeJournal failed');
+            console.error('[API Error] Message:', error.message);
+            if (error.response) {
+                console.error('[API Error] Server Response:', error.response.status, error.response.statusText);
+                console.error('[API Error] Server Data:', error.response.data);
+            } else if (error.request) {
+                console.error('[API Error] Network Error - No response received');
+            }
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            throw error;
         }
     },
 
@@ -99,7 +118,14 @@ export const api = {
             console.log('[API] analyzeCoupleChat success:', response.data);
             return response.data;
         } catch (error: any) {
-            console.error('API Error [analyzeCoupleChat]:', error.message);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('[API Error] analyzeCoupleChat failed');
+            console.error('[API Error] Message:', error.message);
+            if (error.response) {
+                console.error('[API Error] Server Response:', error.response.status);
+                console.error('[API Error] Server Data:', error.response.data);
+            }
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             throw error;
         }
     },
@@ -122,7 +148,13 @@ export const api = {
             const response = await client.post('/analysis/couple-profile', profile);
             return response.data;
         } catch (error: any) {
-            console.error('API Error [analyzeCoupleProfile]:', error.message);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('[API Error] analyzeCoupleProfile failed');
+            console.error('[API Error] Message:', error.message);
+            if (error.response) {
+                console.error('[API Error] Server Data:', error.response.data);
+            }
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             throw error;
         }
     }

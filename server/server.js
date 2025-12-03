@@ -31,8 +31,17 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// API Key Configuration
-const API_KEY = 'AIzaSyBnio5R8jKvguClPe5-e6_rtk1t3Z-VEZk'; // In production, use process.env.GEMINI_API_KEY
+// API Key Configuration - Environment Variable Priority
+const API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBnio5R8jKvguClPe5-e6_rtk1t3Z-VEZk';
+
+if (!process.env.GEMINI_API_KEY) {
+    console.warn('⚠️  WARNING: GEMINI_API_KEY environment variable not set!');
+    console.warn('⚠️  Using fallback API key. This is NOT recommended for production.');
+    console.warn('⚠️  Set GEMINI_API_KEY in your deployment environment (Render/Vercel dashboard).');
+} else {
+    console.log('✅ Using GEMINI_API_KEY from environment variables');
+}
+
 console.log('Initializing Gemini with Key:', API_KEY ? 'Present' : 'Missing');
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -85,7 +94,10 @@ function extractJSON(text) {
 app.post('/api/analysis/profile', async (req, res) => {
     try {
         const { name, gender, age, job, location, idealType, hobbies, growthGoal, complex, deficit } = req.body;
-        console.log(`Analyzing profile for: ${name}, Deficit: ${deficit}`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('[Profile Analysis] Request received');
+        console.log('[Profile Analysis] User:', name, '| Deficit:', deficit);
+        console.log('[Profile Analysis] Sending to Gemini API...');
 
         const prompt = `
         너는 인간의 내면을 꿰뚫어보는 신비로운 현자이자, 운명을 인도하는 예언자야.
@@ -120,9 +132,10 @@ app.post('/api/analysis/profile', async (req, res) => {
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
-        const jsonResponse = extractJSON(text);
+        console.log('[Profile Analysis] Gemini raw response received:', text.substring(0, 100) + '...');
 
-        console.log('Gemini Analysis Result:', jsonResponse);
+        const jsonResponse = extractJSON(text);
+        console.log('[Profile Analysis] Parsed JSON:', jsonResponse);
         // FALLBACK LOGIC
         const validMissions = [
             "작은 기부를 해라",
@@ -148,6 +161,9 @@ app.post('/api/analysis/profile', async (req, res) => {
             finalMission = validMissions[Math.floor(Math.random() * validMissions.length)];
         }
 
+        console.log('[Profile Analysis] ✅ Success - Sending response');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
         res.json({
             success: true,
             analysis: jsonResponse.analysis,
@@ -155,12 +171,21 @@ app.post('/api/analysis/profile', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Gemini API Error (Profile):', error.message);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('[Profile Analysis] ❌ ERROR:', error.message);
+        console.error('[Profile Analysis] Error type:', error.name);
+        if (error.response) {
+            console.error('[Profile Analysis] Gemini API Response Error:', error.response.status, error.response.statusText);
+        }
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
         // Fallback Mock Data
         res.json({
             success: true,
             analysis: "당신의 결핍은 별들이 잠시 숨을 고르는 순간과 같습니다. 그 외로움 속에서 당신은 진정한 자신을 마주하게 될 것입니다. (AI 연결 실패로 인한 예비 메시지)",
-            recommendedMission: "오늘 하루, 가장 고요한 순간을 찾아 그 침묵의 소리를 기록하십시오."
+            recommendedMission: "오늘 하루, 가장 고요한 순간을 찾아 그 침묵의 소리를 기록하십시오.",
+            errorType: 'API_CONNECTION_ERROR',
+            errorMessage: error.message
         });
     }
 });
@@ -168,18 +193,22 @@ app.post('/api/analysis/profile', async (req, res) => {
 // 2. Journal Analysis Endpoint
 app.post('/api/analysis/journal', upload.single('image'), async (req, res) => {
     try {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('[Journal Analysis] Request received');
         console.log('[Journal] Content-Type:', req.headers['content-type']);
-        console.log('[Journal] Body:', JSON.stringify(req.body, null, 2));
+        console.log('[Journal] Body keys:', Object.keys(req.body));
         console.log('[Journal] File:', req.file ? req.file.originalname : 'No file');
 
         const { userId, journalText, name, deficit, dayCount } = req.body;
         const imagePath = req.file ? req.file.path : null;
 
         if (!journalText) {
+            console.error('[Journal Analysis] ❌ Missing journalText in request');
             throw new Error('journalText is missing in request body');
         }
 
-        console.log(`Analyzing journal for user ${name}: ${journalText.substring(0, 20)}...`);
+        console.log(`[Journal Analysis] User: ${name} | Day: ${dayCount} | Deficit: ${deficit}`);
+        console.log(`[Journal Analysis] Text preview: ${journalText.substring(0, 50)}...`);
 
         const prompt = `
         당신은 'The Inner Circle'이라는 신비로운 자기 성찰 앱의 AI 멘토 '파라(Para)'입니다.
@@ -210,12 +239,12 @@ app.post('/api/analysis/journal', upload.single('image'), async (req, res) => {
         }
         `;
 
-        console.log('Sending request to Gemini API...');
+        console.log('[Journal Analysis] Sending request to Gemini API...');
         const result = await model.generateContent(prompt);
-        console.log('Gemini API response received.');
+        console.log('[Journal Analysis] Gemini API response received successfully');
         const response = await result.response;
         const text = response.text();
-        console.log('Raw Gemini response text:', text);
+        console.log('[Journal Analysis] Raw Gemini response:', text.substring(0, 150) + '...');
 
         let jsonResponse;
         try {
@@ -259,21 +288,33 @@ app.post('/api/analysis/journal', upload.single('image'), async (req, res) => {
             finalMission = validMissions[Math.floor(Math.random() * validMissions.length)];
         }
 
+        console.log('[Journal Analysis] ✅ Success - Sending response');
+        console.log('[Journal Analysis] Score:', jsonResponse.score, '| Mission:', finalMission);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
         res.json({
             success: true,
             feedback: feedbackContent,
             score: jsonResponse.score,
             recommendedMission: finalMission
         });
-        console.log('Sent response to client. Feedback:', feedbackContent.substring(0, 50));
 
     } catch (error) {
-        console.error('Gemini API Error (Journal):', error.message);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('[Journal Analysis] ❌ ERROR:', error.message);
+        console.error('[Journal Analysis] Error stack:', error.stack);
+        if (error.response) {
+            console.error('[Journal Analysis] API Response Error:', error.response.status);
+        }
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
         res.json({
             success: true,
             feedback: "당신의 기록에서 깊은 성찰이 느껴집니다. (AI 연결 실패로 인한 예비 피드백)",
             score: 85,
-            recommendedMission: "내일은 오늘 느낀 감정을 색으로 표현해보세요."
+            recommendedMission: "내일은 오늘 느낀 감정을 색으로 표현해보세요.",
+            errorType: 'API_CONNECTION_ERROR',
+            errorMessage: error.message
         });
     }
 });
@@ -282,7 +323,9 @@ app.post('/api/analysis/journal', upload.single('image'), async (req, res) => {
 app.post('/api/mission/secret', async (req, res) => {
     try {
         const { name, deficit, partnerName } = req.body;
-        console.log(`[Secret Mission] User: ${name}, Partner: ${partnerName}`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('[Secret Mission] Request received');
+        console.log(`[Secret Mission] User: ${name}, Partner: ${partnerName}, Deficit: ${deficit}`);
 
         const prompt = `
         너는 연애와 인간관계의 현자야. 
@@ -299,19 +342,26 @@ app.post('/api/mission/secret', async (req, res) => {
         }
         `;
 
+        console.log('[Secret Mission] Sending to Gemini API...');
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
         const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const jsonResponse = JSON.parse(cleanedText);
 
+        console.log('[Secret Mission] ✅ Success');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         res.json({ success: true, secretMission: jsonResponse.secretMission });
 
     } catch (error) {
-        console.error('Secret Mission Error:', error.message);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('[Secret Mission] ❌ ERROR:', error.message);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         res.json({
             success: true,
-            secretMission: "상대방의 눈을 3초간 바라보며 침묵의 인사를 나누세요.\n그리고 가장 좋아하는 계절에 대해 물어보세요. (예비 지령)"
+            secretMission: "상대방의 눈을 3초간 바라보며 침묵의 인사를 나누세요.\n그리고 가장 좋아하는 계절에 대해 물어보세요. (예비 지령)",
+            errorType: 'API_CONNECTION_ERROR',
+            errorMessage: error.message
         });
     }
 });
@@ -336,7 +386,10 @@ app.post('/api/admin/assign-mission', async (req, res) => {
 app.post('/api/analysis/couple-chat', async (req, res) => {
     try {
         const { chatContent, user1Name, user2Name, isSpecialMission } = req.body;
-        console.log(`[Couple Chat] Analyzing conversation between ${user1Name} and ${user2Name} (Special: ${isSpecialMission})`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('[Couple Chat] Request received');
+        console.log(`[Couple Chat] Users: ${user1Name} & ${user2Name} | Special: ${isSpecialMission}`);
+        console.log(`[Couple Chat] Chat length: ${chatContent?.length || 0} chars`);
 
         let prompt;
         if (isSpecialMission) {
@@ -392,6 +445,7 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
             `;
         }
 
+        console.log('[Couple Chat] Sending to Gemini API...');
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: { temperature: 0.4 }
@@ -399,6 +453,7 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
         const result = await model.generateContent(prompt);
         const response = await result.response;
         let text = response.text();
+        console.log('[Couple Chat] Gemini response received');
 
         // Write raw response to file for debugging
         try {
@@ -488,7 +543,9 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
             finalAnalysis = "두 사람의 마음이 깊어지고 있습니다. 서로를 향한 진심이 느껴집니다.";
         }
 
-        console.log(`[Final Response] Mission: "${finalMission}", Analysis: "${finalAnalysis}", Feedback: "${finalFeedback}"`);
+        console.log(`[Couple Chat] ✅ Success`);
+        console.log(`[Couple Chat] Mission: "${finalMission}"`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         res.json({
             success: true,
@@ -498,12 +555,16 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Couple Chat Analysis Error:', error.message);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('[Couple Chat] ❌ ERROR:', error.message);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         res.json({
             success: true,
             analysis: "두 분의 대화에서 깊은 유대감이 느껴집니다. (AI 연결 실패)",
             feedback: "서로의 마음을 더 자주 표현해주세요.",
-            nextMission: "서로에게 가장 고마웠던 순간을 편지로 써서 교환하라."
+            nextMission: "서로에게 가장 고마웠던 순간을 편지로 써서 교환하라.",
+            errorType: 'API_CONNECTION_ERROR',
+            errorMessage: error.message
         });
     }
 });
@@ -549,7 +610,9 @@ app.post('/api/match', async (req, res) => {
 app.post('/api/analysis/couple-profile', async (req, res) => {
     try {
         const { goal, wish, future, partnerDesc } = req.body;
-        console.log(`[Couple Profile] Analyzing: Goal=${goal}, Wish=${wish}`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('[Couple Profile] Request received');
+        console.log(`[Couple Profile] Goal: ${goal?.substring(0, 30)}...`);
 
         const prompt = `
         너는 'The Inner Circle'의 신비로운 멘토 '파라(Para)'다.
@@ -574,12 +637,14 @@ app.post('/api/analysis/couple-profile', async (req, res) => {
         }
         `;
 
+        console.log('[Couple Profile] Sending to Gemini API...');
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
         const jsonResponse = extractJSON(text);
 
-        console.log('Couple Profile Analysis Result:', jsonResponse);
+        console.log('[Couple Profile] ✅ Success');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         res.json({
             success: true,
@@ -588,11 +653,15 @@ app.post('/api/analysis/couple-profile', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Couple Profile Analysis Error:', error.message);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('[Couple Profile] ❌ ERROR:', error.message);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         res.json({
             success: true,
             analysis: "두 분의 만남은 별들의 축복 속에 있습니다. 서로를 향한 진심이 이 여정을 빛나게 할 것입니다. (AI 연결 실패)",
-            recommendedMission: "서로의 눈을 1분간 바라보라"
+            recommendedMission: "서로의 눈을 1분간 바라보라",
+            errorType: 'API_CONNECTION_ERROR',
+            errorMessage: error.message
         });
     }
 });
