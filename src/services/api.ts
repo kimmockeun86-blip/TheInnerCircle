@@ -14,7 +14,7 @@ console.log('[API] Initialized with BASE_URL:', BASE_URL, 'Platform:', Platform.
 
 const client = axios.create({
     baseURL: BASE_URL,
-    timeout: 15000,
+    timeout: 60000,
     headers: {
         'Content-Type': 'application/json',
     },
