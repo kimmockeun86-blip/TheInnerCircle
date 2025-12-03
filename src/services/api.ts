@@ -2,11 +2,13 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 
 // Force 127.0.0.1 for local debugging
-const BASE_URL = Platform.OS === 'web'
-    ? 'http://localhost:3000/api'
-    : Platform.OS === 'android'
-        ? 'http://10.0.2.2:3000/api'
-        : 'http://localhost:3000/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL
+    ? process.env.EXPO_PUBLIC_API_URL
+    : Platform.OS === 'web'
+        ? 'http://localhost:3000/api'
+        : Platform.OS === 'android'
+            ? 'http://10.0.2.2:3000/api'
+            : 'http://localhost:3000/api';
 
 console.log('[API] Initialized with BASE_URL:', BASE_URL, 'Platform:', Platform.OS);
 
