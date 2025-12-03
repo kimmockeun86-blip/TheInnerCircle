@@ -345,7 +345,7 @@ const CouplesMissionScreen = () => {
                         </Text>
                         <Text style={styles.modalSubtitle}>
                             {currentMissionText
-                                ? "함께 나눈 대화나 감정을 기록해주세요"
+                                ? "미션을 수행하고 느낀점을 적어주세요. 오늘의 미소도 기록하세요"
                                 : "서로에게 하고 싶은 말이나 현재의 마음을 적어주세요"}
                         </Text>
 
