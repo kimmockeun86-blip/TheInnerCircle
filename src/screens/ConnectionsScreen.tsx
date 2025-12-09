@@ -21,7 +21,7 @@ interface MissionHistoryEntry {
     imageUri?: string;
 }
 
-const CouplesMissionScreen = () => {
+const ConnectionsScreen = () => {
     const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
     const { width: SCREEN_WIDTH } = useWindowDimensions();
 
@@ -734,4 +734,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default CouplesMissionScreen;
+export default ConnectionsScreen;

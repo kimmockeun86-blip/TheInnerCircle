@@ -161,7 +161,9 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     await AsyncStorage.setItem('isCoupled', 'true');
 
                     // Navigate to Couples Mission
-                    navigation.replace('CouplesMission');
+                    navigation.replace('MainTabs', {
+                        screen: 'Connection'
+                    });
                 } else {
                     navigation.replace('Home', {
                         name: answers['userName'] || '구도자',

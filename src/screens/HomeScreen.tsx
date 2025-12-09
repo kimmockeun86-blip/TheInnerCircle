@@ -454,8 +454,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
 
             <View style={styles.safeArea}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>THE INNER CIRCLE</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+                    <View style={styles.headerTitleContainer}>
+                        {/* Spline Animation behind ORBIT text */}
+                        <View style={styles.orbitAnimationContainer}>
+                            <MysticVisualizer
+                                isActive={true}
+                                mode="listening"
+                                sceneUrl="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"
+                            />
+                        </View>
+                        <Text style={styles.headerTitle}>ORBIT</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => navigation.navigate('Admin')}>
                         <Text style={styles.settingsIcon}>⚙️</Text>
                     </TouchableOpacity>
                 </View>
@@ -853,6 +863,18 @@ const styles = StyleSheet.create({
     },
     settingsIcon: {
         fontSize: 24,
+    },
+    headerTitleContainer: {
+        position: 'relative',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    orbitAnimationContainer: {
+        position: 'absolute',
+        width: 120,
+        height: 60,
+        zIndex: -1,
+        opacity: 0.7,
     },
     scrollContent: {
         flexGrow: 1,
