@@ -587,12 +587,24 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                             인연이 시작된 지 {dayCount}일째
                         </Text>
 
+                        {/* ORBIT'S SIGNAL - AI Analysis */}
+                        {aiAnalysis && (
+                            <View style={styles.missionContainer}>
+                                <GlassCard style={styles.signalCard}>
+                                    <Text style={styles.signalLabel}>ORBIT'S SIGNAL</Text>
+                                    <Text style={styles.signalText}>{aiAnalysis}</Text>
+                                </GlassCard>
+                            </View>
+                        )}
+
+                        {/* Today's Ritual */}
                         <View style={styles.missionContainer}>
                             <GlassCard style={styles.missionCard}>
                                 <Text style={styles.missionTitle}>오늘의 리추얼</Text>
                                 <Text style={styles.missionText}>{currentMissionText}</Text>
                             </GlassCard>
                         </View>
+
 
                         {/* Day 10+ Background Matching Result - Special Mission Event */}
                         {dayCount >= 10 && matchCandidate && !matchResult && (
@@ -1102,6 +1114,26 @@ const styles = StyleSheet.create({
         lineHeight: 22,
         textAlign: 'justify',
     },
+
+    // Signal Card (ORBIT's Analysis)
+    signalCard: {
+        marginBottom: 15,
+        backgroundColor: 'rgba(100, 50, 150, 0.15)',
+        borderColor: 'rgba(150, 100, 255, 0.3)',
+    },
+    signalLabel: {
+        color: COLORS.gold,
+        fontSize: 12,
+        fontWeight: 'bold',
+        letterSpacing: 2,
+        marginBottom: 10,
+    },
+    signalText: {
+        color: 'rgba(255, 255, 255, 0.85)',
+        fontSize: 14,
+        lineHeight: 22,
+    },
+
 
     // Ritual Bar
     ritualContainer: {
