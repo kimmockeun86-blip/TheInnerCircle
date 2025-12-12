@@ -10,6 +10,8 @@ import HolyButton from '../components/HolyButton';
 import { COLORS, FONTS } from '../theme/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
+import notificationService from '../services/NotificationService';
+
 
 interface MissionHistoryEntry {
     day: number;
@@ -47,6 +49,8 @@ const CouplesMissionScreen = () => {
     // Relationship Level System
     const [relationshipLevel, setRelationshipLevel] = useState(1);
     const [relationshipPhase, setRelationshipPhase] = useState('탐색기');
+    const [nextMissionUnlockTime, setNextMissionUnlockTime] = useState<string | null>(null);
+
 
     // Visualizer Mode
     const visualizerMode = isLoading ? 'thinking' : (analysisModalVisible ? 'speaking' : 'listening');
@@ -111,10 +115,39 @@ const CouplesMissionScreen = () => {
                         : "서로의 눈을 1분간 바라보며 침묵 속의 대화를 나누십시오.");
                 }
             }
+
+            // Check if mission is locked (9 AM system)
+            const lastCompletedDate = await AsyncStorage.getItem('coupleLastCompletedDate');
+            if (lastCompletedDate) {
+                const now = new Date();
+                const lastDate = new Date(lastCompletedDate);
+                const isSameDay = now.getDate() === lastDate.getDate() &&
+                    now.getMonth() === lastDate.getMonth() &&
+                    now.getFullYear() === lastDate.getFullYear();
+
+                const unlockHour = 9;
+                const currentHour = now.getHours();
+
+                if (isSameDay) {
+                    const tomorrow = new Date(now);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(unlockHour, 0, 0, 0);
+                    setNextMissionUnlockTime(tomorrow.toLocaleString());
+                    await notificationService.scheduleMissionNotification();
+                } else if (currentHour < unlockHour) {
+                    const todayUnlock = new Date(now);
+                    todayUnlock.setHours(unlockHour, 0, 0, 0);
+                    setNextMissionUnlockTime(todayUnlock.toLocaleString());
+                    await notificationService.scheduleMissionNotification();
+                } else {
+                    setNextMissionUnlockTime(null);
+                }
+            }
         } catch (e) {
             console.error('Failed to load couple data:', e);
         }
     };
+
 
     useFocusEffect(
         useCallback(() => {
@@ -306,15 +339,29 @@ const CouplesMissionScreen = () => {
 
                         {/* Ritual Card - Same style as HomeScreen */}
                         <View style={styles.missionContainer}>
-                            <GlassCard style={[styles.missionCard, isSpecialMission && styles.specialCard]}>
+                            <GlassCard style={[styles.missionCard, isSpecialMission && styles.specialCard, nextMissionUnlockTime && styles.lockedCard]}>
                                 <Text style={[styles.missionLabel, isSpecialMission && styles.specialLabel]}>
                                     {isSpecialMission ? "✨ SPECIAL RITUAL" : "TODAY'S CONNECTION"}
                                 </Text>
-                                <Text style={styles.missionText}>
-                                    {currentMissionText || "리추얼을 불러오는 중..."}
-                                </Text>
+                                {nextMissionUnlockTime ? (
+                                    <View style={styles.lockedMissionContainer}>
+                                        <Text style={styles.lockedIcon}>🔒</Text>
+                                        <Text style={styles.lockedText}>미션이 잠겨 있습니다</Text>
+                                        <Text style={styles.unlockTimeText}>
+                                            공개 예정: {nextMissionUnlockTime}
+                                        </Text>
+                                        <Text style={styles.unlockHint}>
+                                            다음날 오전 9시에 새로운 미션이 공개됩니다
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.missionText}>
+                                        {currentMissionText || "리추얼을 불러오는 중..."}
+                                    </Text>
+                                )}
                             </GlassCard>
                         </View>
+
 
                         {/* Action Button */}
                         <HolyButton
@@ -559,6 +606,37 @@ const styles = StyleSheet.create({
         lineHeight: 28,
         fontFamily: FONTS.serif,
     },
+
+    // Locked Mission Styles
+    lockedCard: {
+        borderColor: 'rgba(100, 100, 100, 0.4)',
+        backgroundColor: 'rgba(50, 50, 50, 0.3)',
+    },
+    lockedMissionContainer: {
+        alignItems: 'center',
+        paddingVertical: 15,
+    },
+    lockedIcon: {
+        fontSize: 40,
+        marginBottom: 10,
+    },
+    lockedText: {
+        color: '#888',
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    unlockTimeText: {
+        color: COLORS.gold,
+        fontSize: 14,
+        marginBottom: 5,
+    },
+    unlockHint: {
+        color: '#666',
+        fontSize: 12,
+        textAlign: 'center',
+    },
+
 
     // Analysis Card
     analysisCard: {
