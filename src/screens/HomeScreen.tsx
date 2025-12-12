@@ -10,6 +10,8 @@ import GlassCard from '../components/GlassCard';
 import HolyButton from '../components/HolyButton';
 import { COLORS, LAYOUT, FONTS } from '../theme/theme';
 import { LinearGradient } from 'expo-linear-gradient';
+import notificationService from '../services/NotificationService';
+
 
 interface HomeScreenProps {
     route: HomeScreenRouteProp;
@@ -248,8 +250,11 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                     const canUnlock = await checkDayProgression();
                     if (!canUnlock) {
-                        // Locked state logic if needed
+                        // Locked state - schedule notification for 9 AM
+                        await notificationService.requestPermission();
+                        await notificationService.scheduleMissionNotification();
                     }
+
                 } catch (e) {
                     console.error('Failed to load data:', e);
                 }
@@ -599,11 +604,25 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                         {/* Today's Ritual */}
                         <View style={styles.missionContainer}>
-                            <GlassCard style={styles.missionCard}>
+                            <GlassCard style={[styles.missionCard, nextMissionUnlockTime && styles.lockedCard]}>
                                 <Text style={styles.missionTitle}>오늘의 리추얼</Text>
-                                <Text style={styles.missionText}>{currentMissionText}</Text>
+                                {nextMissionUnlockTime ? (
+                                    <View style={styles.lockedMissionContainer}>
+                                        <Text style={styles.lockedIcon}>🔒</Text>
+                                        <Text style={styles.lockedText}>미션이 잠겨 있습니다</Text>
+                                        <Text style={styles.unlockTimeText}>
+                                            공개 예정: {nextMissionUnlockTime}
+                                        </Text>
+                                        <Text style={styles.unlockHint}>
+                                            다음날 오전 9시에 새로운 미션이 공개됩니다
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.missionText}>{currentMissionText}</Text>
+                                )}
                             </GlassCard>
                         </View>
+
 
 
                         {/* Day 10+ Background Matching Result - Special Mission Event */}
@@ -1134,6 +1153,35 @@ const styles = StyleSheet.create({
         lineHeight: 22,
     },
 
+    // Locked Mission Styles
+    lockedCard: {
+        borderColor: 'rgba(100, 100, 100, 0.4)',
+        backgroundColor: 'rgba(50, 50, 50, 0.3)',
+    },
+    lockedMissionContainer: {
+        alignItems: 'center',
+        paddingVertical: 15,
+    },
+    lockedIcon: {
+        fontSize: 40,
+        marginBottom: 10,
+    },
+    lockedText: {
+        color: '#888',
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    unlockTimeText: {
+        color: COLORS.gold,
+        fontSize: 14,
+        marginBottom: 5,
+    },
+    unlockHint: {
+        color: '#666',
+        fontSize: 12,
+        textAlign: 'center',
+    },
 
     // Ritual Bar
     ritualContainer: {
