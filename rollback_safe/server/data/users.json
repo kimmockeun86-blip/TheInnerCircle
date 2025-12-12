@@ -1,0 +1,16 @@
+[
+    {
+        "id": "user_001",
+        "name": "김목은",
+        "age": 29,
+        "gender": "female",
+        "location": "서울시 강남구",
+        "mbti": "ENFP",
+        "deficit": "불안",
+        "complex": "타인의 시선",
+        "bio": "안녕하세요. 목은입니다. 진정한 나를 찾고 싶어요.",
+        "mission": "하루 3번 하늘 보기",
+        "place": "한강공원",
+        "placeUrl": "https://map.kakao.com"
+    }
+]

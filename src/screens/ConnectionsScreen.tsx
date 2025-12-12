@@ -28,6 +28,8 @@ const ConnectionsScreen = () => {
     const [daysTogether, setDaysTogether] = useState(1);
     const [missionHistory, setMissionHistory] = useState<MissionHistoryEntry[]>([]);
     const [isSpecialMission, setIsSpecialMission] = useState(false);
+    const [relationshipLevel, setRelationshipLevel] = useState(1);
+    const [relationshipPhase, setRelationshipPhase] = useState('탐색기');
 
     // UI States matching HomeScreen
     const [journalModalVisible, setJournalModalVisible] = useState(false);
@@ -51,6 +53,12 @@ const ConnectionsScreen = () => {
             const currentDay = storedDay ? parseInt(storedDay, 10) : 1;
             setDaysTogether(currentDay);
             setIsSpecialMission(currentDay % 10 === 0);
+
+            // Calculate relationship level
+            const level = Math.min(Math.ceil(currentDay / 10), 7);
+            setRelationshipLevel(level);
+            const phases = ['탐색기', '친밀기', '교감기', '몰입기', '심화기', '융합기', '완전체'];
+            setRelationshipPhase(phases[level - 1] || '탐색기');
 
             // Load History
             const storedHistory = await AsyncStorage.getItem('coupleMissionHistory');
@@ -278,7 +286,7 @@ const ConnectionsScreen = () => {
                 <MysticVisualizer
                     isActive={true}
                     mode={visualizerMode}
-                    sceneUrl="https://prod.spline.design/xL8YvPetHy5ja0Yk/scene.splinecode"
+                    sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode"
                     style={{ width: '100%', height: '100%' }}
                 />
             </View>
@@ -296,6 +304,8 @@ const ConnectionsScreen = () => {
 
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <View style={styles.mainContent}>
+                        {/* Level badge hidden - backend logic preserved */}
+
                         <Text style={styles.dayText}>
                             Day {daysTogether}
                         </Text>
@@ -307,8 +317,10 @@ const ConnectionsScreen = () => {
                         {aiAnalysis && (
                             <View style={styles.missionContainer}>
                                 <GlassCard style={styles.analysisCard}>
-                                    <Text style={styles.analysisTitle}>파라의 통찰</Text>
-                                    <Text style={styles.analysisText}>{aiAnalysis}</Text>
+                                    <Text style={styles.analysisTitle}>오르빗의 시그널</Text>
+                                    <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true}>
+                                        <Text style={[styles.analysisText, { flexWrap: 'wrap' }]}>{aiAnalysis}</Text>
+                                    </ScrollView>
                                 </GlassCard>
                             </View>
                         )}
@@ -316,7 +328,7 @@ const ConnectionsScreen = () => {
                         <View style={styles.missionContainer}>
                             <GlassCard style={[styles.missionCard, isSpecialMission && styles.specialCard]}>
                                 <Text style={[styles.missionTitle, isSpecialMission && styles.specialText]}>
-                                    {isSpecialMission ? "특별 지령" : "오늘의 미션"}
+                                    {isSpecialMission ? "특별 지령" : "오늘의 리추얼"}
                                 </Text>
                                 <Text style={styles.missionText}>
                                     {currentMissionText}
@@ -325,7 +337,7 @@ const ConnectionsScreen = () => {
                         </View>
 
                         <HolyButton
-                            title={currentMissionText ? "미션 수행 완료" : "여정 시작하기"}
+                            title={currentMissionText ? "리추얼 수행 완료" : "여정 시작하기"}
                             onPress={() => setJournalModalVisible(true)}
                             style={{ width: '100%', marginTop: 20 }}
                         />
@@ -390,15 +402,15 @@ const ConnectionsScreen = () => {
             <Modal visible={analysisModalVisible} animationType="fade" transparent={true}>
                 <View style={styles.modalOverlay}>
                     <GlassCard style={styles.analysisModalContent}>
-                        <Text style={styles.analysisTitle}>파라의 메시지</Text>
+                        <Text style={styles.analysisTitle}>오르빗의 시그널</Text>
                         <ScrollView style={{ maxHeight: 300 }}>
-                            <Text style={styles.analysisSubtitle}>[통찰]</Text>
+                            <Text style={styles.analysisSubtitle}>[시그널]</Text>
                             <Text style={styles.analysisText}>
                                 {aiAnalysis}
                             </Text>
                             {aiFeedback && (
                                 <>
-                                    <Text style={[styles.analysisSubtitle, { marginTop: 20 }]}>[조언]</Text>
+                                    <Text style={[styles.analysisSubtitle, { marginTop: 20 }]}>[피드백]</Text>
                                     <Text style={styles.analysisText}>
                                         {aiFeedback}
                                     </Text>
@@ -431,14 +443,14 @@ const ConnectionsScreen = () => {
                             missionHistory.map((entry, index) => (
                                 <GlassCard key={index} style={styles.historyCard}>
                                     <Text style={styles.historyDay}>Day {entry.day} ({entry.date})</Text>
-                                    <Text style={styles.historyMission}>미션: {entry.mission}</Text>
+                                    <Text style={styles.historyMission}>리추얼: {entry.mission}</Text>
                                     <Text style={styles.historyContent}>"{entry.reflection}"</Text>
                                     {entry.imageUri && (
                                         <Image source={{ uri: entry.imageUri }} style={styles.historyImage} />
                                     )}
-                                    <Text style={styles.historyAnalysis}>파라: {entry.analysis}</Text>
+                                    <Text style={styles.historyAnalysis}>오르빗: {entry.analysis}</Text>
                                     {entry.feedback && (
-                                        <Text style={styles.historyFeedback}>조언: {entry.feedback}</Text>
+                                        <Text style={styles.historyFeedback}>피드백: {entry.feedback}</Text>
                                     )}
                                 </GlassCard>
                             ))
@@ -502,6 +514,22 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 600,
         alignSelf: 'center',
+    },
+    levelBadge: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(150, 100, 255, 0.6)',
+        backgroundColor: 'rgba(100, 50, 150, 0.3)',
+        marginBottom: 10,
+    },
+    levelBadgeText: {
+        color: '#E0CFFF',
+        fontSize: 12,
+        fontWeight: 'bold',
+        letterSpacing: 1,
+        fontFamily: FONTS.serif,
     },
     dayText: {
         color: COLORS.gold,

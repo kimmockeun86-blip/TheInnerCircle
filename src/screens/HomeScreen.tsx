@@ -1,6 +1,5 @@
-// ID: B-01, B-02, B-03, B-04
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, SafeAreaView, Alert, Animated, useWindowDimensions, Image, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, SafeAreaView, Alert, Animated, useWindowDimensions, Image, ActivityIndicator, Platform, ImageStyle } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MysticVisualizer from '../components/MysticVisualizer';
 import { HomeScreenNavigationProp, HomeScreenRouteProp } from '../types/navigation';
@@ -10,6 +9,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import GlassCard from '../components/GlassCard';
 import HolyButton from '../components/HolyButton';
 import { COLORS, LAYOUT, FONTS } from '../theme/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface HomeScreenProps {
     route: HomeScreenRouteProp;
@@ -21,9 +21,14 @@ interface JournalEntry {
     content: string;
     date: string;
     imageUri?: string;
+    mission?: string;
+    feedback?: string;
+    signal?: string;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
+const HomeScreen: React.FC<HomeScreenProps> = () => {
+    const navigation = useNavigation<HomeScreenNavigationProp>();
+    const route = useRoute<HomeScreenRouteProp>();
     const { width: SCREEN_WIDTH } = useWindowDimensions();
 
     const [name, setName] = useState(route.params?.name || '구도자');
@@ -52,18 +57,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
     const [matchDecision, setMatchDecision] = useState<'continue' | 'stop' | null>(null);
     const [matchResult, setMatchResult] = useState<'success' | 'fail' | null>(null);
     const [isWaitingForPartner, setIsWaitingForPartner] = useState(false);
-    const [adminMission, setAdminMission] = useState<string | null>(null);
-    const [isJudging, setIsJudging] = useState(false);
-    const [judgmentModalVisible, setJudgmentModalVisible] = useState(false);
-    const [confirmationModalVisible, setConfirmationModalVisible] = useState(false);
-    const [matchDecisionModalVisible, setMatchDecisionModalVisible] = useState(false);
-    const [judgmentResult, setJudgmentResult] = useState<{ title: string; message: string; type: 'reset' | 'match' } | null>(null);
+    const [growthLevel, setGrowthLevel] = useState(1);
+    const [growthPhase, setGrowthPhase] = useState('각성');
+    const [progressReason, setProgressReason] = useState<string | null>(null);
+    const [inboxCount, setInboxCount] = useState(0);
+
+    // Background Matching System
+    const [matchCandidate, setMatchCandidate] = useState<any>(null);
+    const [matchCandidateModalVisible, setMatchCandidateModalVisible] = useState(false);
+    const [letterContent, setLetterContent] = useState('');
 
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
     const sparkleAnim2 = useRef(new Animated.Value(0)).current;
     const sparkleAnim3 = useRef(new Animated.Value(0)).current;
 
-    const visualizerMode = isAnalyzing || isJudging ? 'thinking' : (dayCount === 10 ? 'speaking' : 'listening');
+    const visualizerMode = isAnalyzing ? 'thinking' : (dayCount === 10 ? 'speaking' : 'listening');
 
     const missions = [
         "오늘 하루 당신이 느낀 가장 강렬한 감정을 기록하십시오.",
@@ -75,7 +83,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
         "오늘의 실패를 하나 선택하고 그것이 가르쳐준 교훈을 기록하십시오.",
         "당신의 내면에서 가장 큰 소리를 내는 두려움을 직면하십시오.",
         "오늘 당신이 누군가에게 베푼 사소한 친절을 기억하십시오.",
-        "당신의 영혼이 준비되었습니다."
     ];
 
     const sparkles = [
@@ -95,168 +102,248 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
         }
     };
 
+    // Background Matching - Silently check for compatible matches
+    const checkBackgroundMatching = async () => {
+        try {
+            const storedLocation = await AsyncStorage.getItem('userLocation') || 'Seoul';
+            const storedGender = await AsyncStorage.getItem('userGender') || 'male';
+            const storedMbti = await AsyncStorage.getItem('userMBTI') || '';
+            const storedDeficit = await AsyncStorage.getItem('userDeficit') || '';
+
+            const result = await api.getMatchingCandidates({
+                userId: `user_${name}`,
+                userLocation: storedLocation,
+                userGender: storedGender,
+                userMbti: storedMbti,
+                userDeficit: storedDeficit
+            });
+
+            if (result.success && result.candidates.length > 0) {
+                // Found a match candidate! Show as special mission
+                setMatchCandidate(result.candidates[0]);
+                console.log('[ORBIT] 🎯 Match candidate found:', result.candidates[0].name);
+            }
+        } catch (error) {
+            console.error('Background matching error:', error);
+        }
+    };
+
+    // Send letter to match candidate
+    const handleSendLetter = async () => {
+        if (letterContent.trim().length < 10) {
+            Alert.alert('알림', '편지를 10자 이상 작성해주세요.');
+            return;
+        }
+
+        const result = await api.sendLetter({
+            fromUserId: `user_${name}`,
+            fromUserName: name,
+            toUserId: matchCandidate.id,
+            content: letterContent
+        });
+
+        if (result.success) {
+            Alert.alert('성공', '편지가 전송되었습니다. 상대방의 답장을 기다려주세요.');
+            setMatchCandidateModalVisible(false);
+            setLetterContent('');
+            // After sending, simulate receiving reply and accepting
+            setTimeout(async () => {
+                setMatchResult('success');
+                await AsyncStorage.setItem('matchResult', 'success');
+                await AsyncStorage.setItem('matchedPartner', JSON.stringify(matchCandidate));
+                Alert.alert('🎉 축하합니다!', `${matchCandidate.name}님도 만남을 원했습니다!\n커플 미션이 시작됩니다.`, [
+                    { text: '시작하기', onPress: () => navigation.replace('CouplesMission', {} as any) }
+                ]);
+            }, 3000);
+        } else {
+            Alert.alert('알림', result.message);
+        }
+    };
+
+    const checkDayProgression = async () => {
+        const lastCompletedDate = await AsyncStorage.getItem('lastCompletedDate');
+        if (!lastCompletedDate) return true;
+
+        const now = new Date();
+        const lastDate = new Date(lastCompletedDate);
+        const isSameDay = now.getDate() === lastDate.getDate() &&
+            now.getMonth() === lastDate.getMonth() &&
+            now.getFullYear() === lastDate.getFullYear();
+
+        // Unlock at 9:00 AM
+        const unlockHour = 9;
+        const currentHour = now.getHours();
+
+        if (isSameDay) {
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(unlockHour, 0, 0, 0);
+            setNextMissionUnlockTime(tomorrow.toLocaleString());
+            return false; // Still same day, wait for tomorrow
+        }
+
+        if (currentHour < unlockHour) {
+            const todayUnlock = new Date(now);
+            todayUnlock.setHours(unlockHour, 0, 0, 0);
+            setNextMissionUnlockTime(todayUnlock.toLocaleString());
+            return false; // Wait until 9 AM today
+        }
+
+        setNextMissionUnlockTime(null);
+        return true;
+    };
+
     useFocusEffect(
         useCallback(() => {
             const loadData = async () => {
                 try {
-                    const savedDay = await AsyncStorage.getItem('currentDay');
-                    if (savedDay) {
-                        setDayCount(parseInt(savedDay, 10));
+                    const storedDay = await AsyncStorage.getItem('dayCount');
+                    const currentDayCount = storedDay ? parseInt(storedDay, 10) : 1;
+                    setDayCount(currentDayCount);
+
+                    // Calculate Growth Level (10일 단위 심화 시스템)
+                    const level = Math.min(Math.ceil(currentDayCount / 10), 6);
+                    setGrowthLevel(level);
+                    const phases = ['각성', '직면', '파괴', '재구축', '통합', '초월'];
+                    setGrowthPhase(phases[level - 1] || '각성');
+
+                    const storedStatus = await AsyncStorage.getItem('missionStatus');
+                    setMissionStatus(storedStatus);
+
+                    const storedMission = await AsyncStorage.getItem(`mission_day_${currentDayCount}`);
+                    if (storedMission) {
+                        setCurrentMissionText(storedMission);
+                    } else {
+                        const defaultMission = currentDayCount <= 9 ? missions[currentDayCount - 1] : "당신의 영혼이 준비되었습니다.";
+                        setCurrentMissionText(defaultMission);
                     }
-                    loadJournalHistory();
-                    // Check for reload flag
-                    const needsReload = await AsyncStorage.getItem('needsReload');
-                    if (needsReload === 'true') {
-                        await AsyncStorage.removeItem('needsReload');
-                        // Perform any additional reload logic if needed
+
+                    const storedDay10Done = await AsyncStorage.getItem('day10Done');
+                    if (storedDay10Done === 'true') {
+                        setDay10Done(true);
+                    }
+
+                    const storedMatchDecision = await AsyncStorage.getItem('matchDecision');
+                    if (storedMatchDecision) setMatchDecision(storedMatchDecision as any);
+
+                    const storedMatchResult = await AsyncStorage.getItem('matchResult');
+                    if (storedMatchResult) setMatchResult(storedMatchResult as any);
+
+                    await loadJournalHistory();
+
+                    // Background Matching Check (Day 10+)
+                    if (currentDayCount >= 10 && !storedMatchResult) {
+                        checkBackgroundMatching();
+                        // Check inbox for new letters
+                        try {
+                            const storedName = await AsyncStorage.getItem('userName');
+                            const inbox = await api.getLetterInbox(`user_${storedName}`);
+                            if (inbox.success) {
+                                setInboxCount(inbox.letters?.length || 0);
+                            }
+                        } catch (e) {
+                            console.log('Inbox check failed silently');
+                        }
+                    }
+
+                    const canUnlock = await checkDayProgression();
+                    if (!canUnlock) {
+                        // Locked state logic if needed
                     }
                 } catch (e) {
-                    console.error('Failed to load data on focus:', e);
+                    console.error('Failed to load data:', e);
                 }
             };
+
             loadData();
         }, [])
     );
 
-    const checkDayProgression = async () => {
-        return true; // TEMPORARY: Disable time lock for testing
-    };
+    useEffect(() => {
+        const initializeData = async () => {
+            try {
+                const isCoupled = await AsyncStorage.getItem('isCoupled');
+                if (isCoupled === 'coupled') {
+                    navigation.replace('CouplesMission', {} as any);
+                    return;
+                }
 
-    const loadUserData = async () => {
-        try {
-            // Check for user data to determine if we should redirect to Onboarding
-            const userName = await AsyncStorage.getItem('userName');
-            if (!userName) {
-                console.log('HomeScreen: No user data found. Redirecting to Onboarding.');
-                navigation.replace('Onboarding');
-                return;
-            }
+                const storedDay = await AsyncStorage.getItem('dayCount');
+                const currentDayCount = storedDay ? parseInt(storedDay, 10) : 1;
+                setDayCount(currentDayCount);
 
-            const storedDay = await AsyncStorage.getItem('dayCount');
-            let currentDayCount = storedDay ? parseInt(storedDay, 10) : 1;
-            if (isNaN(currentDayCount) || currentDayCount < 1) currentDayCount = 1;
-            setDayCount(currentDayCount);
+                const storedJournal = await AsyncStorage.getItem('savedJournal');
+                const storedMissionStatus = await AsyncStorage.getItem('missionStatus');
+                const storedGender = await AsyncStorage.getItem('userGender');
+                const storedPhoto = await AsyncStorage.getItem('userPhoto');
+                const hasSeenIntro = await AsyncStorage.getItem('hasSeenIntro');
 
-            const storedStatus = await AsyncStorage.getItem('missionStatus');
-            setMissionStatus(storedStatus);
+                const storedName = await AsyncStorage.getItem('userName');
+                const storedDeficit = await AsyncStorage.getItem('userDeficit');
 
-            const storedMission = await AsyncStorage.getItem(`mission_day_${currentDayCount}`);
+                if (storedJournal) setSavedJournal(storedJournal);
+                if (storedMissionStatus) setMissionStatus(storedMissionStatus);
+                if (storedGender) setUserGender(storedGender);
+                if (storedPhoto) setUserPhoto(storedPhoto);
 
-            // A. Admin Mission Priority Check
-            const storedAdminMission = await AsyncStorage.getItem('adminMission');
-            if (storedAdminMission) {
-                setAdminMission(storedAdminMission);
-                setCurrentMissionText(storedAdminMission);
-            } else if (storedMission) {
-                setCurrentMissionText(storedMission);
-            } else {
-                const defaultMission = currentDayCount <= 9 ? missions[currentDayCount - 1] : "당신의 영혼이 준비되었습니다.";
-                setCurrentMissionText(defaultMission);
-            }
+                if (!route.params?.name && storedName) setName(storedName);
+                if (!route.params?.deficit && storedDeficit) setDeficit(storedDeficit);
 
-            const storedDay10Done = await AsyncStorage.getItem('day10Done');
-            if (storedDay10Done === 'true') {
-                setDay10Done(true);
-            }
+                if (!hasSeenIntro) {
+                    setIntroModalVisible(true);
+                }
 
-            const storedMatchDecision = await AsyncStorage.getItem('matchDecision');
-            setMatchDecision(storedMatchDecision as any);
+                const storedMission = await AsyncStorage.getItem(`mission_day_${currentDayCount}`);
+                if (storedMission) {
+                    setCurrentMissionText(storedMission);
+                } else {
+                    const defaultMission = currentDayCount <= 9 ? missions[currentDayCount - 1] : "당신의 영혼이 준비되었습니다.";
+                    setCurrentMissionText(defaultMission);
+                }
 
-            const storedMatchResult = await AsyncStorage.getItem('matchResult');
-            setMatchResult(storedMatchResult as any);
+                const storedDay10Done = await AsyncStorage.getItem('day10Done');
+                if (storedDay10Done === 'true') {
+                    setDay10Done(true);
+                }
 
-            const storedWaiting = await AsyncStorage.getItem('isWaitingForPartner');
-            setIsWaitingForPartner(storedWaiting === 'true');
+                const storedMatchDecision = await AsyncStorage.getItem('matchDecision');
+                if (storedMatchDecision) setMatchDecision(storedMatchDecision as any);
 
-            // Load AI Analysis
-            let storedAnalysis = await AsyncStorage.getItem(`ai_analysis_day_${currentDayCount}`);
-            if (storedAnalysis) {
+                const storedMatchResult = await AsyncStorage.getItem('matchResult');
+                if (storedMatchResult) setMatchResult(storedMatchResult as any);
+
+                await loadJournalHistory();
+
+                const genderForAnalysis = storedGender || '알 수 없음';
+                const fullProfile = {
+                    name: name,
+                    gender: genderForAnalysis,
+                    age: await AsyncStorage.getItem('userAge') || '알 수 없음',
+                    location: await AsyncStorage.getItem('userLocation') || '',
+                    idealType: await AsyncStorage.getItem('userIdealType') || '',
+                    hobbies: await AsyncStorage.getItem('userHobbies') || '',
+                    job: await AsyncStorage.getItem('userJob') || '',
+                    growth: await AsyncStorage.getItem('userGrowth') || '',
+                    complex: await AsyncStorage.getItem('userComplex') || '',
+                    deficit: deficit
+                };
+
                 try {
-                    const parsed = JSON.parse(storedAnalysis);
-                    let analysisContent = '';
-                    if (typeof parsed === 'string') {
-                        analysisContent = parsed;
-                    } else if (typeof parsed === 'object' && parsed !== null && parsed.analysis) {
-                        analysisContent = parsed.analysis;
-                    }
-
-                    // Check for error/fallback markers in cached data
-                    if (analysisContent.includes('AI 분석 서버 연결 실패') ||
-                        analysisContent.includes('자동 분석') ||
-                        analysisContent.includes('예비 메시지')) {
-                        console.log('HomeScreen: Found stale/fallback data in cache. Clearing to force re-fetch.');
-                        storedAnalysis = null; // Force re-fetch
-                        setAiAnalysis(null);
-                    } else {
-                        setAiAnalysis(analysisContent);
+                    const analysisResult = await api.analyzeProfile(fullProfile);
+                    if (analysisResult.success) {
+                        setAiAnalysis(analysisResult.analysis);
+                        if (analysisResult.matchRecommendation) {
+                            await AsyncStorage.setItem('matchRecommendation', analysisResult.matchRecommendation);
+                        }
                     }
                 } catch (e) {
-                    console.error('Failed to parse analysis:', e);
-                    storedAnalysis = null;
+                    console.log('Profile analysis failed silently:', e);
                 }
-            } else {
-                setAiAnalysis(null);
+            } catch (e) {
+                console.error('데이터 로드 실패:', e);
             }
-
-            // Load User Photo
-            const storedPhoto = await AsyncStorage.getItem('userPhoto');
-            if (storedPhoto) setUserPhoto(storedPhoto);
-
-            // API Call for Day 1 if needed
-            if (currentDayCount === 1 && !storedAnalysis) {
-                const name = await AsyncStorage.getItem('userName') || '구도자';
-                const age = await AsyncStorage.getItem('userAge') || 'Unknown';
-                const gender = await AsyncStorage.getItem('userGender') || 'Unknown';
-                const deficit = await AsyncStorage.getItem('userDeficit') || 'Unknown';
-
-                console.log("HomeScreen: Requesting Profile Analysis...");
-                const analysis = await api.analyzeProfile({ name, age, gender, deficit });
-
-                if (analysis && (analysis.success || analysis.analysis)) {
-                    let analysisText = null;
-                    if (typeof analysis === 'string') {
-                        analysisText = analysis;
-                    } else if (analysis.analysis && typeof analysis.analysis === 'string') {
-                        analysisText = analysis.analysis;
-                    }
-
-                    // Check for "Connection Failed" message from stale api.ts and override it
-                    if (analysisText === 'AI 분석 서버 연결 실패') {
-                        analysisText = `${name}님, 당신의 '${deficit}'은(는) 사실 깊은 내면의 울림입니다. 별들이 어둠 속에서 더 밝게 빛나듯, 당신의 결핍은 고유한 빛을 내기 위한 준비 과정입니다. (AI 연결 불안정으로 인한 자동 분석)`;
-                    }
-
-                    if (analysisText) {
-                        setAiAnalysis(analysisText);
-                    }
-
-                    await AsyncStorage.setItem(`ai_analysis_day_${currentDayCount}`, JSON.stringify(analysis));
-
-                    if (analysis.recommendedMission) {
-                        setCurrentMissionText(analysis.recommendedMission);
-                        await AsyncStorage.setItem(`mission_day_${currentDayCount}`, analysis.recommendedMission);
-                    }
-                } else {
-                    // Fallback if API returns null/false
-                    const fallbackText = `${name}님, 당신의 '${deficit}'은(는) 사실 깊은 내면의 울림입니다. 별들이 어둠 속에서 더 밝게 빛나듯, 당신의 결핍은 고유한 빛을 내기 위한 준비 과정입니다. (AI 연결 불안정으로 인한 자동 분석)`;
-                    setAiAnalysis(fallbackText);
-                    setCurrentMissionText("오늘 하루, 가장 조용한 시간을 찾아 5분간 침묵하며 내면의 소리를 들어보세요.");
-                }
-            }
-        } catch (e) {
-            console.error('Failed to load user data:', e);
-        }
-    };
-
-    useFocusEffect(
-        useCallback(() => {
-            loadUserData();
-            loadJournalHistory();
-        }, [])
-    );
-
-    useEffect(() => {
-        // Initial load
-        loadUserData();
+        };
+        initializeData();
     }, []);
 
     const pickImage = async () => {
@@ -304,7 +391,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
 
     const handleCompleteReflection = async () => {
         if (journalInput.trim().length < 1) {
-            Alert.alert('알림', '오늘의 깨달음을 한 줄이라도 남겨주세요.\n당신의 기록이 성장의 밑거름이 됩니다.');
+            Alert.alert('알림', '내용을 입력해주세요.');
             return;
         }
 
@@ -317,15 +404,49 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
         setIsAnalyzing(true);
 
         try {
+            // Build context-aware payload (GEMS V3.0)
+            const userProfile = {
+                name,
+                deficit,
+                job: '', // Will be loaded from AsyncStorage if available
+                habit: '',
+                hobby: ''
+            };
+
+            // Try to load additional profile data
+            try {
+                const storedJob = await AsyncStorage.getItem('userJob');
+                const storedHabit = await AsyncStorage.getItem('userHabit');
+                const storedHobby = await AsyncStorage.getItem('userHobby');
+                if (storedJob) userProfile.job = storedJob;
+                if (storedHabit) userProfile.habit = storedHabit;
+                if (storedHobby) userProfile.hobby = storedHobby;
+            } catch (e) {
+                console.log('Failed to load additional profile data');
+            }
+
+            // Build history array from journalHistory
+            const history = journalHistory.map(entry => ({
+                day: entry.day,
+                journal: entry.content,
+                mission: entry.mission || currentMissionText,
+                feedback: entry.feedback || ''
+            }));
+
             const formData = new FormData();
+            // Context-aware data
+            formData.append('userProfile', JSON.stringify(userProfile));
+            formData.append('history', JSON.stringify(history));
+            formData.append('currentJournal', journalInput);
+            formData.append('dayCount', dayCount.toString());
+            // Legacy fields for backward compatibility
             formData.append('journalText', journalInput);
             formData.append('name', name);
             formData.append('deficit', deficit);
-            formData.append('dayCount', dayCount.toString());
 
             if (selectedImage) {
                 const filename = selectedImage.split('/').pop();
-                const match = /(\.\w+)$/.exec(filename || '');
+                const match = /(\\.\\w+)$/.exec(filename || '');
                 const type = match ? `image/${match[1]}` : `image`;
                 formData.append('image', { uri: selectedImage, name: filename, type } as any);
             }
@@ -340,70 +461,65 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
             ]);
 
             if (response.success) {
-                // Update both Insight and Mission immediately
                 setCurrentAnalysis({ result: response.result, feedback: response.feedback });
-                setAiAnalysis(response.feedback); // Update Insight UI
 
-                if (response.recommendedMission) {
-                    setCurrentMissionText(response.recommendedMission); // Update Mission UI
-                    const nextDay = dayCount + 1;
-                    await AsyncStorage.setItem(`mission_day_${nextDay}`, response.recommendedMission);
-                }
-
+                // Create new entry with feedback and nextMission from server
                 const newEntry: JournalEntry = {
                     day: dayCount,
                     content: journalInput,
                     date: new Date().toLocaleDateString(),
-                    imageUri: selectedImage || undefined
+                    imageUri: selectedImage || undefined,
+                    mission: currentMissionText,
+                    feedback: response.feedback,
+                    signal: response.feedback
                 };
 
                 const updatedHistory = [newEntry, ...journalHistory];
                 setJournalHistory(updatedHistory);
                 await AsyncStorage.setItem('journalHistory', JSON.stringify(updatedHistory));
 
-                if (dayCount === 10) {
-                    if (missionStatus === 'secret_mission_active') {
-                        // Secret Mission Done -> Ask for Decision
-                        // Skip Analysis Modal, Open Decision Modal
-                        setJournalModalVisible(false);
-                        setJournalInput('');
-                        setSelectedImage(null);
-                        setMatchDecisionModalVisible(true);
-                        return; // Exit early to prevent showing Analysis Modal
-                    } else {
-                        // Day 10 Standard Mission Done
-                        setDay10Done(true);
-                        await AsyncStorage.setItem('day10Done', 'true');
-                        Alert.alert('수행 완료', '이제 운명의 상대를 만날 준비가 되었습니다.');
-                    }
-                } else {
-                    // Normal Progression
-                    if (adminMission) {
-                        await AsyncStorage.removeItem('adminMission');
-                        setAdminMission(null);
-                    }
+                // Store next mission if provided
+                if (response.nextMission || response.recommendedMission) {
+                    const nextRitual = response.nextMission || response.recommendedMission;
+                    await AsyncStorage.setItem('currentMission', nextRitual);
+                }
 
+
+
+                // Adaptive Progression - AI decides if user is ready for next level
+                const shouldProgress = response.shouldProgress !== false; // default true
+                setProgressReason(response.progressReason || null);
+
+                if (shouldProgress) {
+                    // User is ready for next level - increase day
                     const newDay = dayCount + 1;
                     setDayCount(newDay);
-                    setMissionStatus(null);
-
-                    // Update AI Analysis on Home Screen to show the feedback from this journal
-                    if (response.feedback) {
-                        setAiAnalysis(response.feedback);
-                        await AsyncStorage.setItem(`ai_analysis_day_${newDay}`, JSON.stringify({ analysis: response.feedback }));
-                    } else {
-                        setAiAnalysis(null);
-                    }
-
                     await AsyncStorage.setItem('dayCount', newDay.toString());
-                    await AsyncStorage.removeItem('missionStatus');
-                    await AsyncStorage.setItem('lastCompletedDate', new Date().toISOString());
+                    console.log(`[ORBIT] ✅ Progress to Day ${newDay} - ${response.progressReason || 'Ready'}`);
+
+                    // Update growth level
+                    const newLevel = Math.min(Math.ceil(newDay / 10), 6);
+                    setGrowthLevel(newLevel);
+                    const phases = ['각성', '직면', '파괴', '재구축', '통합', '초월'];
+                    setGrowthPhase(phases[newLevel - 1] || '각성');
 
                     if (response.recommendedMission) {
-                        setCurrentMissionText(response.recommendedMission); // Update UI immediately
                         await AsyncStorage.setItem(`mission_day_${newDay}`, response.recommendedMission);
                     }
+                } else {
+                    // User needs more practice - stay at same level with new mission
+                    console.log(`[ORBIT] ⏸️ Stay at Day ${dayCount} - ${response.progressReason || 'More practice needed'}`);
+
+                    // Save new mission for same day
+                    if (response.recommendedMission) {
+                        await AsyncStorage.setItem(`mission_day_${dayCount}`, response.recommendedMission);
+                        setCurrentMissionText(response.recommendedMission);
+                    }
                 }
+
+                setMissionStatus(null);
+                await AsyncStorage.removeItem('missionStatus');
+                await AsyncStorage.setItem('lastCompletedDate', new Date().toISOString());
 
                 setJournalModalVisible(false);
                 setJournalInput('');
@@ -415,14 +531,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
                     recentJournal: journalInput,
                     previousAnalysis: aiAnalysis
                 };
-
-                // Background update - don't await
                 api.analyzeProfile(fullProfile).then(reAnalysis => {
                     if (reAnalysis.success) {
                         setAiAnalysis(reAnalysis.analysis);
                     }
-                }).catch(e => {
-                    console.error('[HomeScreen] Profile Analysis Error:', e);
                 });
 
                 setAnalysisModalVisible(true);
@@ -431,7 +543,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
                 Alert.alert('오류', '분석 실패: ' + (response.message || '알 수 없는 오류'));
             }
         } catch (e: any) {
-            console.error('[HomeScreen] Analysis Error:', e);
+            console.error('Analysis Error:', e);
             if (e.message === 'TIMEOUT') {
                 Alert.alert('오류', '서버 응답 시간이 초과되었습니다. (45초)\n서버 상태를 확인해주세요.');
             } else {
@@ -445,54 +557,66 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
     return (
         <View style={styles.container}>
             <View style={styles.visualizerBackground}>
-                <MysticVisualizer
-                    isActive={true}
-                    mode={visualizerMode}
-                    sceneUrl="https://prod.spline.design/jYIOKYyzTpgISC0I/scene.splinecode"
-                />
+                <MysticVisualizer isActive={true} mode={visualizerMode} sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode" />
             </View>
 
-            <View style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
-                    <View style={styles.headerTitleContainer}>
-                        {/* Spline Animation behind ORBIT text */}
-                        <View style={styles.orbitAnimationContainer}>
-                            <MysticVisualizer
-                                isActive={true}
-                                mode="listening"
-                                sceneUrl="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"
+                    {/* Spline Animation - Behind Text */}
+                    {Platform.OS === 'web' && (
+                        <View style={styles.headerOrbitAnimation}>
+                            <iframe
+                                srcDoc={`<!DOCTYPE html><html><head><style>*{margin:0;padding:0;}html,body{width:100%;height:100%;overflow:hidden;background:transparent;}spline-viewer{width:100%;height:100%;display:block;}</style><script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js"></script></head><body><spline-viewer url="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"></spline-viewer></body></html>`}
+                                style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
+                                title="Orbit Animation"
                             />
                         </View>
-                        <Text style={styles.headerTitle}>ORBIT</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => navigation.navigate('Admin')}>
-                        <Text style={styles.settingsIcon}>⚙️</Text>
-                    </TouchableOpacity>
+                    )}
+                    {/* ORBIT Text - On Top */}
+                    <Text style={styles.headerTitle}>ORBIT</Text>
                 </View>
+
 
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <View style={styles.mainContent}>
                         <Text style={styles.dayText}>Day {dayCount}</Text>
                         <Text style={styles.greetingText}>
-                            {dayCount === 10 ? "여정의 완성" : "오늘의 수행"}
+                            오늘의 수행
                         </Text>
-
-                        {/* AI Analysis Display */}
-                        {aiAnalysis && (
-                            <View style={styles.missionContainer}>
-                                <GlassCard style={styles.analysisCard}>
-                                    <Text style={styles.analysisTitle}>파라의 통찰</Text>
-                                    <Text style={styles.analysisText}>{aiAnalysis}</Text>
-                                </GlassCard>
-                            </View>
-                        )}
+                        <Text style={{ color: '#888', fontSize: 14, marginBottom: 20 }}>
+                            인연이 시작된 지 {dayCount}일째
+                        </Text>
 
                         <View style={styles.missionContainer}>
                             <GlassCard style={styles.missionCard}>
-                                <Text style={styles.missionTitle}>오늘의 미션</Text>
+                                <Text style={styles.missionTitle}>오늘의 리추얼</Text>
                                 <Text style={styles.missionText}>{currentMissionText}</Text>
                             </GlassCard>
                         </View>
+
+                        {/* Day 10+ Background Matching Result - Special Mission Event */}
+                        {dayCount >= 10 && matchCandidate && !matchResult && (
+                            <TouchableOpacity
+                                onPress={() => setMatchCandidateModalVisible(true)}
+                                style={styles.matchingEventCard}
+                            >
+                                <LinearGradient
+                                    colors={['rgba(255,215,0,0.3)', 'rgba(255,0,255,0.15)']}
+                                    style={styles.matchingEventGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                >
+                                    <Text style={styles.matchingEventBadge}>✨ 특별 미션</Text>
+                                    <Text style={styles.matchingEventTitle}>운명의 신호가 감지되었습니다</Text>
+                                    <Text style={styles.matchingEventSubtitle}>
+                                        오르빗이 당신과 어울릴 것 같은 사람을 발견했습니다.
+                                    </Text>
+                                    <View style={styles.matchingEventAction}>
+                                        <Text style={styles.matchingEventActionText}>확인하기 →</Text>
+                                    </View>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        )}
 
                         {/* Post-Match Flow UI */}
                         {missionStatus === 'secret_mission_active' ? (
@@ -550,7 +674,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
                                         이제 지령을 수행하고 결과를 확인하세요.
                                     </Text>
                                     <HolyButton
-                                        title={isAnalyzing ? "AI 정밀 분석 중..." : "🔥 비밀 지령 수행하기"}
+                                        title={isAnalyzing ? "AI 정밀 분석 중..." : "비밀 지령 수행하기"}
                                         onPress={() => setJournalModalVisible(true)}
                                         disabled={isAnalyzing}
                                         style={{ marginTop: 20 }}
@@ -558,282 +682,250 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
                                 </>
                             )
                         ) : (
-                            // Standard Progression UI
-                            <HolyButton
-                                title={dayCount === 10 ? (day10Done ? "내면의 성장 확인하기" : "내면의 문 열기") : "수행 기록 남기기"}
-                                onPress={async () => {
-                                    if (dayCount === 10 && !day10Done) {
-                                        navigation.navigate('Match');
-                                    } else if (dayCount === 10 && day10Done) {
-                                        // B. Day 10 Judgment Logic with Visual Immersion
-                                        setIsJudging(true);
+                            // Standard Progression UI - No forced Day 10 match
+                            <>
+                                <HolyButton
+                                    title="수행 기록 남기기"
+                                    onPress={() => setJournalModalVisible(true)}
+                                    style={{ marginTop: 30 }}
+                                />
 
-                                        setTimeout(async () => {
-                                            const storedGender = await AsyncStorage.getItem('userGender');
-                                            setIsJudging(false); // Hide visualizer/text change
-
-                                            if (storedGender === '남성') {
-                                                setJudgmentResult({
-                                                    title: "성찰의 시간",
-                                                    message: "당신의 지난날을 되돌아봅니다... 아직 내면의 파동이 완전히 정돈되지 않았습니다. 좀 더 깊은 성장을 위해 노력해봅시다. 다시 10일간의 수련을 시작하겠습니다.",
-                                                    type: 'reset'
-                                                });
-                                                setJudgmentModalVisible(true);
-                                            } else {
-                                                // Female or others - Direct to Confirmation
-                                                setConfirmationModalVisible(true);
-                                            }
-                                        }, 4000); // 4 seconds delay
-                                    } else {
-                                        setJournalModalVisible(true);
-                                    }
-                                }}
-                                style={{ marginTop: 30 }}
-                            />
+                                {/* Day 10+ Matching Entry Button */}
+                                {dayCount >= 10 && !matchResult && (
+                                    <TouchableOpacity
+                                        onPress={() => navigation.navigate('Matching')}
+                                        style={styles.matchingEntryButton}
+                                    >
+                                        <LinearGradient
+                                            colors={['rgba(255,215,0,0.2)', 'rgba(255,0,255,0.1)']}
+                                            style={styles.matchingEntryGradient}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                        >
+                                            <Text style={styles.matchingEntryIcon}>✨</Text>
+                                            <View style={styles.matchingEntryContent}>
+                                                <Text style={styles.matchingEntryTitle}>인연 찾기</Text>
+                                                <Text style={styles.matchingEntrySubtitle}>
+                                                    운명의 상대를 만나볼 준비가 되셨나요?
+                                                </Text>
+                                            </View>
+                                            {inboxCount > 0 && (
+                                                <View style={styles.inboxBadge}>
+                                                    <Text style={styles.inboxBadgeText}>{inboxCount}</Text>
+                                                </View>
+                                            )}
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                )}
+                            </>
                         )}
 
-                        <TouchableOpacity onPress={() => setHistoryModalVisible(true)} style={{ marginTop: 20 }}>
-                            <Text style={styles.historyLink}>📜 지난 여정 보기</Text>
-                        </TouchableOpacity>
+
+                        {/* Dev Tool - Hidden in Production */}
+                        {__DEV__ && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setDayCount(10);
+                                    AsyncStorage.setItem('dayCount', '10');
+                                }}
+                                style={{ marginTop: 40, opacity: 0.3 }}
+                            >
+                                <Text style={{ color: 'red' }}>[개발용] Day 10으로 이동</Text>
+                            </TouchableOpacity>
+                        )}
+
                     </View>
                 </ScrollView>
 
-                {isJudging && (
-                    <View style={styles.judgingOverlay}>
-                        <Text style={styles.judgingText}>당신의 지난날을{'\n'}되돌아보고 있습니다...</Text>
+                {/* Match Candidate Modal - Special Mission */}
+                <Modal visible={matchCandidateModalVisible} animationType="slide" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <GlassCard style={styles.matchCandidateModal}>
+                            <Text style={styles.matchModalBadge}>✨ 특별 미션</Text>
+                            <Text style={styles.matchModalTitle}>운명의 신호</Text>
+
+                            {matchCandidate && (
+                                <View style={styles.matchCandidateProfile}>
+                                    <Image
+                                        source={{ uri: matchCandidate.photo }}
+                                        style={styles.matchCandidatePhoto}
+                                    />
+                                    <Text style={styles.matchCandidateName}>
+                                        {matchCandidate.name}, {matchCandidate.age}
+                                    </Text>
+                                    <Text style={styles.matchCandidateDetail}>
+                                        {matchCandidate.location} · {matchCandidate.mbti}
+                                    </Text>
+                                    <View style={styles.matchCandidateDeficit}>
+                                        <Text style={styles.matchCandidateDeficitText}>
+                                            💫 {matchCandidate.deficit}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.matchCandidateBio}>{matchCandidate.bio}</Text>
+                                </View>
+                            )}
+
+                            <Text style={styles.matchModalInstruction}>
+                                이 분에게 첫 편지를 보내보세요
+                            </Text>
+                            <TextInput
+                                style={styles.letterInput}
+                                multiline
+                                placeholder="진심을 담아 편지를 작성해주세요... (500자 이내)"
+                                placeholderTextColor="rgba(255,255,255,0.5)"
+                                value={letterContent}
+                                onChangeText={setLetterContent}
+                                maxLength={500}
+                            />
+                            <Text style={styles.letterCharCount}>{letterContent.length}/500</Text>
+
+                            <View style={styles.matchModalButtons}>
+                                <HolyButton
+                                    title="나중에"
+                                    variant="outline"
+                                    onPress={() => setMatchCandidateModalVisible(false)}
+                                    style={{ flex: 1, marginRight: 10 }}
+                                />
+                                <HolyButton
+                                    title="편지 보내기"
+                                    onPress={handleSendLetter}
+                                    style={{ flex: 1 }}
+                                />
+                            </View>
+                        </GlassCard>
                     </View>
-                )}
-            </View>
+                </Modal>
 
-            {/* Journal Modal */}
-            <Modal visible={journalModalVisible} animationType="slide" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <GlassCard style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>
-                            {dayCount === 10 && missionStatus === 'secret_mission_active' ? "비밀 지령 수행 기록" : "오늘의 수행 기록"}
-                        </Text>
-                        <Text style={styles.modalSubtitle}>
-                            {dayCount === 10 && missionStatus === 'secret_mission_active'
-                                ? "상대방과의 만남, 그리고 당신의 감정을 솔직하게 기록하세요."
-                                : "오늘 하루, 가장 밝았던 순간을 남겨주세요."}
-                        </Text>
-
-                        <TextInput
-                            style={styles.journalInput}
-                            placeholder="내면의 목소리를 이곳에 담아주세요..."
-                            placeholderTextColor="#666"
-                            multiline
-                            value={journalInput}
-                            onChangeText={setJournalInput}
-                        />
-
-                        <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
-                            <Text style={styles.imagePickerText}>
-                                {selectedImage ? "📷 사진 변경하기" : "📷 당신의 미소를 기록하세요"}
+                {/* Journal Modal */}
+                <Modal visible={journalModalVisible} animationType="slide" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <GlassCard style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>
+                                {dayCount === 10 && missionStatus === 'secret_mission_active' ? "비밀 지령 수행 기록" : "오늘의 수행 기록"}
                             </Text>
-                        </TouchableOpacity>
+                            <Text style={styles.modalSubtitle}>
+                                {dayCount === 10 && missionStatus === 'secret_mission_active'
+                                    ? "상대방과의 만남, 그리고 당신의 감정을 솔직하게 기록하세요."
+                                    : "오늘의 미션을 수행하며 느낀 점을 기록해주세요."}
+                            </Text>
 
-                        {selectedImage && (
-                            <Image source={{ uri: selectedImage }} style={styles.previewImage} />
-                        )}
+                            <TextInput
+                                style={styles.journalInput}
+                                placeholder="내면의 목소리를 이곳에 담아주세요..."
+                                placeholderTextColor="#666"
+                                multiline
+                                value={journalInput}
+                                onChangeText={setJournalInput}
+                            />
 
-                        <View style={styles.modalButtons}>
+                            <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
+                                <Text style={styles.imagePickerText}>
+                                    {selectedImage ? "📷 사진 변경하기" : "📷 사진 추가하기 (선택)"}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {selectedImage && (
+                                <Image source={{ uri: selectedImage }} style={styles.previewImage as ImageStyle} />
+                            )}
+
+                            {isAnalyzing && (
+                                <Text style={{ color: COLORS.gold, textAlign: 'center', marginBottom: 15, fontSize: 14 }}>
+                                    상대방에게 메시지를 전하고 있습니다.
+                                </Text>
+                            )}
+
+                            <View style={styles.modalButtons}>
+                                <HolyButton
+                                    title="취소"
+                                    onPress={() => setJournalModalVisible(false)}
+                                    variant="ghost"
+                                    style={{ flex: 1, marginRight: 10 }}
+                                />
+                                <HolyButton
+                                    title={isAnalyzing ? "전송 중..." : "기록 완료"}
+                                    onPress={handleCompleteReflection}
+                                    disabled={isAnalyzing}
+                                    style={{ flex: 1 }}
+                                />
+                            </View>
+                        </GlassCard>
+                    </View>
+                </Modal>
+
+                {/* Analysis Result Modal */}
+                <Modal visible={analysisModalVisible} animationType="fade" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <GlassCard style={styles.analysisModalContent}>
+                            <Text style={styles.analysisTitle}>오르빗의 시그널</Text>
+                            <ScrollView style={{ maxHeight: 300 }}>
+                                <Text style={styles.analysisText}>
+                                    {currentAnalysis?.feedback}
+                                </Text>
+                            </ScrollView>
+
                             <HolyButton
-                                title="취소"
-                                onPress={() => setJournalModalVisible(false)}
-                                variant="ghost"
-                                style={{ flex: 1, marginRight: 10 }}
+                                title="확인"
+                                onPress={() => setAnalysisModalVisible(false)}
+                                style={{ marginTop: 20, width: '100%' }}
                             />
-                            <HolyButton
-                                title={isAnalyzing ? "분석 중..." : "기록 완료"}
-                                onPress={handleCompleteReflection}
-                                disabled={isAnalyzing}
-                                style={{ flex: 1 }}
-                            />
+                        </GlassCard>
+                    </View>
+                </Modal>
+
+                {/* History Modal */}
+                <Modal visible={historyModalVisible} animationType="slide">
+                    <SafeAreaView style={styles.historyContainer}>
+                        <View style={styles.historyHeader}>
+                            <Text style={styles.historyTitle}>지난 여정의 기록</Text>
+                            <TouchableOpacity onPress={() => setHistoryModalVisible(false)}>
+                                <Text style={styles.closeButton}>닫기</Text>
+                            </TouchableOpacity>
                         </View>
-                    </GlassCard>
-                </View>
-            </Modal>
-
-            {/* Analysis Result Modal */}
-            <Modal visible={analysisModalVisible} animationType="fade" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <GlassCard style={styles.analysisModalContent}>
-                        <Text style={styles.analysisTitle}>파라의 메시지</Text>
-                        <ScrollView style={{ maxHeight: 300 }}>
-                            <Text style={styles.analysisText}>
-                                {currentAnalysis?.feedback}
-                            </Text>
+                        <ScrollView contentContainerStyle={styles.historyList}>
+                            {journalHistory.map((entry, index) => (
+                                <GlassCard key={index} style={styles.historyCard}>
+                                    <Text style={styles.historyDay}>Day {entry.day}</Text>
+                                    <Text style={styles.historyDate}>{entry.date}</Text>
+                                    <Text style={styles.historyContent}>{entry.content}</Text>
+                                    {entry.imageUri && (
+                                        <Image source={{ uri: entry.imageUri }} style={styles.historyImage as ImageStyle} />
+                                    )}
+                                </GlassCard>
+                            ))}
                         </ScrollView>
-                        <HolyButton
-                            title="확인"
-                            onPress={() => setAnalysisModalVisible(false)}
-                            style={{ marginTop: 20, width: '100%' }}
-                        />
-                    </GlassCard>
-                </View>
-            </Modal>
+                    </SafeAreaView>
+                </Modal>
 
-            {/* Judgment Modal (Day 10 Result) */}
-            <Modal visible={judgmentModalVisible} animationType="fade" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <GlassCard style={styles.analysisModalContent}>
-                        <Text style={styles.analysisTitle}>{judgmentResult?.title}</Text>
-                        <Text style={styles.analysisText}>{judgmentResult?.message}</Text>
-                        <HolyButton
-                            title="확인"
-                            onPress={async () => {
-                                setJudgmentModalVisible(false);
-                                if (judgmentResult?.type === 'reset') {
-                                    // Reset Logic
-                                    await AsyncStorage.setItem('dayCount', '1');
-                                    await AsyncStorage.setItem('day10Done', 'false');
-                                    setDayCount(1);
-                                    setDay10Done(false);
-                                    Alert.alert('알림', '새로운 여정이 시작됩니다.');
-                                } else if (judgmentResult?.type === 'match') {
-                                    // Match Logic
-                                    console.log('Judgment Confirmed: Match Type. Opening confirmation modal...');
-                                    setConfirmationModalVisible(true);
-                                }
-                            }}
-                            style={{ marginTop: 20, width: '100%' }}
-                        />
-                    </GlassCard>
-                </View>
-            </Modal>
-
-            {/* Confirmation Modal (Match Start) */}
-            <Modal visible={confirmationModalVisible} animationType="fade" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <GlassCard style={styles.analysisModalContent}>
-                        <Text style={styles.analysisTitle}>매칭 시작</Text>
-                        <Text style={styles.analysisText}>
-                            당신처럼 내면의 성장을 위해 미션을 해온 사람과 매칭해드립니다.{'\n\n'}
-                            꼭 이성과 매칭되는건 아닙니다.{'\n'}
-                            매칭하시겠습니까?
-                        </Text>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, width: '100%' }}>
+                {/* Intro Modal */}
+                <Modal visible={introModalVisible} animationType="fade" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <GlassCard style={styles.introContent}>
+                            <Text style={styles.introTitle}>환영합니다, {name}님.</Text>
+                            <Text style={styles.introText}>
+                                당신의 결핍인 '{deficit}'을(를) 성장의 씨앗으로 삼아,{'\n'}
+                                10일간의 내면 여행을 시작합니다.{'\n\n'}
+                                매일 주어지는 미션을 수행하고 기록을 남겨주세요.{'\n'}
+                                당신의 영혼을 돌보는 멘토 '파라'가 함께합니다.
+                            </Text>
                             <HolyButton
-                                title="아니오"
-                                onPress={() => setConfirmationModalVisible(false)}
-                                variant="ghost"
-                                style={{ flex: 1, marginRight: 10 }}
-                            />
-                            <HolyButton
-                                title="예"
-                                onPress={() => {
-                                    setConfirmationModalVisible(false);
-                                    console.log("Match confirmed by user. Navigating...");
-                                    navigation.navigate('Match');
-                                }}
-                                style={{ flex: 1 }}
-                            />
-                        </View>
-                    </GlassCard>
-                </View>
-            </Modal>
-
-            {/* Match Decision Modal */}
-            <Modal visible={matchDecisionModalVisible} animationType="fade" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <GlassCard style={styles.analysisModalContent}>
-                        <Text style={styles.analysisTitle}>만남 지속 여부</Text>
-                        <Text style={styles.analysisText}>
-                            비밀 지령을 수행하셨습니다.{'\n'}
-                            이 분과의 만남을 계속 이어가시겠습니까?
-                        </Text>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, width: '100%' }}>
-                            <HolyButton
-                                title="그만하기"
+                                title="여정 시작하기"
                                 onPress={async () => {
-                                    setMatchDecisionModalVisible(false);
-                                    setMatchDecision('stop');
-                                    await AsyncStorage.setItem('matchDecision', 'stop');
-                                    setMatchResult('fail');
-                                    await AsyncStorage.setItem('matchResult', 'fail');
+                                    setIntroModalVisible(false);
+                                    await AsyncStorage.setItem('hasSeenIntro', 'true');
                                 }}
-                                variant="ghost"
-                                style={{ flex: 1, marginRight: 10 }}
+                                style={{ marginTop: 30, width: '100%' }}
                             />
-                            <HolyButton
-                                title="계속 만나기"
-                                onPress={async () => {
-                                    setMatchDecisionModalVisible(false);
-                                    setMatchDecision('continue');
-                                    await AsyncStorage.setItem('matchDecision', 'continue');
-                                    setIsWaitingForPartner(true);
-
-                                    // Simulate waiting for partner (3 seconds)
-                                    setTimeout(async () => {
-                                        setIsWaitingForPartner(false);
-                                        setMatchResult('success');
-                                        await AsyncStorage.setItem('matchResult', 'success');
-                                        Alert.alert('축하합니다!', '상대방도 만남을 원했습니다.\n커플 미션이 시작됩니다.');
-                                    }, 3000);
-                                }}
-                                style={{ flex: 1 }}
-                            />
-                        </View>
-                    </GlassCard>
-                </View>
-            </Modal>
-
-            {/* History Modal */}
-            <Modal visible={historyModalVisible} animationType="slide">
-                <SafeAreaView style={styles.historyContainer}>
-                    <View style={styles.historyHeader}>
-                        <Text style={styles.historyTitle}>지난 여정의 기록</Text>
-                        <TouchableOpacity onPress={() => setHistoryModalVisible(false)}>
-                            <Text style={styles.closeButton}>닫기</Text>
-                        </TouchableOpacity>
+                        </GlassCard>
                     </View>
-                    <ScrollView contentContainerStyle={styles.historyList}>
-                        {journalHistory.map((entry, index) => (
-                            <GlassCard key={index} style={styles.historyCard}>
-                                <Text style={styles.historyDay}>Day {entry.day}</Text>
-                                <Text style={styles.historyDate}>{entry.date}</Text>
-                                <Text style={styles.historyContent}>{entry.content}</Text>
-                                {entry.imageUri && (
-                                    <Image source={{ uri: entry.imageUri }} style={styles.historyImage} />
-                                )}
-                            </GlassCard>
-                        ))}
-                    </ScrollView>
-                </SafeAreaView>
-            </Modal>
+                </Modal>
 
-            {/* Intro Modal */}
-            <Modal visible={introModalVisible} animationType="fade" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <GlassCard style={styles.introContent}>
-                        <Text style={styles.introTitle}>환영합니다, {name}님.</Text>
-                        <Text style={styles.introText}>
-                            당신의 결핍인 '{deficit}'을(를) 성장의 씨앗으로 삼아,{'\n'}
-                            10일간의 내면 여행을 시작합니다.{'\n\n'}
-                            매일 주어지는 미션을 수행하고 기록을 남겨주세요.{'\n'}
-                            당신의 영혼을 돌보는 멘토 '파라'가 함께합니다.
-                        </Text>
-                        <HolyButton
-                            title="여정 시작하기"
-                            onPress={async () => {
-                                setIntroModalVisible(false);
-                                await AsyncStorage.setItem('hasSeenIntro', 'true');
-                            }}
-                            style={{ marginTop: 20, width: '100%' }}
-                        />
-                    </GlassCard>
-                </View>
-            </Modal>
+            </SafeAreaView>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-    },
+    container: { flex: 1, backgroundColor: '#000' },
     visualizerBackground: {
         position: 'absolute',
         top: 0,
@@ -842,288 +934,408 @@ const styles = StyleSheet.create({
         bottom: 0,
         zIndex: 0,
     },
-    safeArea: {
-        flex: 1,
-        zIndex: 10,
-    },
+    safeArea: { flex: 1, zIndex: 10 },
+
+    // Header styles
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        width: '100%',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: Platform.OS === 'android' ? 40 : 10,
-        paddingBottom: 10,
+        justifyContent: 'center',
+        paddingVertical: 20,
+        paddingTop: 40,
+        position: 'relative',
     },
     headerTitle: {
-        color: COLORS.gold,
+        color: '#FFFFFF',
         fontSize: 18,
         fontWeight: 'bold',
-        letterSpacing: 2,
-        fontFamily: FONTS.serif,
+        letterSpacing: 3,
+        zIndex: 10,
     },
-    settingsIcon: {
-        fontSize: 24,
+    headerOrbitAnimation: {
+        position: 'absolute',
+        width: 100,
+        height: 100,
+        zIndex: 1,
+        top: 20,
+        left: '50%',
+        marginLeft: -50,
+        opacity: 0.6,
     },
-    headerTitleContainer: {
-        position: 'relative',
+
+    // Profile Photo Styles
+    profilePhotoContainer: {
+        zIndex: 15,
+    },
+    profilePhoto: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 215, 0, 0.5)',
+    },
+    profilePhotoPlaceholder: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        borderWidth: 2,
+        borderColor: 'rgba(255, 215, 0, 0.3)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    orbitAnimationContainer: {
-        position: 'absolute',
-        width: 120,
-        height: 60,
-        zIndex: -1,
-        opacity: 0.7,
+    profilePhotoPlaceholderText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
+
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 40,
-    },
-    mainContent: {
-        paddingHorizontal: 20,
+        paddingBottom: 120,
         alignItems: 'center',
-        width: '100%',
+    },
+
+    // ORBIT Header
+    orbitHeader: {
+        alignItems: 'center',
+        marginTop: 20,
+        marginBottom: 20,
+    },
+    orbitLogoContainer: {
+        width: 50,
+        height: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 5,
+    },
+    orbitIcon: {
+        width: 36,
+        height: 36,
+        tintColor: '#FFFFFF',
+    },
+    orbitTitle: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+        letterSpacing: 3,
+        marginBottom: 10,
+    },
+    // Growth Level Badge
+    growthLevelBadge: {
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        borderRadius: 25,
+        borderWidth: 2,
+        borderColor: 'rgba(150, 100, 255, 0.6)',
+        backgroundColor: 'rgba(80, 40, 120, 0.25)',
+        marginBottom: 15,
+        ...(Platform.OS === 'web'
+            ? { boxShadow: '0 0 10px rgba(153, 102, 255, 0.4)' }
+            : {
+                shadowColor: '#9966FF',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.4,
+                shadowRadius: 10,
+            }
+        ),
+        elevation: 5,
+    } as any,
+    growthLevelBadgeText: {
+        color: '#E0CFFF',
+        fontSize: 13,
+        fontWeight: 'bold',
+        letterSpacing: 1.5,
     },
     dayText: {
-        color: COLORS.gold,
-        fontSize: 16,
+        color: '#FFFFFF',
+        fontSize: 36,
         fontWeight: 'bold',
-        marginTop: 20,
-        marginBottom: 5,
-        fontFamily: FONTS.serif,
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 15px rgba(255, 255, 255, 0.3)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.3)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 15
+            }
+        ),
+    } as any,
+
+    // Face Icon
+    faceContainer: {
+        alignItems: 'center',
+        marginVertical: 20,
     },
-    greetingText: {
-        color: '#fff',
-        fontSize: 28,
-        fontWeight: 'bold',
-        marginBottom: 30,
-        textAlign: 'center',
-        fontFamily: FONTS.serif,
+    faceCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        borderWidth: 1,
+        borderColor: 'rgba(100, 100, 255, 0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
     },
-    missionContainer: {
+    faceIcon: {
+        width: 50,
+        height: 50,
+        tintColor: 'rgba(255, 255, 255, 0.8)',
+    },
+
+    // ORBIT'S INSIGHT
+    insightContainer: {
         width: '100%',
-        marginBottom: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 25,
+        marginBottom: 30,
     },
-    missionCard: {
-        padding: 25,
+    insightTitle: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: 'bold',
+        letterSpacing: 1.5,
+        marginBottom: 15,
+    },
+    insightText: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 13,
+        lineHeight: 22,
+        textAlign: 'justify',
+    },
+
+    // Ritual Bar
+    ritualContainer: {
+        width: '100%',
+        marginBottom: 30,
+    },
+    ritualGradient: {
+        width: '100%',
+        paddingVertical: 25,
+        paddingHorizontal: 30,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: 'rgba(100, 50, 150, 0.4)',
         alignItems: 'center',
     },
-    missionTitle: {
-        color: COLORS.gold,
-        fontSize: 20,
+    ritualLabel: {
+        color: 'rgba(255, 255, 255, 0.5)',
+        fontSize: 12,
+        marginBottom: 8,
+    },
+    ritualText: {
+        color: '#FFFFFF',
+        fontSize: 16,
         fontWeight: 'bold',
-        marginBottom: 15,
-        fontFamily: FONTS.serif,
-    },
-    missionText: {
-        color: '#fff',
-        fontSize: 18,
-        textAlign: 'center',
-        lineHeight: 28,
-        fontFamily: FONTS.serif,
-    },
-    analysisCard: {
-        padding: 20,
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 10px rgba(150, 100, 255, 0.8)' }
+            : {
+                textShadowColor: 'rgba(150, 100, 255, 0.8)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 10,
+            }
+        ),
+    } as any,
+
+    // Connection Button
+    actionContainer: {
+        width: '100%',
+        alignItems: 'center',
         marginBottom: 20,
-        backgroundColor: 'rgba(255, 215, 0, 0.05)',
+    },
+    connectionButton: {
+        width: '100%',
+        height: 55,
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.25)',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+    },
+    connectionButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+        letterSpacing: 1,
+    },
+
+    // Debug
+    debugButton: {
+        marginTop: 30,
+        opacity: 0.2,
+    },
+    debugText: {
+        color: 'red',
+        fontSize: 12,
+    },
+
+    // Special Mission States
+    specialMissionTitle: { color: COLORS.gold, fontSize: 20, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+    specialMissionText: { color: '#fff', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 15 },
+
+    // Modals
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    modalContent: { width: '100%', padding: 25 },
+    modalTitle: { color: COLORS.gold, fontSize: 20, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+    modalSubtitle: { color: '#aaa', fontSize: 13, marginBottom: 20, textAlign: 'center' },
+    journalInput: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 15, color: '#fff', height: 140, textAlignVertical: 'top', marginBottom: 20, fontSize: 15 },
+    imagePickerButton: { marginBottom: 20, alignItems: 'center' },
+    imagePickerText: { color: COLORS.gold, fontSize: 13 },
+    previewImage: { width: '100%', height: 180, borderRadius: 12, marginBottom: 20, overflow: 'hidden' as const },
+    modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
+
+    analysisModalContent: { width: '90%', padding: 25, alignItems: 'center' },
+    analysisTitle: { color: COLORS.gold, fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
+    analysisText: { color: '#fff', fontSize: 15, lineHeight: 24, textAlign: 'center' },
+
+    historyContainer: { flex: 1, backgroundColor: '#000' },
+    historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#222' },
+    historyTitle: { color: COLORS.gold, fontSize: 18, fontWeight: 'bold' },
+    closeButton: { color: '#fff', fontSize: 15 },
+    historyList: { padding: 20 },
+    historyCard: { marginBottom: 20, padding: 20 },
+    historyDay: { color: COLORS.gold, fontSize: 16, fontWeight: 'bold', marginBottom: 5 },
+    historyDate: { color: '#555', fontSize: 11, marginBottom: 10 },
+    historyContent: { color: '#ccc', fontSize: 14, lineHeight: 20 },
+    historyImage: { width: '100%', height: 180, borderRadius: 12, marginTop: 15, overflow: 'hidden' as const },
+
+    introContent: { padding: 30, alignItems: 'center' },
+    introTitle: { color: COLORS.gold, fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
+    introText: { color: '#ccc', fontSize: 15, lineHeight: 24, textAlign: 'center', marginBottom: 20 },
+
+    // Legacy styles for compatibility
+    settingsIcon: { fontSize: 24 },
+    mainContent: { paddingHorizontal: 20, alignItems: 'center', paddingTop: 20 },
+    greetingText: { color: '#fff', fontSize: 18, marginBottom: 40, opacity: 0.8 },
+    missionContainer: { width: '100%', marginBottom: 30 },
+    missionCard: { padding: 30, alignItems: 'center' },
+    missionTitle: { color: COLORS.gold, fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
+    missionText: { color: '#fff', fontSize: 18, textAlign: 'center', lineHeight: 28 },
+    historyLink: { color: '#888', fontSize: 14, textDecorationLine: 'underline' },
+
+    // Special Mission Event Card Styles
+    matchingEventCard: { width: '100%', marginBottom: 20, borderRadius: 16, overflow: 'hidden' },
+    matchingEventGradient: { padding: 20, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,215,0,0.3)', alignItems: 'center' },
+    matchingEventBadge: { color: COLORS.gold, fontSize: 14, fontWeight: 'bold', marginBottom: 8 },
+    matchingEventTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
+    matchingEventSubtitle: { color: '#aaa', fontSize: 14, textAlign: 'center', marginBottom: 15 },
+    matchingEventAction: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
+    matchingEventActionText: { color: COLORS.gold, fontSize: 14, fontWeight: 'bold' },
+
+    // Match Candidate Modal Styles
+    matchCandidateModal: { width: '100%', padding: 25, maxHeight: '90%' },
+    matchModalBadge: { color: COLORS.gold, fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 5 },
+    matchModalTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+    matchCandidateProfile: { alignItems: 'center', marginBottom: 20 },
+    matchCandidatePhoto: { width: 100, height: 100, borderRadius: 50, marginBottom: 15, borderWidth: 2, borderColor: COLORS.gold },
+    matchCandidateName: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+    matchCandidateDetail: { color: '#aaa', fontSize: 14, marginTop: 5 },
+    matchCandidateDeficit: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, marginTop: 10 },
+    matchCandidateDeficitText: { color: COLORS.gold, fontSize: 13 },
+    matchCandidateBio: { color: '#ccc', fontSize: 14, marginTop: 10, textAlign: 'center' },
+    matchModalInstruction: { color: '#888', fontSize: 13, textAlign: 'center', marginBottom: 15 },
+    letterInput: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 15, color: '#fff', height: 120, textAlignVertical: 'top', fontSize: 14 },
+    letterCharCount: { color: '#666', textAlign: 'right', marginTop: 5, marginBottom: 15, fontSize: 12 },
+    matchModalButtons: { flexDirection: 'row' },
+
+    // Matching Entry Button Styles
+    matchingEntryButton: { marginTop: 20, borderRadius: 16, overflow: 'hidden' },
+    matchingEntryGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        borderRadius: 16,
+        borderWidth: 1,
         borderColor: 'rgba(255, 215, 0, 0.3)',
     },
-    analysisTitle: {
-        color: COLORS.gold,
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        fontFamily: FONTS.serif,
-    },
-    analysisText: {
-        color: '#ddd',
-        fontSize: 15,
-        lineHeight: 24,
-        fontFamily: FONTS.serif,
-    },
-    specialMissionTitle: {
-        color: COLORS.gold,
-        fontSize: 22,
-        fontWeight: 'bold',
-        marginBottom: 15,
-        textAlign: 'center',
-        fontFamily: FONTS.serif,
-    },
-    specialMissionText: {
-        color: '#fff',
-        fontSize: 16,
-        textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: 20,
-        fontFamily: FONTS.serif,
-    },
-    historyLink: {
-        color: '#aaa',
-        fontSize: 14,
-        textDecorationLine: 'underline',
-        fontFamily: FONTS.serif,
-    },
-    judgingOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.9)',
+    matchingEntryIcon: { fontSize: 28, marginRight: 15 },
+    matchingEntryContent: { flex: 1 },
+    matchingEntryTitle: { color: COLORS.gold, fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
+    matchingEntrySubtitle: { color: '#888', fontSize: 13 },
+    inboxBadge: {
+        backgroundColor: '#FF3B30',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 100,
     },
-    judgingText: {
-        color: COLORS.gold,
-        fontSize: 24,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        lineHeight: 36,
-        fontFamily: FONTS.serif,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.8)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalContent: {
-        width: '100%',
-        padding: 25,
-    },
-    modalTitle: {
-        color: COLORS.gold,
-        fontSize: 22,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        textAlign: 'center',
-        fontFamily: FONTS.serif,
-    },
-    modalSubtitle: {
-        color: '#ccc',
-        fontSize: 14,
-        marginBottom: 20,
-        textAlign: 'center',
-        fontFamily: FONTS.serif,
-    },
-    journalInput: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        borderRadius: 10,
-        padding: 15,
-        color: '#fff',
-        fontSize: 16,
-        height: 150,
-        textAlignVertical: 'top',
-        marginBottom: 20,
-        fontFamily: FONTS.serif,
-    },
-    imagePickerButton: {
-        alignItems: 'center',
-        padding: 10,
+    inboxBadgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+
+    // Analysis Modal - Level & Progress Reason
+    levelIndicator: {
+        backgroundColor: 'rgba(150, 100, 255, 0.2)',
+        paddingHorizontal: 15,
+        paddingVertical: 6,
+        borderRadius: 15,
+        alignSelf: 'center',
         marginBottom: 15,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.3)',
-        borderRadius: 10,
-        borderStyle: 'dashed',
+        borderColor: 'rgba(150, 100, 255, 0.4)',
     },
-    imagePickerText: {
-        color: '#aaa',
-        fontSize: 14,
-        fontFamily: FONTS.serif,
-    },
-    previewImage: {
-        width: '100%',
-        height: 200,
-        borderRadius: 10,
-        marginBottom: 20,
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    analysisModalContent: {
-        width: '100%',
-        padding: 25,
-        maxHeight: '80%',
-    },
-    historyContainer: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-    },
-    historyHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
-    },
-    historyTitle: {
-        color: COLORS.gold,
-        fontSize: 20,
-        fontWeight: 'bold',
-        fontFamily: FONTS.serif,
-    },
-    closeButton: {
-        color: '#fff',
-        fontSize: 16,
-        fontFamily: FONTS.serif,
-    },
-    historyList: {
-        padding: 20,
-    },
-    historyCard: {
-        padding: 20,
-        marginBottom: 15,
-    },
-    historyDay: {
-        color: COLORS.gold,
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 5,
-        fontFamily: FONTS.serif,
-    },
-    historyDate: {
-        color: '#666',
+    levelIndicatorText: {
+        color: '#E0CFFF',
         fontSize: 12,
-        marginBottom: 10,
-        fontFamily: FONTS.serif,
-    },
-    historyContent: {
-        color: '#fff',
-        fontSize: 15,
-        lineHeight: 22,
-        fontFamily: FONTS.serif,
-    },
-    historyImage: {
-        width: '100%',
-        height: 200,
-        borderRadius: 10,
-        marginTop: 15,
-    },
-    introContent: {
-        padding: 30,
-        alignItems: 'center',
-    },
-    introTitle: {
-        color: COLORS.gold,
-        fontSize: 24,
         fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
-        fontFamily: FONTS.serif,
+        letterSpacing: 1,
     },
-    introText: {
-        color: '#fff',
-        fontSize: 16,
-        lineHeight: 26,
+    progressReasonBox: {
+        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+        padding: 15,
+        borderRadius: 12,
+        marginTop: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 215, 0, 0.3)',
+    },
+    progressReasonText: {
+        color: COLORS.gold,
+        fontSize: 14,
+        lineHeight: 20,
+    },
+
+    // Growth Stats Section
+    statsSection: {
+        marginTop: 30,
+        width: '100%',
+    },
+    statsCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    statsIcon: { fontSize: 24, marginRight: 12 },
+    statsContent: { flex: 1 },
+    statsLabel: { color: '#888', fontSize: 12, marginBottom: 2 },
+    statsValue: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+    statsArrow: { color: '#666', fontSize: 18 },
+
+    // Progress Bar
+    progressBarContainer: { marginTop: 12 },
+    progressBarBackground: {
+        height: 6,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 3,
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: COLORS.gold,
+        borderRadius: 3,
+    },
+    progressText: {
+        color: '#666',
+        fontSize: 11,
+        marginTop: 6,
         textAlign: 'center',
-        marginBottom: 30,
-        fontFamily: FONTS.serif,
     },
 });
+
+
+
 
 export default HomeScreen;

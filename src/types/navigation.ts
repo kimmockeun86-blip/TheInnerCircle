@@ -20,11 +20,13 @@ export type RootStackParamList = {
         };
     };
     Match: { deficit?: string; reviewMode?: boolean };
+    Matching: undefined;
     CouplesMission: undefined;
     Settings: undefined;
     Admin: undefined;
     UserList: undefined;
 };
+
 
 export type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 export type HomeScreenRouteProp = RouteProp<RootStackParamList, 'Home'>;

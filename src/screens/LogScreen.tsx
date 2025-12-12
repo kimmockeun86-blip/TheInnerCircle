@@ -49,12 +49,12 @@ const LogScreen = () => {
             <Text style={styles.reflectionText}>"{item.reflection}"</Text>
 
             <View style={styles.analysisSection}>
-                <Text style={styles.analysisTitleText}>오르빗의 통찰</Text>
+                <Text style={styles.analysisTitleText}>오르빗의 시그널</Text>
                 <Text style={styles.analysisText}>{item.analysis}</Text>
 
                 {item.feedback && (
                     <>
-                        <Text style={[styles.analysisTitleText, { marginTop: 10 }]}>조언</Text>
+                        <Text style={[styles.analysisTitleText, { marginTop: 10 }]}>피드백</Text>
                         <Text style={styles.feedbackText}>{item.feedback}</Text>
                     </>
                 )}

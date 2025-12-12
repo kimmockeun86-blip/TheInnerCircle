@@ -439,12 +439,12 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     return (
         <View style={styles.container}>
             <View style={styles.visualizerBackground}>
-                <MysticVisualizer isActive={true} mode={visualizerMode} sceneUrl="https://prod.spline.design/jYIOKYyzTpgISC0I/scene.splinecode" />
+                <MysticVisualizer isActive={true} mode={visualizerMode} sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode" />
             </View>
 
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>THE INNER CIRCLE</Text>
+                    <Text style={styles.headerTitle}>ORBIT</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
                         <Text style={styles.settingsIcon}>⚙️</Text>
                     </TouchableOpacity>
@@ -557,22 +557,6 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                             style={{ marginTop: 40, opacity: 0.3 }}
                         >
                             <Text style={{ color: 'red' }}>[개발용] Day 10으로 이동</Text>
-                        </TouchableOpacity>
-
-                        {/* Connection Test Tool */}
-                        <TouchableOpacity
-                            onPress={async () => {
-                                Alert.alert('연결 테스트 중...', '잠시만 기다려주세요.');
-                                const result = await api.checkConnection();
-                                if (result.success) {
-                                    Alert.alert('✅ 연결 성공!', `URL: ${result.url}\n응답: ${JSON.stringify(result.data)}`);
-                                } else {
-                                    Alert.alert('❌ 연결 실패', `URL: ${result.url}\n에러: ${result.error}`);
-                                }
-                            }}
-                            style={{ marginTop: 20, opacity: 0.5 }}
-                        >
-                            <Text style={{ color: COLORS.gold }}>📡 서버 연결 테스트</Text>
                         </TouchableOpacity>
                     </View>
                 </ScrollView>

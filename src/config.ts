@@ -1,5 +1,6 @@
 // API 설정 파일
 // 로컬 터널(Ngrok/Localtunnel)을 사용할 때 이 주소를 변경하세요.
+import logger from './utils/logger';
 
 // 1. 현재 사용할 모드를 선택하세요 ('local', 'tunnel', 'production')
 // - 'local': 로컬 서버와 앱을 같은 네트워크에서 테스트할 때 (에뮬레이터/웹)
@@ -31,5 +32,6 @@ const CONFIG = {
 export const API_URL = CONFIG[MODE].url;
 
 // 디버깅용 로그
-console.log(`[Config] Current Mode: ${MODE}`);
-console.log(`[Config] API URL: ${API_URL}`);
+logger.log(`[Config] Current Mode: ${MODE}`);
+logger.log(`[Config] API URL: ${API_URL}`);
+

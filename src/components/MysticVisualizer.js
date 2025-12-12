@@ -1,13 +1,15 @@
 // Spline Animation with improved WebView configuration
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, Animated, Platform } from 'react-native';
-// import { WebView } from 'react-native-webview';
+import { COLORS } from '../theme/theme';
+
+// Conditional imports for native only
 let WebView;
+let LinearGradient;
 if (Platform.OS !== 'web') {
   WebView = require('react-native-webview').WebView;
+  LinearGradient = require('expo-linear-gradient').LinearGradient;
 }
-import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS } from '../theme/theme';
 
 const MysticVisualizer = ({ isActive = true, mode = 'listening', sceneUrl, style = {} }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -16,11 +18,12 @@ const MysticVisualizer = ({ isActive = true, mode = 'listening', sceneUrl, style
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 3000,
-      useNativeDriver: true,
+      // useNativeDriver is not supported on web, use false for web
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, []);
 
-  const SPLINE_SCENE_URL = sceneUrl || 'https://prod.spline.design/jYIOKYyzTpgISC0I/scene.splinecode';
+  const SPLINE_SCENE_URL = sceneUrl || 'https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode';
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -50,24 +53,31 @@ const MysticVisualizer = ({ isActive = true, mode = 'listening', sceneUrl, style
     </html>
   `;
 
+  // Web: Use regular View instead of LinearGradient to avoid pointerEvents warning
   if (Platform.OS === 'web') {
     return (
-      <LinearGradient
-        colors={COLORS.backgroundGradient}
-        style={[styles.container, style]}
-        pointerEvents="none"
+      <View
+        style={[
+          styles.container,
+          style,
+          {
+            pointerEvents: 'none',
+            background: `linear-gradient(180deg, ${COLORS.backgroundGradient[0]}, ${COLORS.backgroundGradient[1] || COLORS.backgroundGradient[0]})`
+          }
+        ]}
       >
-        <Animated.View style={[styles.webViewContainer, { opacity: fadeAnim }]} pointerEvents="none">
+        <Animated.View style={[styles.webViewContainer, { opacity: fadeAnim, pointerEvents: 'none' }]}>
           <iframe
             srcDoc={htmlContent}
             style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }}
             title="Mystic Visualizer"
           />
         </Animated.View>
-      </LinearGradient>
+      </View>
     );
   }
 
+  // Native: Use LinearGradient
   return (
     <LinearGradient
       colors={COLORS.backgroundGradient}

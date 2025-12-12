@@ -1,27 +1,30 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { View, Text, Pressable, StyleSheet, Dimensions, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONTS } from '../theme/theme';
+import logger from '../utils/logger';
 
 const { width } = Dimensions.get('window');
 
-const CustomTabBar = ({ state, descriptors, navigation }) => {
+// Tab configuration matching reference image
+const TAB_CONFIG: { [key: string]: { icon: keyof typeof Ionicons.glyphMap; iconFocused: keyof typeof Ionicons.glyphMap; label: string } } = {
+    'Home': { icon: 'home-outline', iconFocused: 'home', label: 'HOME' },
+    'Log': { icon: 'document-text-outline', iconFocused: 'document-text', label: 'LOG' },
+    'Profile': { icon: 'settings-outline', iconFocused: 'settings', label: 'SETTINGS' },
+};
+
+const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     return (
         <View style={styles.container}>
-            <BlurView intensity={30} tint="dark" style={styles.blurContainer}>
+            <View style={styles.blurContainer}>
                 <View style={styles.tabBar}>
-                    {state.routes.map((route, index) => {
+                    {state.routes.map((route: any, index: number) => {
                         const { options } = descriptors[route.key];
-                        const label =
-                            options.tabBarLabel !== undefined
-                                ? options.tabBarLabel
-                                : options.title !== undefined
-                                    ? options.title
-                                    : route.name;
-
                         const isFocused = state.index === index;
+                        const config = TAB_CONFIG[route.name] || { icon: 'ellipse-outline', iconFocused: 'ellipse', label: route.name };
 
                         const onPress = () => {
+                            logger.log('[CustomTabBar] Tab pressed:', route.name);
                             const event = navigation.emit({
                                 type: 'tabPress',
                                 target: route.key,
@@ -29,31 +32,45 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
                             });
 
                             if (!isFocused && !event.defaultPrevented) {
-                                navigation.navigate(route.name);
+                                logger.log('[CustomTabBar] Navigating to:', route.name);
+                                // Use jumpTo for tab navigation (more reliable for tabs)
+                                if (navigation.jumpTo) {
+                                    navigation.jumpTo(route.name);
+                                } else {
+                                    navigation.navigate(route.name);
+                                }
                             }
                         };
 
                         return (
-                            <TouchableOpacity
+                            <Pressable
                                 key={index}
                                 accessibilityRole="button"
                                 accessibilityState={isFocused ? { selected: true } : {}}
                                 accessibilityLabel={options.tabBarAccessibilityLabel}
                                 testID={options.tabBarTestID}
                                 onPress={onPress}
-                                style={styles.tabItem}
+                                style={({ pressed }) => [
+                                    styles.tabItem,
+                                    Platform.OS === 'web' && { cursor: 'pointer' },
+                                    pressed && { opacity: 0.7 }
+                                ]}
                             >
-                                <View style={[styles.iconContainer, isFocused && styles.focusedIconContainer]}>
+                                <View style={[styles.iconContainer, isFocused && styles.focusedIconContainer, { pointerEvents: 'none' }]}>
+                                    <Ionicons
+                                        name={isFocused ? config.iconFocused : config.icon}
+                                        size={22}
+                                        color={isFocused ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)'}
+                                    />
                                     <Text style={[styles.label, isFocused && styles.focusedLabel]}>
-                                        {label}
+                                        {config.label}
                                     </Text>
-                                    {isFocused && <View style={styles.indicator} />}
                                 </View>
-                            </TouchableOpacity>
+                            </Pressable>
                         );
                     })}
                 </View>
-            </BlurView>
+            </View>
         </View>
     );
 };
@@ -61,31 +78,29 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 30,
+        bottom: 20,
         left: 20,
         right: 20,
-        borderRadius: 30,
+        borderRadius: 25,
         overflow: 'hidden',
-        height: 70,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 10,
-        },
-        shadowOpacity: 0.5,
-        shadowRadius: 10,
+        height: 65,
+        zIndex: 9999,
+        // Web-compatible box shadow
+        boxShadow: '0px 10px 15px rgba(0, 0, 0, 0.5)',
         elevation: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     blurContainer: {
         flex: 1,
-        backgroundColor: 'rgba(20, 10, 40, 0.6)',
+        backgroundColor: 'rgba(10, 5, 25, 0.95)',
     },
     tabBar: {
         flexDirection: 'row',
         height: '100%',
         alignItems: 'center',
         justifyContent: 'space-around',
-        paddingHorizontal: 10,
+        paddingHorizontal: 20,
     },
     tabItem: {
         flex: 1,
@@ -96,34 +111,24 @@ const styles = StyleSheet.create({
     iconContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        height: 40,
-        paddingHorizontal: 15,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
         borderRadius: 20,
     },
     focusedIconContainer: {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
     label: {
         color: 'rgba(255, 255, 255, 0.5)',
-        fontSize: 14,
-        fontFamily: FONTS.title,
-        letterSpacing: 1,
+        fontSize: 10,
+        marginTop: 4,
+        letterSpacing: 0.5,
+        fontWeight: '500',
     },
     focusedLabel: {
-        color: COLORS.gold,
-        fontWeight: 'bold',
-        textShadowColor: COLORS.gold,
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 10,
+        color: '#FFFFFF',
     },
-    indicator: {
-        position: 'absolute',
-        bottom: 5,
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: COLORS.gold,
-    }
 });
 
 export default CustomTabBar;
+

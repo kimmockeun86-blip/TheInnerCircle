@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, StyleProp } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, StyleProp, Platform } from 'react-native';
 import { COLORS, FONTS, LAYOUT, SPACING } from '../theme/theme';
 
 interface HolyButtonProps {
@@ -91,19 +91,34 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
 
-    // Variants
+    // Variants - Using web-compatible boxShadow for web, native shadow for mobile
     primary: {
-        backgroundColor: COLORS.gold,
-        shadowColor: COLORS.gold,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.5,
-        shadowRadius: 10,
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.6)',
+        ...(Platform.OS === 'web'
+            ? { boxShadow: '0 0 15px rgba(255, 255, 255, 0.4)' }
+            : {
+                shadowColor: '#FFFFFF',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.4,
+                shadowRadius: 15,
+            }
+        ),
         elevation: 8,
-    },
+    } as any,
     textPrimary: {
-        color: COLORS.textDark,
+        color: '#FFFFFF',
         fontWeight: 'bold' as any,
-    },
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 8px rgba(255, 255, 255, 0.5)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.5)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 8,
+            }
+        ),
+    } as any,
 
     secondary: {
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -117,11 +132,29 @@ const styles = StyleSheet.create({
     outline: {
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderColor: COLORS.gold,
-    },
+        borderColor: 'rgba(255, 255, 255, 0.7)',
+        ...(Platform.OS === 'web'
+            ? { boxShadow: '0 0 12px rgba(255, 255, 255, 0.5)' }
+            : {
+                shadowColor: '#FFFFFF',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.5,
+                shadowRadius: 12,
+            }
+        ),
+        elevation: 6,
+    } as any,
     textOutline: {
-        color: COLORS.gold,
-    },
+        color: '#FFFFFF',
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 8px rgba(255, 255, 255, 0.6)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.6)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 8,
+            }
+        ),
+    } as any,
 
     ghost: {
         backgroundColor: 'transparent',

@@ -6,6 +6,7 @@ import { SettingsScreenNavigationProp } from '../types/navigation';
 import { COLORS, FONTS, SPACING, LAYOUT } from '../theme/theme';
 import GlassCard from '../components/GlassCard';
 import HolyButton from '../components/HolyButton';
+import logger from '../utils/logger';
 
 interface SettingsScreenProps {
     navigation: SettingsScreenNavigationProp;
@@ -25,7 +26,7 @@ interface UserData {
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
-    console.log('⚙️ SettingsScreen Component Rendered');
+    logger.log('⚙️ SettingsScreen Component Rendered');
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [customMission, setCustomMission] = useState('');
@@ -39,6 +40,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     // Photo Zoom State
     const [photoZoomVisible, setPhotoZoomVisible] = useState(false);
     const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
+
+    // Admin Access Control (김목은 + 플스4)
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [showAllUsers, setShowAllUsers] = useState(false);
+
+    // Journal View Modal
+    const [journalModalVisible, setJournalModalVisible] = useState(false);
+    const [selectedUserJournals, setSelectedUserJournals] = useState<any[]>([]);
 
     const mockUsers: UserData[] = [
         {
@@ -138,6 +147,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             const location = await AsyncStorage.getItem('userLocation');
             const photo = await AsyncStorage.getItem('userPhoto');
             const idealType = await AsyncStorage.getItem('userIdealType');
+            const hobbies = await AsyncStorage.getItem('userHobbies');
+
+            // Admin Access Check: 김목은 + 플스4 (개발 모드에서만 활성화)
+            // @ts-ignore - __DEV__ is defined by React Native
+            if (__DEV__ && name === '김목은' && hobbies && hobbies.includes('플스4')) {
+                setIsAdmin(true);
+            } else {
+                setIsAdmin(false);
+            }
 
             setCurrentUser({
                 name: name || '구도자',
@@ -247,47 +265,49 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                         </Text>
                     </GlassCard>
 
-                    {/* 5. Admin Zone */}
-                    <GlassCard style={[styles.section, { borderColor: 'rgba(255, 215, 0, 0.1)' }]}>
-                        <Text style={[styles.sectionTitle, { color: COLORS.gold }]}>관리자 구역 (Admin Zone)</Text>
+                    {/* 5. Admin Zone - Only visible when isAdmin is true */}
+                    {isAdmin && (
+                        <GlassCard style={[styles.section, { borderColor: 'rgba(255, 215, 0, 0.1)' }]}>
+                            <Text style={[styles.sectionTitle, { color: COLORS.gold }]}>관리자 구역 (Admin Zone)</Text>
 
-                        <HolyButton
-                            title="휴식 모드 강제 해제"
-                            onPress={async () => {
-                                await AsyncStorage.removeItem('lastCompletedDate');
-                                Alert.alert('알림', '휴식 모드가 해제되었습니다. 홈 화면을 새로고침하세요.');
-                            }}
-                            variant="ghost"
-                            style={{ marginBottom: 15 }}
-                        />
-
-                        <Text style={styles.adminLabel}>커스텀 미션 부여 (현재 Day)</Text>
-                        <View style={styles.adminRow}>
-                            <TextInput
-                                style={styles.adminInput}
-                                placeholder="미션 내용 입력"
-                                placeholderTextColor="#666"
-                                value={customMission}
-                                onChangeText={setCustomMission}
-                            />
                             <HolyButton
-                                title="부여"
-                                onPress={handleSetCustomMission}
-                                variant="outline"
-                                style={{ width: 80, marginLeft: 10 }}
+                                title="휴식 모드 강제 해제"
+                                onPress={async () => {
+                                    await AsyncStorage.removeItem('lastCompletedDate');
+                                    Alert.alert('알림', '휴식 모드가 해제되었습니다. 홈 화면을 새로고침하세요.');
+                                }}
+                                variant="ghost"
+                                style={{ marginBottom: 15 }}
                             />
-                        </View>
 
-                        <HolyButton
-                            title="사용자 리스트 (User List)"
-                            onPress={() => {
-                                loadUserData();
-                                setUserListVisible(true);
-                            }}
-                            variant="secondary"
-                            style={{ marginTop: 15 }}
-                        />
-                    </GlassCard>
+                            <Text style={styles.adminLabel}>커스텀 미션 부여 (현재 Day)</Text>
+                            <View style={styles.adminRow}>
+                                <TextInput
+                                    style={styles.adminInput}
+                                    placeholder="미션 내용 입력"
+                                    placeholderTextColor="#666"
+                                    value={customMission}
+                                    onChangeText={setCustomMission}
+                                />
+                                <HolyButton
+                                    title="부여"
+                                    onPress={handleSetCustomMission}
+                                    variant="outline"
+                                    style={{ width: 80, marginLeft: 10 }}
+                                />
+                            </View>
+
+                            <HolyButton
+                                title="사용자 리스트 (User List)"
+                                onPress={() => {
+                                    loadUserData();
+                                    setUserListVisible(true);
+                                }}
+                                variant="secondary"
+                                style={{ marginTop: 15 }}
+                            />
+                        </GlassCard>
+                    )}
 
                     {/* User List Modal */}
                     <Modal
@@ -299,8 +319,20 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                         <View style={styles.modalContainer}>
                             <View style={styles.modalContent}>
                                 <Text style={styles.modalTitle}>사용자 리스트</Text>
+
+                                {/* Female Only Toggle */}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}>
+                                    <Text style={{ color: '#aaa', marginRight: 10 }}>여성만 보기</Text>
+                                    <Switch
+                                        value={!showAllUsers}
+                                        onValueChange={(value) => setShowAllUsers(!value)}
+                                        trackColor={{ false: "#767577", true: COLORS.goldDim }}
+                                        thumbColor={!showAllUsers ? COLORS.gold : "#f4f3f4"}
+                                    />
+                                </View>
+
                                 <ScrollView style={{ maxHeight: 400 }}>
-                                    {mockUsers.filter(user => user.gender === '여성').map((user, index) => (
+                                    {mockUsers.filter(user => showAllUsers || user.gender === '여성').map((user, index) => (
                                         <TouchableOpacity
                                             key={index}
                                             style={[
@@ -408,7 +440,63 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                                 />
 
                                 <HolyButton
-                                    title="취소"
+                                    title="📅 매칭 예약"
+                                    onPress={async () => {
+                                        if (selectedUser) {
+                                            await AsyncStorage.setItem('reservedMatch', selectedUser.name);
+                                            Alert.alert('성공', `${selectedUser.name}님과의 매칭이 예약되었습니다.\n10일차에 자동 매칭됩니다.`);
+                                            setAdminActionModalVisible(false);
+                                        }
+                                    }}
+                                    variant="secondary"
+                                    style={{ marginBottom: 10 }}
+                                />
+
+                                <HolyButton
+                                    title="💑 듀얼 미션 부여"
+                                    onPress={async () => {
+                                        if (selectedUser) {
+                                            await AsyncStorage.setItem('coupleMissionTarget', selectedUser.name);
+                                            await AsyncStorage.setItem('isCoupled', 'coupled');
+                                            Alert.alert('성공', `${selectedUser.name}님과 듀얼 미션이 시작됩니다.\n인연 화면으로 이동하세요.`);
+                                            setAdminActionModalVisible(false);
+                                        }
+                                    }}
+                                    variant="secondary"
+                                    style={{ marginBottom: 10 }}
+                                />
+
+                                <HolyButton
+                                    title="📖 일기장 확인"
+                                    onPress={async () => {
+                                        if (selectedUser?.isCurrentUser) {
+                                            try {
+                                                const journalHistory = await AsyncStorage.getItem('journalHistory');
+                                                if (journalHistory) {
+                                                    setSelectedUserJournals(JSON.parse(journalHistory));
+                                                } else {
+                                                    setSelectedUserJournals([]);
+                                                }
+                                                setJournalModalVisible(true);
+                                            } catch (e) {
+                                                Alert.alert('오류', '일기 기록을 불러오는데 실패했습니다.');
+                                            }
+                                        } else {
+                                            // Mock data for non-current users
+                                            setSelectedUserJournals([
+                                                { day: 1, content: '오늘 처음 시작했다. 설레는 마음으로...', date: '2024-01-01' },
+                                                { day: 2, content: '어제보다 더 깊은 생각을 하게 되었다.', date: '2024-01-02' },
+                                            ]);
+                                            setJournalModalVisible(true);
+                                        }
+                                        setAdminActionModalVisible(false);
+                                    }}
+                                    variant="ghost"
+                                    style={{ marginBottom: 10 }}
+                                />
+
+                                <HolyButton
+                                    title="닫기"
                                     onPress={() => setAdminActionModalVisible(false)}
                                     variant="outline"
                                 />
@@ -459,10 +547,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                                         title="예"
                                         onPress={async () => {
                                             setResetModalVisible(false);
-                                            console.log('Reset confirmed. Clearing data...');
+                                            logger.log('Reset confirmed. Clearing data...');
                                             try {
                                                 await AsyncStorage.clear();
-                                                console.log('AsyncStorage cleared. Resetting navigation...');
+                                                logger.log('AsyncStorage cleared. Resetting navigation...');
                                                 navigation.reset({
                                                     index: 0,
                                                     routes: [{ name: 'Onboarding' }],
@@ -480,8 +568,46 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                         </View>
                     </Modal>
 
+                    {/* Journal View Modal */}
+                    <Modal
+                        animationType="slide"
+                        transparent={true}
+                        visible={journalModalVisible}
+                        onRequestClose={() => setJournalModalVisible(false)}
+                    >
+                        <View style={styles.modalContainer}>
+                            <View style={styles.modalContent}>
+                                <Text style={styles.modalTitle}>{selectedUser?.name}님의 일기장</Text>
+                                <ScrollView style={{ maxHeight: 400 }}>
+                                    {selectedUserJournals.length > 0 ? (
+                                        selectedUserJournals.map((entry: any, index: number) => (
+                                            <View key={index} style={{ marginBottom: 15, padding: 15, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 10 }}>
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                                                    <Text style={{ color: COLORS.gold, fontWeight: 'bold' }}>Day {entry.day}</Text>
+                                                    <Text style={{ color: '#666', fontSize: 12 }}>{entry.date}</Text>
+                                                </View>
+                                                <Text style={{ color: '#fff', lineHeight: 20 }}>{entry.content}</Text>
+                                                {entry.imageUri && (
+                                                    <Image source={{ uri: entry.imageUri }} style={{ width: '100%', height: 150, borderRadius: 8, marginTop: 10 }} />
+                                                )}
+                                            </View>
+                                        ))
+                                    ) : (
+                                        <Text style={{ color: '#aaa', textAlign: 'center', marginTop: 30 }}>기록된 일기가 없습니다.</Text>
+                                    )}
+                                </ScrollView>
+                                <HolyButton
+                                    title="닫기"
+                                    onPress={() => setJournalModalVisible(false)}
+                                    variant="outline"
+                                    style={{ marginTop: 20 }}
+                                />
+                            </View>
+                        </View>
+                    </Modal>
+
                     <View style={styles.footer}>
-                        <Text style={styles.version}>The Inner Circle v1.1.0</Text>
+                        <Text style={styles.version}>ORBIT v1.1.0</Text>
                         <Text style={styles.copyright}>Designed for the Soul</Text>
                     </View>
                 </ScrollView>

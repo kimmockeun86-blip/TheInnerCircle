@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing } from 'react-native';
+import { View, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -19,6 +19,7 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
 }) => {
     const phase = useRef(new Animated.Value(0)).current;
     const amplitude = useRef(new Animated.Value(0.5)).current;
+    const useNativeDriverValue = Platform.OS !== 'web';
 
     useEffect(() => {
         if (!isActive) return;
@@ -29,7 +30,7 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
                 toValue: 1,
                 duration: 2000,
                 easing: Easing.linear,
-                useNativeDriver: true,
+                useNativeDriver: useNativeDriverValue,
             })
         );
         phaseAnim.start();
@@ -45,7 +46,7 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
             Animated.timing(amplitude, {
                 toValue: 0.1,
                 duration: 500,
-                useNativeDriver: true,
+                useNativeDriver: useNativeDriverValue,
             }).start();
             return;
         }
@@ -55,10 +56,10 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
                 // Rapid, small, jittery waves
                 ampAnim = Animated.loop(
                     Animated.sequence([
-                        Animated.timing(amplitude, { toValue: 0.3, duration: 100, useNativeDriver: true }),
-                        Animated.timing(amplitude, { toValue: 0.5, duration: 150, useNativeDriver: true }),
-                        Animated.timing(amplitude, { toValue: 0.2, duration: 100, useNativeDriver: true }),
-                        Animated.timing(amplitude, { toValue: 0.4, duration: 120, useNativeDriver: true }),
+                        Animated.timing(amplitude, { toValue: 0.3, duration: 100, useNativeDriver: useNativeDriverValue }),
+                        Animated.timing(amplitude, { toValue: 0.5, duration: 150, useNativeDriver: useNativeDriverValue }),
+                        Animated.timing(amplitude, { toValue: 0.2, duration: 100, useNativeDriver: useNativeDriverValue }),
+                        Animated.timing(amplitude, { toValue: 0.4, duration: 120, useNativeDriver: useNativeDriverValue }),
                     ])
                 );
                 break;
@@ -66,8 +67,8 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
                 // Large, smooth, breathing waves
                 ampAnim = Animated.loop(
                     Animated.sequence([
-                        Animated.timing(amplitude, { toValue: 1.2, duration: 800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-                        Animated.timing(amplitude, { toValue: 0.6, duration: 800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+                        Animated.timing(amplitude, { toValue: 1.2, duration: 800, easing: Easing.inOut(Easing.sin), useNativeDriver: useNativeDriverValue }),
+                        Animated.timing(amplitude, { toValue: 0.6, duration: 800, easing: Easing.inOut(Easing.sin), useNativeDriver: useNativeDriverValue }),
                     ])
                 );
                 break;
@@ -76,8 +77,8 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
                 // Gentle, idle waves - Increased amplitude to be more visible
                 ampAnim = Animated.loop(
                     Animated.sequence([
-                        Animated.timing(amplitude, { toValue: 0.8, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-                        Animated.timing(amplitude, { toValue: 0.5, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+                        Animated.timing(amplitude, { toValue: 0.8, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: useNativeDriverValue }),
+                        Animated.timing(amplitude, { toValue: 0.5, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: useNativeDriverValue }),
                     ])
                 );
                 break;
@@ -87,25 +88,6 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
 
         return () => ampAnim.stop();
     }, [mode, isActive]);
-
-    // We need to use a functional component for the path data to animate it via props if possible,
-    // but since SVG Path d is a string, we usually animate a value and interpolate it.
-    // However, complex wave math in JS thread + setNativeProps is better for performance, 
-    // or just simple interpolation of a few control points.
-    // For simplicity and "Her" look (smooth sine), we can try a simple scaling approach or a pre-calculated path interpolation.
-
-    // A better approach for "Her" style is a single line that looks like a voice wave.
-    // Since we can't easily animate the `d` string with native driver, we will use a trick:
-    // Animate the scaleY of the view containing the wave, or use a Lottie file.
-    // But here we will use a static path that looks good and animate its container or stroke width/opacity?
-    // No, the user wants the wave to MOVE.
-
-    // Let's try animating the `d` prop using a listener if performance allows, or just use a simple transform.
-    // Actually, for a "Her" wave, it's often just a few sine waves.
-    // Let's use a simpler approach: Animate the ScaleY of a static sine wave for amplitude, 
-    // and TranslateX for phase? No, TranslateX works for moving wave.
-
-    // Let's create a wider wave and translate it.
 
     const translateX = phase.interpolate({
         inputRange: [0, 1],
@@ -123,17 +105,12 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
         for (let i = 0; i <= segments * 2; i++) {
             const x = (waveWidth / segments) * i;
             const normalizedX = (i % segments) / segments; // 0 to 1
-            // Envelope to taper ends? No, "Her" wave is often continuous or tapered at edges.
-            // Let's make it continuous.
             const y = midY + Math.sin(normalizedX * Math.PI * 2) * (height * 0.3);
             points.push(`${x},${y}`);
         }
         // Smooth curve
         return `M ${points[0]} L ${points.join(' ')}`;
     };
-
-    // To truly match "Her", it's often a single line that modulates.
-    // Let's use a simple path and animate ScaleY.
 
     return (
         <View style={[styles.container, { height, width }]}>
@@ -188,11 +165,16 @@ const styles = StyleSheet.create({
         borderRadius: 25,
         backgroundColor: '#FFD700',
         opacity: 0.3,
-        shadowColor: '#FFD700',
-        shadowRadius: 20,
-        shadowOpacity: 0.5,
+        ...(Platform.OS === 'web'
+            ? { boxShadow: '0 0 20px rgba(255, 215, 0, 0.5)' }
+            : {
+                shadowColor: '#FFD700',
+                shadowRadius: 20,
+                shadowOpacity: 0.5,
+            }
+        ),
         elevation: 10
-    }
+    } as any
 });
 
 export default WaveformVisualizer;

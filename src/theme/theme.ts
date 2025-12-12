@@ -4,18 +4,18 @@ const { width, height } = Dimensions.get('window');
 
 export const COLORS = {
     // Backgrounds
-    background: '#050510', // Deepest Navy/Black
-    backgroundGradient: ['#050510', '#0A0A1A', '#151525'],
+    background: '#000000', // Pure Black
+    backgroundGradient: ['#000000', '#000000', '#000000'], // Solid black
 
     // Accents
-    gold: '#FFD700',
-    goldDim: 'rgba(255, 215, 0, 0.6)',
-    goldFaint: 'rgba(255, 215, 0, 0.15)',
+    gold: '#FFFFFF', // White for primary accent
+    goldDim: 'rgba(255, 255, 255, 0.6)',
+    goldFaint: 'rgba(255, 255, 255, 0.15)',
 
     // Text
     textMain: '#FFFFFF',
     textDim: 'rgba(255, 255, 255, 0.7)',
-    textDark: '#050510',
+    textDark: '#050005',
 
     // Status
     error: '#FF453A',
@@ -23,7 +23,7 @@ export const COLORS = {
 
     // Glassmorphism
     glass: 'rgba(255, 255, 255, 0.05)',
-    glassBorder: 'rgba(255, 215, 0, 0.3)',
+    glassBorder: 'rgba(200, 100, 255, 0.3)', // Purple border
     glassOverlay: 'rgba(0, 0, 0, 0.7)',
 };
 
@@ -55,6 +55,9 @@ export const FONTS = {
     // Use system fonts for now, but style them elegantly
     serif: Platform.select({ ios: 'Times New Roman', android: 'serif' }),
     sans: Platform.select({ ios: 'System', android: 'sans-serif' }),
+    // Add aliases for direct usage
+    get title() { return this.serif; },
+    get body() { return this.sans; },
 
     size: {
         h1: 32,

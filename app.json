@@ -1,30 +1,41 @@
 {
   "expo": {
-    "name": "TheInnerCircle",
+    "name": "ORBIT",
     "slug": "TheInnerCircle",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000020"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.theinnercircle.app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "리추얼 기록 사진 촬영에 사용됩니다.",
+        "NSPhotoLibraryUsageDescription": "리추얼 기록에 사진을 첨부하기 위해 사용됩니다."
+      }
     },
     "android": {
       "package": "com.theinnercircle.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000020"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "privacy": "unlisted"
   }
 }

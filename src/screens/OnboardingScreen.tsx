@@ -21,7 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../theme/theme';
 import MysticVisualizer from '../components/MysticVisualizer';
 import HolyButton from '../components/HolyButton';
-import { personaScripts, coupleScripts, PersonaScript } from '../services/PersonaService';
+import { personaScripts, soloScripts, coupleScripts, PersonaScript } from '../services/PersonaService';
 
 interface OnboardingScreenProps {
     navigation: any;
@@ -33,79 +33,121 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     const [answers, setAnswers] = useState<{ [key: string]: string }>({});
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [visualizerKey, setVisualizerKey] = useState(0);
-    const [isCoupleMode, setIsCoupleMode] = useState(false);
+    const [phase, setPhase] = useState<'intro' | 'solo' | 'couple'>('intro');
 
     const textFadeAnim = useRef(new Animated.Value(0)).current;
     const flashAnim = useRef(new Animated.Value(0)).current;
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const textInputRef = useRef<TextInput>(null);
+    const [displayedText, setDisplayedText] = useState('');
+    const [isTyping, setIsTyping] = useState(false);
 
-    const currentScripts = isCoupleMode ? coupleScripts : personaScripts;
+    // Get current scripts based on phase
+    const getCurrentScripts = () => {
+        switch (phase) {
+            case 'intro': return personaScripts;
+            case 'solo': return soloScripts;
+            case 'couple': return coupleScripts;
+        }
+    };
+
+    const currentScripts = getCurrentScripts();
     const currentScript = currentScripts[currentScriptIndex];
     const totalScripts = currentScripts.length;
 
     useEffect(() => {
         startStepAnimation();
 
-        // Auto-advance logic for messages
-        if (currentScript.type === 'message') {
-            timerRef.current = setTimeout(() => {
-                handleNext();
-            }, 15000); // 15 seconds
+        // Character-by-character typing effect for statements
+        if (currentScript.type === 'statement' && currentScript.text) {
+            setDisplayedText('');
+            setIsTyping(true);
+            const fullText = currentScript.text;
+            let charIndex = 0;
+
+            const typeNextChar = () => {
+                if (charIndex < fullText.length) {
+                    setDisplayedText(fullText.substring(0, charIndex + 1));
+                    charIndex++;
+                    typingTimerRef.current = setTimeout(typeNextChar, 80);
+                } else {
+                    setIsTyping(false);
+                    // If statement has a buttonText, don't auto-advance
+                    if (!currentScript.buttonText) {
+                        const readTime = 1500 + (fullText.length * 50);
+                        timerRef.current = setTimeout(() => {
+                            handleNext();
+                        }, readTime);
+                    }
+                }
+            };
+
+            typingTimerRef.current = setTimeout(typeNextChar, 500);
         }
 
         return () => {
-            if (timerRef.current) {
-                clearTimeout(timerRef.current);
-            }
+            if (timerRef.current) clearTimeout(timerRef.current);
+            if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
         };
-    }, [currentScriptIndex]);
+    }, [currentScriptIndex, phase]);
 
     const startStepAnimation = () => {
         textFadeAnim.setValue(0);
         Animated.timing(textFadeAnim, {
             toValue: 1,
             duration: 1000,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
         }).start();
     };
 
     const handleNext = async (explicitValue?: string) => {
         if (timerRef.current) clearTimeout(timerRef.current);
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        setIsTyping(false);
 
-        // Validation
-        if (currentScript.inputType === 'text' && inputText.trim() === '') {
+        // Validation for text input (skip for image input and options)
+        if (currentScript.type === 'question' && !currentScript.options && currentScript.inputType !== 'image' && inputText.trim() === '') {
             Alert.alert('알림', '답변을 입력해주세요.');
             return;
         }
-        if (currentScript.inputType === 'photo' && !selectedImage && currentScript.required) {
-            Alert.alert('알림', '사진을 선택해주세요.');
-            return;
+        // Validation for image input
+        if (currentScript.inputType === 'image' && !selectedImage) {
+            // Image is optional, just proceed
         }
 
         // Save Answer
-        if (currentScript.key) {
+        if (currentScript.id) {
             let value = explicitValue !== undefined ? explicitValue : inputText;
-            if (currentScript.inputType === 'photo') value = selectedImage || '';
+            if (currentScript.inputType === 'image') value = selectedImage || '';
 
-            const newAnswers = { ...answers, [currentScript.key]: value };
+            const newAnswers = { ...answers, [currentScript.id]: value };
             setAnswers(newAnswers);
 
-            if (currentScript.key === 'userName') await AsyncStorage.setItem('userName', value);
-            if (currentScript.key === 'userDeficit') await AsyncStorage.setItem('userDeficit', value);
-            if (currentScript.key === 'userLocation') await AsyncStorage.setItem('userLocation', value);
+            // Save important data to AsyncStorage
+            if (currentScript.id === 'userName') await AsyncStorage.setItem('userName', value);
+            if (currentScript.id === 'userDeficit') await AsyncStorage.setItem('userDeficit', value);
+            if (currentScript.id === 'userLocation') await AsyncStorage.setItem('userLocation', value);
 
-            // Couple Branching Logic
-            if (currentScript.key === 'isCouple') {
-                if (value === '네, 커플입니다') {
-                    setIsCoupleMode(true);
-                    setCurrentScriptIndex(0); // Restart index for couple scripts
+            // Branching Logic: isCouple question in intro phase
+            if (currentScript.id === 'isCouple' && phase === 'intro') {
+                if (value === 'true') {
+                    // Go to couple track
+                    setPhase('couple');
+                    setCurrentScriptIndex(0);
                     setVisualizerKey(prev => prev + 1);
                     setInputText('');
-                    return; // Stop here to let effect hook handle the new script
+                    return;
+                } else {
+                    // Go to solo track
+                    setPhase('solo');
+                    setCurrentScriptIndex(0);
+                    setVisualizerKey(prev => prev + 1);
+                    setInputText('');
+                    return;
                 }
             }
 
-            // Only trigger visualizer reset on input confirmation
             setVisualizerKey(prev => prev + 1);
         }
 
@@ -122,7 +164,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     };
 
     const handleScreenTap = () => {
-        if (currentScript.type === 'message') {
+        if (currentScript.type === 'statement' && !currentScript.buttonText) {
             handleNext();
         }
     };
@@ -141,15 +183,15 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                 Animated.timing(flashAnim, {
                     toValue: 1,
                     duration: 500,
-                    useNativeDriver: true,
+                    useNativeDriver: Platform.OS !== 'web',
                 }),
                 Animated.timing(flashAnim, {
                     toValue: 0,
                     duration: 1000,
-                    useNativeDriver: true,
+                    useNativeDriver: Platform.OS !== 'web',
                 })
             ]).start(async () => {
-                if (isCoupleMode) {
+                if (phase === 'couple') {
                     // Save Couple Profile
                     const coupleProfile = {
                         goal: answers['coupleGoal'],
@@ -161,9 +203,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     await AsyncStorage.setItem('isCoupled', 'true');
 
                     // Navigate to Couples Mission
-                    navigation.replace('MainTabs', {
-                        screen: 'Connection'
-                    });
+                    navigation.replace('CouplesMission');
                 } else {
                     navigation.replace('Home', {
                         name: answers['userName'] || '구도자',
@@ -222,32 +262,21 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     };
 
     const renderInput = () => {
-        if (!currentScript) return null;
+        if (!currentScript || currentScript.type !== 'question') return null;
 
-        if (currentScript.inputType === 'text') {
-            return (
-                <View style={{ width: '100%', paddingHorizontal: 40 }}>
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder={currentScript.placeholder || "답변을 입력하세요"}
-                        placeholderTextColor="rgba(255,255,255,0.5)"
-                        value={inputText}
-                        onChangeText={setInputText}
-                        onSubmitEditing={() => handleNext()}
-                        autoFocus={true}
-                    />
-                    <HolyButton title="확인" onPress={() => handleNext()} style={{ marginTop: 20, width: '100%' }} />
-                </View>
-            );
-        } else if (currentScript.inputType === 'selection') {
+        // Options selection (new structure with label/value)
+        if (currentScript.options && currentScript.options.length > 0) {
             return (
                 <View style={styles.optionsContainer}>
-                    {currentScript.options?.map((option: string, index: number) => (
+                    {currentScript.options.map((option, index) => (
                         <HolyButton
                             key={index}
-                            title={option}
+                            title={option.label}
                             onPress={() => {
-                                if (currentScript.key === 'userLocation' && option === '그 외 지역') {
+                                const valueToSave = String(option.value);
+
+                                // Special handling for location
+                                if (currentScript.id === 'userLocation' && option.value === 'Other') {
                                     Alert.alert(
                                         '안내',
                                         '현재 매칭 파동은 서울과 경기 지역에만 닿고 있습니다.\n하지만 내면의 성장을 위한 수련은 언제든 가능합니다.',
@@ -255,20 +284,14 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                                             {
                                                 text: '확인',
                                                 onPress: () => {
-                                                    setAnswers({ ...answers, [currentScript.key!]: 'Other' });
-                                                    handleNext('Other');
+                                                    setAnswers({ ...answers, [currentScript.id!]: valueToSave });
+                                                    handleNext(valueToSave);
                                                 }
                                             }
                                         ]
                                     );
                                 } else {
-                                    let valueToSave = option;
-                                    if (currentScript.key === 'userLocation') {
-                                        if (option === '서울') valueToSave = 'Seoul';
-                                        if (option === '경기') valueToSave = 'Gyeonggi';
-                                    }
-
-                                    setAnswers({ ...answers, [currentScript.key!]: valueToSave });
+                                    setAnswers({ ...answers, [currentScript.id!]: valueToSave });
                                     handleNext(valueToSave);
                                 }
                             }}
@@ -279,14 +302,17 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     ))}
                 </View>
             );
-        } else if (currentScript.inputType === 'photo') {
+        }
+
+        // Image input
+        if (currentScript.inputType === 'image') {
             return (
-                <View style={{ width: '100%', alignItems: 'center' }}>
+                <View style={{ width: '100%', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
                     <TouchableOpacity onPress={pickImage} style={styles.photoUploadButton}>
                         {selectedImage ? (
                             <Image source={{ uri: selectedImage }} style={styles.uploadedImage} />
                         ) : (
-                            <Text style={styles.photoUploadText}>📷 사진 선택하기</Text>
+                            <Text style={styles.photoUploadText}>사진 선택하기</Text>
                         )}
                     </TouchableOpacity>
 
@@ -294,13 +320,28 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                         key={selectedImage || 'no-image'}
                         title={selectedImage ? "확인" : "사진 없이 계속하기"}
                         onPress={() => handleNext()}
-                        style={{ marginTop: 20, width: '100%' }}
+                        style={{ marginTop: 30, width: '100%' }}
                     />
                 </View>
             );
-        } else {
-            return null;
         }
+
+        // Text/Numeric input (default)
+        return (
+            <View style={{ width: '100%', paddingHorizontal: 40 }}>
+                <TextInput
+                    style={styles.textInput}
+                    placeholder={currentScript.placeholder || "답변을 입력하세요"}
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    value={inputText}
+                    onChangeText={setInputText}
+                    onSubmitEditing={() => handleNext()}
+                    autoFocus={true}
+                    keyboardType={currentScript.inputType === 'numeric' ? 'numeric' : 'default'}
+                />
+                <HolyButton title="확인" onPress={() => handleNext()} style={{ marginTop: 20, width: '100%' }} />
+            </View>
+        );
     };
 
     const handleFastFill = async () => {
@@ -330,43 +371,36 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             <View style={styles.container}>
                 <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
                 <View style={styles.visualizerBackground}>
-                    <MysticVisualizer isActive={true} mode={currentScript.type === 'message' ? 'speaking' : 'listening'} key={visualizerKey} sceneUrl="https://prod.spline.design/jYIOKYyzTpgISC0I/scene.splinecode" />
+                    <MysticVisualizer isActive={true} mode={currentScript.type === 'statement' ? 'speaking' : 'listening'} key={visualizerKey} sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode" />
                 </View>
 
                 <SafeAreaView style={styles.safeArea}>
-                    {/* DEV: Fast Fill Button */}
-                    <TouchableOpacity
-                        onPress={handleFastFill}
-                        style={{ position: 'absolute', top: 50, left: 20, zIndex: 999, padding: 10, backgroundColor: 'rgba(255,0,0,0.3)' }}
-                    >
-                        <Text style={{ color: 'white', fontSize: 10 }}>DEV FILL</Text>
-                    </TouchableOpacity>
 
                     <KeyboardAvoidingView
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         style={{ flex: 1, justifyContent: 'center' }}
                     >
                         <View style={styles.contentContainer}>
-                            <TouchableOpacity
-                                style={styles.skipButton}
-                                onPress={() => {
-                                    Alert.alert('알림', '온보딩을 건너뛰시겠습니까?', [
-                                        { text: '취소', style: 'cancel' },
-                                        { text: '건너뛰기', onPress: completeOnboarding }
-                                    ]);
-                                }}
-                            >
-                                <Text style={styles.skipText}>Skip</Text>
-                            </TouchableOpacity>
+
 
                             <Animated.View style={{ opacity: textFadeAnim, width: '100%', alignItems: 'center', paddingHorizontal: 30 }}>
                                 <Text style={styles.personaText}>
-                                    {currentScript?.text}
+                                    {currentScript?.type === 'statement' ? displayedText : currentScript?.text}
                                 </Text>
                             </Animated.View>
 
                             <View style={styles.inputContainer}>
+                                {/* Render input for questions */}
                                 {renderInput()}
+
+                                {/* Render button for statements with buttonText */}
+                                {currentScript?.type === 'statement' && currentScript?.buttonText && !isTyping && (
+                                    <HolyButton
+                                        title={currentScript.buttonText}
+                                        onPress={() => handleNext()}
+                                        style={{ marginTop: 30, width: '80%' }}
+                                    />
+                                )}
                             </View>
                         </View>
                     </KeyboardAvoidingView>
@@ -429,10 +463,15 @@ const styles = StyleSheet.create({
         lineHeight: 34,
         letterSpacing: 0.5,
         marginBottom: 40,
-        textShadowColor: 'rgba(0, 0, 0, 0.5)',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 10,
-    },
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 15px rgba(255, 255, 255, 0.8)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.8)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 15,
+            }
+        ),
+    } as any,
     inputContainer: {
         width: '100%',
         alignItems: 'center',
@@ -448,7 +487,8 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         textAlign: 'center',
         fontWeight: 'bold',
-    },
+        outlineStyle: 'none',
+    } as any,
     optionsContainer: {
         width: '100%',
         paddingHorizontal: 30,
@@ -478,7 +518,33 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         backgroundColor: '#FFFFFF',
         zIndex: 100,
-    }
+    },
+    // Progress Bar Styles
+    progressContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 30,
+        paddingTop: 20,
+        paddingBottom: 10,
+    },
+    progressBarBackground: {
+        flex: 1,
+        height: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: COLORS.gold,
+        borderRadius: 2,
+    },
+    progressText: {
+        color: 'rgba(255, 255, 255, 0.6)',
+        fontSize: 12,
+        marginLeft: 10,
+        fontWeight: '500',
+    },
 });
 
 export default OnboardingScreen;
