@@ -10,3 +10,7 @@ yarn-error.log*
 *.keystore
 .idea/
 .vscode/
+
+# Firebase service account keys (SENSITIVE!)
+serviceAccountKey.json
+*firebase-adminsdk*.json
