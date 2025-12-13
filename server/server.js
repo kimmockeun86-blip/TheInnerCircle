@@ -427,7 +427,13 @@ ${historyContext || '(첫 번째 기록입니다)'}
             "ritual": "구체적 행동 리추얼 (5~15자, 동사로 시작)",
             "growthLevel": ${growthLevel},
             "shouldProgress": true 또는 false (다음 단계 진행 여부),
-            "progressReason": "진행/보류 판단 근거 (1~2문장)"
+            "progressReason": "진행/보류 판단 근거 (1~2문장)",
+            "extractedProfile": {
+                "personalities": ["일기에서 감지된 성격 키워드 1~3개 (예: 감성적, 도전적, 내향적)"],
+                "interests": ["일기에서 언급된 관심사/취미 1~3개 (예: 독서, 요리, 여행)"],
+                "values": ["일기에서 추론되는 가치관 1~2개 (예: 성장, 안정, 자유)"],
+                "communicationStyle": "글쓰기 패턴 분석 결과 (예: 깊은 대화 선호, 감정 표현 풍부)"
+            }
         }
         `;
 
@@ -474,6 +480,23 @@ ${historyContext || '(첫 번째 기록입니다)'}
             console.log(`[ORBIT Override] Ritual '${finalRitual}' was invalid. Using fallback.`);
             finalRitual = validRituals[Math.floor(Math.random() * validRituals.length)];
         }
+        // Extract user profile from AI response
+        const extractedProfile = jsonResponse.extractedProfile || null;
+
+        // Save extracted profile to Firestore if available
+        if (extractedProfile && firestore && req.body.userId) {
+            try {
+                await firestore.collection('users').doc(req.body.userId).set({
+                    aiExtracted: {
+                        ...extractedProfile,
+                        lastAnalyzed: new Date()
+                    }
+                }, { merge: true });
+                console.log(`[ORBIT] AI프로필 저장 완료: ${req.body.userId}`);
+            } catch (dbError) {
+                console.log('[ORBIT] AI프로필 Firestore 저장 실패:', dbError.message);
+            }
+        }
 
         res.json({
             success: true,
@@ -486,9 +509,11 @@ ${historyContext || '(첫 번째 기록입니다)'}
             growthPhase: currentGrowth.phase,
             // Adaptive Progression - AI decides if user is ready for next level
             shouldProgress: jsonResponse.shouldProgress !== false, // default true
-            progressReason: jsonResponse.progressReason || ''
+            progressReason: jsonResponse.progressReason || '',
+            // AI Extracted Profile
+            extractedProfile: extractedProfile
         });
-        console.log(`[ORBIT Solo Lv.${growthLevel}] shouldProgress: ${jsonResponse.shouldProgress}, Reason: ${jsonResponse.progressReason || 'N/A'}`);
+        console.log(`[ORBIT Solo Lv.${growthLevel}] shouldProgress: ${jsonResponse.shouldProgress}, ExtractedProfile: ${extractedProfile ? 'Yes' : 'No'}`);
 
     } catch (error) {
         console.error('ORBIT API Error (Journal):', error.message);
