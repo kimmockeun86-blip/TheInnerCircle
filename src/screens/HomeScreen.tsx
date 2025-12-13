@@ -864,14 +864,15 @@ const styles = StyleSheet.create({
     },
     headerOrbitAnimation: {
         position: 'absolute',
-        width: 100,
-        height: 100,
+        width: 50,
+        height: 50,
         zIndex: 1,
-        top: 20,
+        top: 5,
         left: '50%',
-        marginLeft: -50,
-        opacity: 0.6,
+        marginLeft: -25,
+        opacity: 0.7,
     },
+
 
     // Profile Photo Styles
     profilePhotoContainer: {
