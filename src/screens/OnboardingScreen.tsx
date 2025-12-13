@@ -258,6 +258,21 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     };
 
     const pickImage = async () => {
+        // 웹에서는 카메라가 작동하지 않으므로 바로 파일 선택기 열기
+        if (Platform.OS === 'web') {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+            if (!result.canceled) {
+                setSelectedImage(result.assets[0].uri);
+            }
+            return;
+        }
+
+        // 모바일에서는 카메라/앨범 선택
         Alert.alert(
             "사진 추가",
             "사진을 가져올 방법을 선택하세요.",
@@ -272,7 +287,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                         }
                         const result = await ImagePicker.launchCameraAsync({
                             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: false, // Disabled editing for direct upload
+                            allowsEditing: true,
                             aspect: [1, 1],
                             quality: 0.8,
                         });
@@ -286,7 +301,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     onPress: async () => {
                         const result = await ImagePicker.launchImageLibraryAsync({
                             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: false, // Disabled editing for direct upload
+                            allowsEditing: true,
                             aspect: [1, 1],
                             quality: 0.8,
                         });
