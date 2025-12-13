@@ -231,15 +231,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                         AsyncStorage.setItem('isCoupled', 'true');
                         navigation.replace('CouplesMission');
                     } else {
-                        navigation.replace('Home', {
-                            name: answers['userName'] || '구도자',
-                            deficit: answers['userDeficit'] || '성장'
-                        });
+                        navigation.replace('MainTabs');
                     }
                 } catch (navError) {
                     console.error('[Onboarding] 네비게이션 에러:', navError);
                     // 강제 이동 시도
-                    navigation.navigate('Home');
+                    navigation.navigate('MainTabs');
                 }
             };
 
@@ -265,7 +262,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             Alert.alert('오류', '데이터 저장 중 문제가 발생했습니다.');
             // 에러 발생해도 Home으로 이동 시도
             try {
-                navigation.replace('Home', { name: '구도자', deficit: '성장' });
+                navigation.replace('MainTabs');
             } catch (e) {
                 console.error('Navigation failed:', e);
             }
