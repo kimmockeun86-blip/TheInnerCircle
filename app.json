@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -36,6 +36,11 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "privacy": "unlisted"
+    "privacy": "unlisted",
+    "extra": {
+      "eas": {
+        "projectId": "6994a27e-c819-4dfb-899a-32297b065c1c"
+      }
+    }
   }
 }

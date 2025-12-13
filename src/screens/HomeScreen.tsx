@@ -653,6 +653,12 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 await AsyncStorage.removeItem('missionStatus');
                 await AsyncStorage.setItem('lastCompletedDate', new Date().toISOString());
 
+                // Set lock time for tomorrow 9 AM
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(9, 0, 0, 0);
+                setNextMissionUnlockTime(tomorrow.toLocaleString());
+
                 setJournalModalVisible(false);
                 setJournalInput('');
                 setSelectedImage(null);
@@ -1137,7 +1143,7 @@ const styles = StyleSheet.create({
 
     // User Photo in Main Content
     userPhotoContainer: {
-        marginTop: 10,
+        marginTop: 35,
         marginBottom: 35,
         alignItems: 'center',
     },

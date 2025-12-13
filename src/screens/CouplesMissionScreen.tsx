@@ -336,8 +336,15 @@ const CouplesMissionScreen = () => {
                 // Increment Day
                 const nextDay = daysTogether + 1;
                 await AsyncStorage.setItem('coupleDayCount', nextDay.toString());
+                await AsyncStorage.setItem('coupleLastCompletedDate', new Date().toISOString());
                 setDaysTogether(nextDay);
                 setIsSpecialMission(nextDay % 10 === 0);
+
+                // Set lock time for tomorrow 9 AM
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(9, 0, 0, 0);
+                setNextMissionUnlockTime(tomorrow.toLocaleString());
 
                 setReflection('');
                 setSelectedImage(null);
@@ -645,7 +652,7 @@ const styles = StyleSheet.create({
 
     // User Photo - Same as HomeScreen
     userPhotoContainer: {
-        marginTop: 10,
+        marginTop: 35,
         marginBottom: 35,
         alignItems: 'center',
     },
