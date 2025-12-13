@@ -571,18 +571,25 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     {Platform.OS === 'web' && (
                         <View style={styles.headerOrbitAnimation}>
                             <iframe
-                                srcDoc={`<!DOCTYPE html><html><head><style>*{margin:0;padding:0;}html,body{width:100%;height:100%;overflow:hidden;background:transparent;}spline-viewer{width:100%;height:100%;display:block;}</style><script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js"></script></head><body><spline-viewer url="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"></spline-viewer></body></html>`}
+                                srcDoc={`<!DOCTYPE html><html><head><style>*{margin:0;padding:0;}html,body{width:100%;height:100%;overflow:hidden;background:transparent;}spline-viewer{width:100%;height:100%;display:block;transform:scale(0.5);transform-origin:center center;}</style><script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js"></script></head><body><spline-viewer url="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"></spline-viewer></body></html>`}
+
                                 style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
                                 title="Orbit Animation"
                             />
                         </View>
                     )}
+
                     {/* ORBIT Text - On Top */}
                     <Text style={styles.headerTitle}>ORBIT</Text>
                 </View>
 
 
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                    showsHorizontalScrollIndicator={false}
+                >
+
                     <View style={styles.mainContent}>
                         <Text style={styles.dayText}>Day {dayCount}</Text>
                         <Text style={styles.greetingText}>
@@ -864,18 +871,18 @@ const styles = StyleSheet.create({
     },
     headerOrbitAnimation: {
         position: 'absolute',
-        width: 200,
-        height: 200,
+        width: 400,
+        height: 400,
         zIndex: 1,
-        top: -60,
+        top: -150,
         left: '50%',
-        marginLeft: -100,
+        marginLeft: -200,
         opacity: 0.9,
     },
 
-
     // Profile Photo Styles
     profilePhotoContainer: {
+
         zIndex: 15,
     },
     profilePhoto: {
