@@ -63,6 +63,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     const [growthPhase, setGrowthPhase] = useState('각성');
     const [progressReason, setProgressReason] = useState<string | null>(null);
     const [inboxCount, setInboxCount] = useState(0);
+    const [countdown, setCountdown] = useState<string>('');
 
     // Background Matching System
     const [matchCandidate, setMatchCandidate] = useState<any>(null);
@@ -351,6 +352,38 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
         initializeData();
     }, []);
 
+    // Countdown timer effect
+    useEffect(() => {
+        if (!nextMissionUnlockTime) {
+            setCountdown('');
+            return;
+        }
+
+        const calculateCountdown = () => {
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(9, 0, 0, 0);
+
+            const diff = tomorrow.getTime() - now.getTime();
+            if (diff <= 0) {
+                setCountdown('00:00:00');
+                return;
+            }
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            setCountdown(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+        };
+
+        calculateCountdown();
+        const interval = setInterval(calculateCountdown, 1000);
+
+        return () => clearInterval(interval);
+    }, [nextMissionUnlockTime]);
+
     const pickImage = async () => {
         Alert.alert(
             "사진 추가",
@@ -615,43 +648,27 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                 <Text style={styles.missionTitle}>오늘의 리추얼</Text>
                                 {nextMissionUnlockTime ? (
                                     <View style={styles.lockedMissionContainer}>
-                                        <Text style={styles.lockedIcon}>🔐</Text>
-                                        <Text style={styles.lockedText}>미션이 잠겨 있습니다</Text>
-
-                                        <Text style={styles.unlockTimeText}>
-                                            공개 예정: {nextMissionUnlockTime}
-                                        </Text>
-                                        <Text style={styles.unlockHint}>
-                                            다음날 오전 9시에 새로운 미션이 공개됩니다
-                                        </Text>
+                                        <Text style={styles.countdownTimer}>{countdown}</Text>
+                                        <Text style={styles.lockedText}>오전 9시에 돌아오겠습니다.</Text>
                                     </View>
+
                                 ) : (
                                     <Text style={styles.missionText}>{currentMissionText}</Text>
                                 )}
                             </GlassCard>
                         </View>
 
-                        {/* Action Button */}
-                        <HolyButton
-                            title="수행 기록 남기기"
-                            onPress={() => setJournalModalVisible(true)}
-                            style={{ marginTop: 20, marginBottom: 20 }}
-                        />
-
-                        {/* Dev Tool - Hidden in Production */}
-                        {__DEV__ && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setDayCount(10);
-                                    AsyncStorage.setItem('dayCount', '10');
-                                }}
-                                style={{ marginTop: 40, opacity: 0.3 }}
-                            >
-                                <Text style={{ color: 'red' }}>[개발용] Day 10으로 이동</Text>
-                            </TouchableOpacity>
+                        {/* Action Button - Hidden when locked */}
+                        {!nextMissionUnlockTime && (
+                            <HolyButton
+                                title="수행 기록 남기기"
+                                onPress={() => setJournalModalVisible(true)}
+                                style={{ marginTop: 20, marginBottom: 20 }}
+                            />
                         )}
 
                     </View>
+
                 </ScrollView>
 
                 {/* Match Candidate Modal - Special Mission */}
@@ -1076,14 +1093,25 @@ const styles = StyleSheet.create({
     },
     lockedMissionContainer: {
         alignItems: 'center',
-        paddingVertical: 15,
+        paddingVertical: 20,
     },
-    lockedIcon: {
-        fontSize: 36,
-        marginBottom: 10,
+    countdownTimer: {
+        fontSize: 48,
+        fontWeight: '300',
         color: '#FFFFFF',
-        opacity: 0.8,
-    },
+        letterSpacing: 6,
+        marginBottom: 15,
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 20px rgba(255, 255, 255, 0.5), 0 0 40px rgba(255, 255, 255, 0.2)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.5)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 20,
+            }
+        ),
+    } as any,
+
+
     lockedText: {
         color: '#FFFFFF',
         fontSize: 16,

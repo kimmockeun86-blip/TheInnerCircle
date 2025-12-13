@@ -89,11 +89,11 @@ const styles = StyleSheet.create({
         boxShadow: '0px 10px 15px rgba(0, 0, 0, 0.5)',
         elevation: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     blurContainer: {
         flex: 1,
-        backgroundColor: 'rgba(10, 5, 25, 0.95)',
+        backgroundColor: 'transparent',
     },
     tabBar: {
         flexDirection: 'row',
