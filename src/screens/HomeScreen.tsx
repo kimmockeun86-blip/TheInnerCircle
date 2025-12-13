@@ -170,35 +170,67 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
         }
     };
 
-    // Send letter to match candidate
+    // Send letter to match candidate via Firebase
     const handleSendLetter = async () => {
         if (letterContent.trim().length < 10) {
             Alert.alert('알림', '편지를 10자 이상 작성해주세요.');
             return;
         }
 
-        const result = await api.sendLetter({
-            fromUserId: `user_${name}`,
-            fromUserName: name,
-            toUserId: matchCandidate.id,
-            content: letterContent
+        const storedUserId = await AsyncStorage.getItem('userId');
+
+        // Try Firebase first
+        const firebaseResult = await MatchingService.sendLetter({
+            fromUid: storedUserId || `user_${name}`,
+            fromName: name,
+            toUid: matchCandidate.id,
+            content: letterContent,
+            status: 'sent'
         });
 
-        if (result.success) {
-            Alert.alert('성공', '편지가 전송되었습니다. 상대방의 답장을 기다려주세요.');
+        if (firebaseResult.success) {
+            Alert.alert('성공', firebaseResult.message);
             setMatchCandidateModalVisible(false);
             setLetterContent('');
-            // After sending, simulate receiving reply and accepting
+
+            // Check for replies after 3 seconds (simulation for now)
             setTimeout(async () => {
-                setMatchResult('success');
-                await AsyncStorage.setItem('matchResult', 'success');
-                await AsyncStorage.setItem('matchedPartner', JSON.stringify(matchCandidate));
-                Alert.alert('🎉 축하합니다!', `${matchCandidate.name}님도 만남을 원했습니다!\n커플 미션이 시작됩니다.`, [
-                    { text: '시작하기', onPress: () => navigation.replace('CouplesMission', {} as any) }
-                ]);
+                // In real app, this would be a push notification or real-time listener
+                const letters = await MatchingService.getReceivedLetters(storedUserId || `user_${name}`);
+                if (letters.length > 0) {
+                    const reply = letters[0];
+                    setMatchResult('success');
+                    await AsyncStorage.setItem('matchResult', 'success');
+                    await AsyncStorage.setItem('matchedPartner', JSON.stringify(matchCandidate));
+                    Alert.alert('🎉 축하합니다!', `${matchCandidate.name}님도 만남을 원했습니다!\n커플 미션이 시작됩니다.`, [
+                        { text: '시작하기', onPress: () => navigation.replace('CouplesMission', {} as any) }
+                    ]);
+                }
             }, 3000);
         } else {
-            Alert.alert('알림', result.message);
+            // Fallback to old API
+            const result = await api.sendLetter({
+                fromUserId: storedUserId || `user_${name}`,
+                fromUserName: name,
+                toUserId: matchCandidate.id,
+                content: letterContent
+            });
+
+            if (result.success) {
+                Alert.alert('성공', '편지가 전송되었습니다.');
+                setMatchCandidateModalVisible(false);
+                setLetterContent('');
+                setTimeout(async () => {
+                    setMatchResult('success');
+                    await AsyncStorage.setItem('matchResult', 'success');
+                    await AsyncStorage.setItem('matchedPartner', JSON.stringify(matchCandidate));
+                    Alert.alert('🎉 축하합니다!', `${matchCandidate.name}님도 만남을 원했습니다!\n커플 미션이 시작됩니다.`, [
+                        { text: '시작하기', onPress: () => navigation.replace('CouplesMission', {} as any) }
+                    ]);
+                }, 3000);
+            } else {
+                Alert.alert('알림', result.message);
+            }
         }
     };
 
