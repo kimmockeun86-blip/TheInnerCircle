@@ -66,12 +66,64 @@ const CouplesMissionScreen = () => {
             if (storedName) setName(storedName);
 
             const storedDay = await AsyncStorage.getItem('coupleDayCount');
-            const currentDay = storedDay ? parseInt(storedDay, 10) : 1;
+            let currentDay = storedDay ? parseInt(storedDay, 10) : 1;
+
+            // Check if mission is unlocked (9 AM system)
+            const lastCompletedDate = await AsyncStorage.getItem('coupleLastCompletedDate');
+            let canUnlock = true;
+
+            if (lastCompletedDate) {
+                const now = new Date();
+                const lastDate = new Date(lastCompletedDate);
+                const isSameDay = now.getDate() === lastDate.getDate() &&
+                    now.getMonth() === lastDate.getMonth() &&
+                    now.getFullYear() === lastDate.getFullYear();
+
+                const unlockHour = 9;
+                const currentHour = now.getHours();
+
+                if (isSameDay) {
+                    const tomorrow = new Date(now);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(unlockHour, 0, 0, 0);
+                    setNextMissionUnlockTime(tomorrow.toLocaleString());
+                    await notificationService.scheduleMissionNotification();
+                    canUnlock = false;
+                } else if (currentHour < unlockHour) {
+                    const todayUnlock = new Date(now);
+                    todayUnlock.setHours(unlockHour, 0, 0, 0);
+                    setNextMissionUnlockTime(todayUnlock.toLocaleString());
+                    await notificationService.scheduleMissionNotification();
+                    canUnlock = false;
+                } else {
+                    setNextMissionUnlockTime(null);
+                    canUnlock = true;
+                }
+            }
+
+            // If unlocked (new day after 9 AM), increase day count
+            if (canUnlock && lastCompletedDate) {
+                currentDay = currentDay + 1;
+                await AsyncStorage.setItem('coupleDayCount', currentDay.toString());
+                console.log(`[ORBIT Couple] 🌅 새로운 날! Day ${currentDay} 시작`);
+
+                // Load next mission that was saved yesterday
+                const savedNextMission = await AsyncStorage.getItem('coupleNextMission');
+                if (savedNextMission) {
+                    await AsyncStorage.setItem(`couple_mission_day_${currentDay}`, savedNextMission);
+                    await AsyncStorage.removeItem('coupleNextMission');
+                }
+
+                // Clear last completed date to prevent repeated increases
+                await AsyncStorage.removeItem('coupleLastCompletedDate');
+            }
+
             setDaysTogether(currentDay);
             setIsSpecialMission(currentDay % 10 === 0);
 
-            // Calculate Relationship Level
-            const level = Math.min(Math.ceil(currentDay / 10), 7);
+            // Load Relationship Level from separate storage (not calculated from dayCount)
+            const storedRelLevel = await AsyncStorage.getItem('coupleRelationshipLevel');
+            const level = storedRelLevel ? parseInt(storedRelLevel, 10) : 1;
             setRelationshipLevel(level);
             const phases = ['탐색기', '친밀기', '교감기', '몰입기', '심화기', '융합기', '영혼의 결합'];
             setRelationshipPhase(phases[level - 1] || '탐색기');
@@ -121,34 +173,6 @@ const CouplesMissionScreen = () => {
                     setCurrentMissionText(currentDay % 10 === 0
                         ? "오늘은 특별한 날입니다. 서로의 영혼을 깊이 들여다보십시오."
                         : "서로의 눈을 1분간 바라보며 침묵 속의 대화를 나누십시오.");
-                }
-            }
-
-            // Check if mission is locked (9 AM system)
-            const lastCompletedDate = await AsyncStorage.getItem('coupleLastCompletedDate');
-            if (lastCompletedDate) {
-                const now = new Date();
-                const lastDate = new Date(lastCompletedDate);
-                const isSameDay = now.getDate() === lastDate.getDate() &&
-                    now.getMonth() === lastDate.getMonth() &&
-                    now.getFullYear() === lastDate.getFullYear();
-
-                const unlockHour = 9;
-                const currentHour = now.getHours();
-
-                if (isSameDay) {
-                    const tomorrow = new Date(now);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(unlockHour, 0, 0, 0);
-                    setNextMissionUnlockTime(tomorrow.toLocaleString());
-                    await notificationService.scheduleMissionNotification();
-                } else if (currentHour < unlockHour) {
-                    const todayUnlock = new Date(now);
-                    todayUnlock.setHours(unlockHour, 0, 0, 0);
-                    setNextMissionUnlockTime(todayUnlock.toLocaleString());
-                    await notificationService.scheduleMissionNotification();
-                } else {
-                    setNextMissionUnlockTime(null);
                 }
             }
         } catch (e) {
@@ -333,12 +357,31 @@ const CouplesMissionScreen = () => {
                 setMissionHistory(updatedHistory);
                 await AsyncStorage.setItem('coupleMissionHistory', JSON.stringify(updatedHistory));
 
-                // Increment Day
-                const nextDay = daysTogether + 1;
-                await AsyncStorage.setItem('coupleDayCount', nextDay.toString());
+                // Relationship Level progression (separate from Day)
+                // Day는 날짜 기반 (loadData에서 처리), 여기서는 레벨만 결정
+                const storedRelLevel = await AsyncStorage.getItem('coupleRelationshipLevel');
+                let currentRelLevel = storedRelLevel ? parseInt(storedRelLevel, 10) : 1;
+
+                // Check if relationship should progress (from AI response if available)
+                const shouldProgress = data.shouldProgress !== false;
+                if (shouldProgress) {
+                    const newLevel = Math.min(currentRelLevel + 1, 7);
+                    setRelationshipLevel(newLevel);
+                    await AsyncStorage.setItem('coupleRelationshipLevel', newLevel.toString());
+                    const phases = ['탐색기', '친밀기', '교감기', '몰입기', '심화기', '융합기', '영혼의 결합'];
+                    setRelationshipPhase(phases[newLevel - 1] || '탐색기');
+                    console.log(`[ORBIT Couple] ✅ Level Up to ${newLevel}`);
+                } else {
+                    console.log(`[ORBIT Couple] ⏸️ Stay at Level ${currentRelLevel}`);
+                }
+
+                // Save next mission for tomorrow (don't increment day now)
+                if (data.nextMission) {
+                    await AsyncStorage.setItem('coupleNextMission', data.nextMission);
+                }
+
+                // Mark today as completed (Day will increase on next 9 AM unlock)
                 await AsyncStorage.setItem('coupleLastCompletedDate', new Date().toISOString());
-                setDaysTogether(nextDay);
-                setIsSpecialMission(nextDay % 10 === 0);
 
                 // Set lock time for tomorrow 9 AM
                 const tomorrow = new Date();

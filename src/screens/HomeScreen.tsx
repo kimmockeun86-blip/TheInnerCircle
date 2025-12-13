@@ -284,11 +284,38 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             const loadData = async () => {
                 try {
                     const storedDay = await AsyncStorage.getItem('dayCount');
-                    const currentDayCount = storedDay ? parseInt(storedDay, 10) : 1;
+                    let currentDayCount = storedDay ? parseInt(storedDay, 10) : 1;
+
+                    // Check if we can unlock (new day after 9 AM)
+                    const canUnlock = await checkDayProgression();
+
+                    if (canUnlock) {
+                        // It's a new day! Increase day count
+                        const lastCompletedDate = await AsyncStorage.getItem('lastCompletedDate');
+                        if (lastCompletedDate) {
+                            // User completed mission yesterday, now it's new day
+                            currentDayCount = currentDayCount + 1;
+                            await AsyncStorage.setItem('dayCount', currentDayCount.toString());
+                            console.log(`[ORBIT] 🌅 새로운 날! Day ${currentDayCount} 시작`);
+
+                            // Load next mission that was saved yesterday
+                            const savedNextMission = await AsyncStorage.getItem('nextMission');
+                            if (savedNextMission) {
+                                await AsyncStorage.setItem(`mission_day_${currentDayCount}`, savedNextMission);
+                                await AsyncStorage.removeItem('nextMission');
+                            }
+                        }
+                    } else {
+                        // Still locked - schedule notification for 9 AM
+                        await notificationService.requestPermission();
+                        await notificationService.scheduleMissionNotification();
+                    }
+
                     setDayCount(currentDayCount);
 
-                    // Calculate Growth Level (10일 단위 심화 시스템)
-                    const level = Math.min(Math.ceil(currentDayCount / 10), 6);
+                    // Load Growth Level from separate storage (not calculated from dayCount)
+                    const storedGrowthLevel = await AsyncStorage.getItem('growthLevel');
+                    const level = storedGrowthLevel ? parseInt(storedGrowthLevel, 10) : 1;
                     setGrowthLevel(level);
                     const phases = ['각성', '직면', '파괴', '재구축', '통합', '초월'];
                     setGrowthPhase(phases[level - 1] || '각성');
@@ -341,13 +368,6 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         } catch (e) {
                             console.log('Inbox check failed silently');
                         }
-                    }
-
-                    const canUnlock = await checkDayProgression();
-                    if (!canUnlock) {
-                        // Locked state - schedule notification for 9 AM
-                        await notificationService.requestPermission();
-                        await notificationService.scheduleMissionNotification();
                     }
 
                 } catch (e) {
@@ -617,36 +637,31 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 }
 
 
-
-                // Adaptive Progression - AI decides if user is ready for next level
+                // Adaptive Progression - AI decides if user is ready for next LEVEL (not day)
+                // Day는 날짜 기반으로 증가 (loadData에서 처리), shouldProgress는 레벨만 결정
                 const shouldProgress = response.shouldProgress !== false; // default true
                 setProgressReason(response.progressReason || null);
 
-                if (shouldProgress) {
-                    // User is ready for next level - increase day
-                    const newDay = dayCount + 1;
-                    setDayCount(newDay);
-                    await AsyncStorage.setItem('dayCount', newDay.toString());
-                    console.log(`[ORBIT] ✅ Progress to Day ${newDay} - ${response.progressReason || 'Ready'}`);
+                // Get current growth level from storage
+                const storedGrowthLevel = await AsyncStorage.getItem('growthLevel');
+                let currentGrowthLevel = storedGrowthLevel ? parseInt(storedGrowthLevel, 10) : 1;
 
-                    // Update growth level
-                    const newLevel = Math.min(Math.ceil(newDay / 10), 6);
+                if (shouldProgress) {
+                    // User is ready for next level - increase growth level
+                    const newLevel = Math.min(currentGrowthLevel + 1, 6);
                     setGrowthLevel(newLevel);
+                    await AsyncStorage.setItem('growthLevel', newLevel.toString());
                     const phases = ['각성', '직면', '파괴', '재구축', '통합', '초월'];
                     setGrowthPhase(phases[newLevel - 1] || '각성');
-
-                    if (response.recommendedMission) {
-                        await AsyncStorage.setItem(`mission_day_${newDay}`, response.recommendedMission);
-                    }
+                    console.log(`[ORBIT] ✅ Level Up to ${newLevel} (${phases[newLevel - 1]}) - ${response.progressReason || 'Ready'}`);
                 } else {
                     // User needs more practice - stay at same level with new mission
-                    console.log(`[ORBIT] ⏸️ Stay at Day ${dayCount} - ${response.progressReason || 'More practice needed'}`);
+                    console.log(`[ORBIT] ⏸️ Stay at Level ${currentGrowthLevel} - ${response.progressReason || 'More practice needed'}`);
+                }
 
-                    // Save new mission for same day
-                    if (response.recommendedMission) {
-                        await AsyncStorage.setItem(`mission_day_${dayCount}`, response.recommendedMission);
-                        setCurrentMissionText(response.recommendedMission);
-                    }
+                // Save next mission (for next day unlock)
+                if (response.recommendedMission) {
+                    await AsyncStorage.setItem('nextMission', response.recommendedMission);
                 }
 
                 setMissionStatus(null);
