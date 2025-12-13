@@ -42,6 +42,7 @@ const ConnectionsScreen = () => {
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null); // Insight
     const [aiFeedback, setAiFeedback] = useState<string | null>(null); // Feedback
     const [currentMissionText, setCurrentMissionText] = useState<string>('');
+    const [couplePhoto, setCouplePhoto] = useState<string | null>(null);
 
     // Visualizer Mode Logic
     const visualizerMode = isLoading ? 'thinking' : (analysisModalVisible ? 'speaking' : 'listening');
@@ -65,6 +66,11 @@ const ConnectionsScreen = () => {
             if (storedHistory) {
                 setMissionHistory(JSON.parse(storedHistory));
             }
+
+            // Load Couple Photo
+            const storedCouplePhoto = await AsyncStorage.getItem('couplePhoto');
+            if (storedCouplePhoto) setCouplePhoto(storedCouplePhoto);
+
 
             // Load Current Mission Text
             const storedMission = await AsyncStorage.getItem(`couple_mission_day_${currentDay}`);
@@ -175,7 +181,56 @@ const ConnectionsScreen = () => {
         );
     };
 
+    // Pick Couple Photo
+    const pickCouplePhoto = async () => {
+        Alert.alert(
+            "커플 사진",
+            "둘만의 사진을 추가하세요",
+            [
+                {
+                    text: "카메라",
+                    onPress: async () => {
+                        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                        if (status !== 'granted') {
+                            Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+                            return;
+                        }
+                        const result = await ImagePicker.launchCameraAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [1, 1],
+                            quality: 0.8,
+                        });
+                        if (!result.canceled) {
+                            const photoUri = result.assets[0].uri;
+                            setCouplePhoto(photoUri);
+                            await AsyncStorage.setItem('couplePhoto', photoUri);
+                        }
+                    }
+                },
+                {
+                    text: "앨범",
+                    onPress: async () => {
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [1, 1],
+                            quality: 0.8,
+                        });
+                        if (!result.canceled) {
+                            const photoUri = result.assets[0].uri;
+                            setCouplePhoto(photoUri);
+                            await AsyncStorage.setItem('couplePhoto', photoUri);
+                        }
+                    }
+                },
+                { text: "취소", style: "cancel" }
+            ]
+        );
+    };
+
     const handleAnalyze = async () => {
+
         if (reflection.trim().length < 5) {
             Alert.alert('알림', '대화 내용을 조금 더 자세히 적어주세요.');
             return;
@@ -313,12 +368,22 @@ const ConnectionsScreen = () => {
                             인연이 시작된 지 {daysTogether}일째
                         </Text>
 
-                        {/* User Profile Photo - Same as HomeScreen */}
-                        <View style={styles.userPhotoContainer}>
-                            <View style={styles.userPhoto}>
-                                <Text style={{ fontSize: 40, opacity: 0.5 }}>💑</Text>
-                            </View>
-                        </View>
+
+                        {/* User Profile Photo - Clickable for upload */}
+                        <TouchableOpacity
+                            style={styles.userPhotoContainer}
+                            onPress={pickCouplePhoto}
+                            activeOpacity={0.8}
+                        >
+                            {couplePhoto ? (
+                                <Image source={{ uri: couplePhoto }} style={styles.userPhoto} />
+                            ) : (
+                                <View style={styles.userPhoto}>
+                                    <Text style={{ fontSize: 40, opacity: 0.5 }}>💑</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
 
                         {/* AI Analysis Display (Same as HomeScreen) */}
                         {aiAnalysis && (

@@ -13,11 +13,12 @@ logger.log('[API] Initialized with BASE_URL:', BASE_URL, 'Platform:', Platform.O
 
 const client = axios.create({
     baseURL: BASE_URL,
-    timeout: 15000,
+    timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
     },
 });
+
 export const api = {
     // D. 프로필 분석
     analyzeProfile: async (profile: any) => {
