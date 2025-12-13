@@ -294,11 +294,11 @@ const ConnectionsScreen = () => {
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => setHistoryModalVisible(true)} style={styles.iconButton}>
-                        <Text style={styles.iconButtonText}>📜</Text>
+                        <Text style={styles.iconButtonText}>기록</Text>
                     </TouchableOpacity>
                     <Text style={[styles.headerTitle, { flex: 1, textAlign: 'center' }]}>커플 미션</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.iconButton}>
-                        <Text style={styles.iconButtonText}>⚙️</Text>
+                        <Text style={styles.iconButtonText}>설정</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -372,7 +372,7 @@ const ConnectionsScreen = () => {
 
                         <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
                             <Text style={styles.imagePickerText}>
-                                {selectedImage ? "📷 사진 변경하기" : "📷 추억을 사진으로 남기세요"}
+                                {selectedImage ? "사진 변경하기" : "추억을 사진으로 남기세요"}
                             </Text>
                         </TouchableOpacity>
 

@@ -446,7 +446,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>ORBIT</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-                        <Text style={styles.settingsIcon}>⚙️</Text>
+                        <Text style={styles.settingsIcon}>설정</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -545,7 +545,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         )}
 
                         <TouchableOpacity onPress={() => setHistoryModalVisible(true)} style={{ marginTop: 20 }}>
-                            <Text style={styles.historyLink}>📜 지난 여정 보기</Text>
+                            <Text style={styles.historyLink}>지난 여정 보기</Text>
                         </TouchableOpacity>
 
                         {/* Dev Tool */}
@@ -585,7 +585,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                             <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
                                 <Text style={styles.imagePickerText}>
-                                    {selectedImage ? "📷 사진 변경하기" : "📷 사진 추가하기 (선택)"}
+                                    {selectedImage ? "사진 변경하기" : "사진 추가하기 (선택)"}
                                 </Text>
                             </TouchableOpacity>
 

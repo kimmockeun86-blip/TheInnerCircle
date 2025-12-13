@@ -12,6 +12,10 @@ import { COLORS, LAYOUT, FONTS } from '../theme/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import notificationService from '../services/NotificationService';
 
+// Placeholder images
+const malePlaceholder = require('../../assets/male_placeholder.png');
+const femalePlaceholder = require('../../assets/female_placeholder.png');
+
 
 interface HomeScreenProps {
     route: HomeScreenRouteProp;
@@ -69,6 +73,8 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     const [matchCandidate, setMatchCandidate] = useState<any>(null);
     const [matchCandidateModalVisible, setMatchCandidateModalVisible] = useState(false);
     const [letterContent, setLetterContent] = useState('');
+    const [photoModalVisible, setPhotoModalVisible] = useState(false);
+
 
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
     const sparkleAnim2 = useRef(new Animated.Value(0)).current;
@@ -626,11 +632,15 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     <View style={styles.mainContent}>
                         <Text style={styles.dayText}>Day {dayCount}</Text>
                         <Text style={styles.greetingText}>
-                            오늘의 수행
+                            인연이 시작된 지 {dayCount}일째
                         </Text>
 
-                        {/* User Profile Photo - Priority: Interview > Journal > Placeholder */}
-                        <View style={styles.userPhotoContainer}>
+                        {/* User Profile Photo - Clickable */}
+                        <TouchableOpacity
+                            style={styles.userPhotoContainer}
+                            onPress={() => setPhotoModalVisible(true)}
+                            activeOpacity={0.8}
+                        >
                             {(() => {
                                 // 1순위: 오르빗 인터뷰 사진
                                 if (userPhoto) {
@@ -641,19 +651,13 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                 if (recentJournalPhoto) {
                                     return <Image source={{ uri: recentJournalPhoto }} style={styles.userPhoto} />;
                                 }
-                                // 3순위: 플레이스홀더
-                                return (
-                                    <View style={styles.userPhotoPlaceholder}>
-                                        <Text style={styles.userPhotoPlaceholderText}>👤</Text>
-                                    </View>
-                                );
+                                // 3순위: 성별에 따른 플레이스홀더 이미지
+                                const placeholder = userGender === '여성' ? femalePlaceholder : malePlaceholder;
+                                return <Image source={placeholder} style={styles.userPhoto} />;
                             })()}
-                        </View>
+                        </TouchableOpacity>
 
 
-                        <Text style={{ color: '#888', fontSize: 14, marginBottom: 15 }}>
-                            인연이 시작된 지 {dayCount}일째
-                        </Text>
 
 
                         {/* ORBIT'S SIGNAL - AI Analysis */}
@@ -694,6 +698,79 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     </View>
 
                 </ScrollView>
+
+                {/* Photo View/Change Modal */}
+                <Modal visible={photoModalVisible} animationType="fade" transparent={true}>
+                    <View style={styles.photoModalOverlay}>
+                        <TouchableOpacity
+                            style={styles.photoModalClose}
+                            onPress={() => setPhotoModalVisible(false)}
+                        >
+                            <Text style={{ color: '#fff', fontSize: 20 }}>✕</Text>
+                        </TouchableOpacity>
+
+                        <View style={styles.photoModalContent}>
+                            {(() => {
+                                if (userPhoto) {
+                                    return <Image source={{ uri: userPhoto }} style={styles.photoModalImage} />;
+                                }
+                                const recentJournalPhoto = journalHistory.find(j => j.imageUri)?.imageUri;
+                                if (recentJournalPhoto) {
+                                    return <Image source={{ uri: recentJournalPhoto }} style={styles.photoModalImage} />;
+                                }
+                                const placeholder = userGender === '여성' ? femalePlaceholder : malePlaceholder;
+                                return <Image source={placeholder} style={styles.photoModalImage} />;
+                            })()}
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.photoChangeButton}
+                            onPress={() => {
+                                setPhotoModalVisible(false);
+                                Alert.alert(
+                                    "프로필 사진 변경",
+                                    "사진을 가져올 방법을 선택하세요.",
+                                    [
+                                        {
+                                            text: "카메라로 촬영",
+                                            onPress: async () => {
+                                                const result = await ImagePicker.launchCameraAsync({
+                                                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                    allowsEditing: true,
+                                                    aspect: [1, 1],
+                                                    quality: 0.8,
+                                                });
+                                                if (!result.canceled) {
+                                                    setUserPhoto(result.assets[0].uri);
+                                                    await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+                                                }
+                                            }
+                                        },
+                                        {
+                                            text: "앨범에서 선택",
+                                            onPress: async () => {
+                                                const result = await ImagePicker.launchImageLibraryAsync({
+                                                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                    allowsEditing: true,
+                                                    aspect: [1, 1],
+                                                    quality: 0.8,
+                                                });
+                                                if (!result.canceled) {
+                                                    setUserPhoto(result.assets[0].uri);
+                                                    await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+                                                }
+                                            }
+                                        },
+                                        { text: "취소", style: "cancel" }
+                                    ]
+                                );
+                            }}
+                        >
+                            <Text style={styles.photoChangeButtonText}>사진 변경</Text>
+
+                        </TouchableOpacity>
+                    </View>
+                </Modal>
 
                 {/* Match Candidate Modal - Special Mission */}
                 <Modal visible={matchCandidateModalVisible} animationType="slide" transparent={true}>
@@ -778,9 +855,10 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                             <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
                                 <Text style={styles.imagePickerText}>
-                                    {selectedImage ? "📷 사진 변경하기" : "📷 사진 추가하기 (선택)"}
+                                    {selectedImage ? "사진 변경하기" : "사진 추가하기 (선택)"}
                                 </Text>
                             </TouchableOpacity>
+
 
                             {selectedImage && (
                                 <Image source={{ uri: selectedImage }} style={styles.previewImage as ImageStyle} />
@@ -961,7 +1039,8 @@ const styles = StyleSheet.create({
 
     // User Photo in Main Content
     userPhotoContainer: {
-        marginVertical: 10,
+        marginTop: 10,
+        marginBottom: 35,
         alignItems: 'center',
     },
     userPhoto: {
@@ -969,8 +1048,18 @@ const styles = StyleSheet.create({
         height: 120,
         borderRadius: 60,
         borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
-    },
+        borderColor: 'rgba(255, 255, 255, 0.6)',
+        ...(Platform.OS === 'web'
+            ? { boxShadow: '0 0 15px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)' }
+            : {
+                shadowColor: '#FFFFFF',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.4,
+                shadowRadius: 15,
+            }
+        ),
+    } as any,
+
     userPhotoPlaceholder: {
         width: 120,
         height: 120,
@@ -986,6 +1075,45 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
 
+    // Photo Modal Styles
+    photoModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    photoModalClose: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        zIndex: 10,
+        padding: 10,
+    },
+    photoModalContent: {
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        overflow: 'hidden',
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    photoModalImage: {
+        width: '100%',
+        height: '100%',
+    },
+    photoChangeButton: {
+        marginTop: 30,
+        paddingHorizontal: 25,
+        paddingVertical: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 25,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    photoChangeButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+    },
 
     scrollContent: {
         flexGrow: 1,

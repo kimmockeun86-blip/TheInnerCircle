@@ -345,7 +345,7 @@ const CouplesMissionScreen = () => {
                                 </Text>
                                 {nextMissionUnlockTime ? (
                                     <View style={styles.lockedMissionContainer}>
-                                        <Text style={styles.lockedIcon}>🔒</Text>
+                                        <Text style={styles.lockedIcon}>◯</Text>
                                         <Text style={styles.lockedText}>미션이 잠겨 있습니다</Text>
                                         <Text style={styles.unlockTimeText}>
                                             공개 예정: {nextMissionUnlockTime}
@@ -398,7 +398,7 @@ const CouplesMissionScreen = () => {
 
                         <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
                             <Text style={styles.imagePickerText}>
-                                {selectedImage ? "📷 사진 변경하기" : "📷 추억을 사진으로 남기세요"}
+                                {selectedImage ? "사진 변경하기" : "추억을 사진으로 남기세요"}
                             </Text>
                         </TouchableOpacity>
 
