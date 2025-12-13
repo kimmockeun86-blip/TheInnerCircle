@@ -886,19 +886,15 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                             <Text style={{ color: '#fff', fontSize: 24 }}>👤</Text>
                                         </View>
                                     </View>
-                                    {/* 이름과 나이 숨김 - 매칭 수락 전 */}
+                                    {/* 개인정보 완전 숨김 - 이상형만 표시 */}
                                     <Text style={styles.matchCandidateName}>
                                         비밀의 상대
                                     </Text>
-                                    <Text style={styles.matchCandidateDetail}>
-                                        {matchCandidate.location} 근처
-                                    </Text>
                                     <View style={styles.matchCandidateDeficit}>
                                         <Text style={styles.matchCandidateDeficitText}>
-                                            💫 {matchCandidate.deficit}
+                                            💫 이상형: {matchCandidate.deficit}
                                         </Text>
                                     </View>
-                                    <Text style={styles.matchCandidateBio}>{matchCandidate.bio}</Text>
                                 </View>
                             )}
 
