@@ -941,11 +941,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                 <Image source={{ uri: selectedImage }} style={styles.previewImage as ImageStyle} />
                             )}
 
-                            {isAnalyzing && (
-                                <Text style={{ color: COLORS.gold, textAlign: 'center', marginBottom: 15, fontSize: 14 }}>
-                                    상대방에게 메시지를 전하고 있습니다.
-                                </Text>
-                            )}
+
 
                             <View style={styles.modalButtons}>
                                 <HolyButton
