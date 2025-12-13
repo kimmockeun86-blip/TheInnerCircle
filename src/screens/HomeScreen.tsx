@@ -571,7 +571,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     {Platform.OS === 'web' && (
                         <View style={styles.headerOrbitAnimation}>
                             <iframe
-                                srcDoc={`<!DOCTYPE html><html><head><style>*{margin:0;padding:0;}html,body{width:100%;height:100%;overflow:hidden;background:transparent;}spline-viewer{width:100%;height:100%;display:block;transform:scale(0.5);transform-origin:center center;}</style><script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js"></script></head><body><spline-viewer url="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"></spline-viewer></body></html>`}
+                                srcDoc={`<!DOCTYPE html><html><head><style>*{margin:0;padding:0;}html,body{width:100%;height:100%;overflow:hidden;background:transparent;}spline-viewer{width:100%;height:100%;display:block;transform:scale(0.175);transform-origin:center center;}</style><script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js"></script></head><body><spline-viewer url="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"></spline-viewer></body></html>`}
 
                                 style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
                                 title="Orbit Animation"
@@ -635,7 +635,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         <HolyButton
                             title="수행 기록 남기기"
                             onPress={() => setJournalModalVisible(true)}
-                            style={{ marginTop: 30 }}
+                            style={{ marginTop: 20, marginBottom: 20 }}
                         />
 
                         {/* Dev Tool - Hidden in Production */}
@@ -868,7 +868,16 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         letterSpacing: 3,
         zIndex: 10,
-    },
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 15px rgba(255, 255, 255, 0.7), 0 0 30px rgba(255, 255, 255, 0.4)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.7)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 15,
+            }
+        ),
+    } as any,
+
     headerOrbitAnimation: {
         position: 'absolute',
         width: 400,
@@ -877,7 +886,8 @@ const styles = StyleSheet.create({
         top: -150,
         left: '50%',
         marginLeft: -200,
-        opacity: 0.9,
+        opacity: 0.6,
+
     },
 
     // Profile Photo Styles
@@ -1213,7 +1223,7 @@ const styles = StyleSheet.create({
     settingsIcon: { fontSize: 24 },
     mainContent: { paddingHorizontal: 20, alignItems: 'center', paddingTop: 20 },
     greetingText: { color: '#fff', fontSize: 18, marginBottom: 40, opacity: 0.8 },
-    missionContainer: { width: '100%', marginBottom: 30 },
+    missionContainer: { width: '100%', marginBottom: 20 },
     missionCard: { padding: 30, alignItems: 'center' },
     missionTitle: { color: COLORS.gold, fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
     missionText: { color: '#fff', fontSize: 18, textAlign: 'center', lineHeight: 28 },
