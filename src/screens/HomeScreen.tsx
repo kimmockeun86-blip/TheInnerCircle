@@ -608,8 +608,9 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                 <Text style={styles.missionTitle}>오늘의 리추얼</Text>
                                 {nextMissionUnlockTime ? (
                                     <View style={styles.lockedMissionContainer}>
-                                        <Text style={styles.lockedIcon}>🔒</Text>
+                                        <Text style={styles.lockedIcon}>🔐</Text>
                                         <Text style={styles.lockedText}>미션이 잠겨 있습니다</Text>
+
                                         <Text style={styles.unlockTimeText}>
                                             공개 예정: {nextMissionUnlockTime}
                                         </Text>
@@ -1042,31 +1043,50 @@ const styles = StyleSheet.create({
 
     // Locked Mission Styles
     lockedCard: {
-        borderColor: 'rgba(100, 100, 100, 0.4)',
-        backgroundColor: 'rgba(50, 50, 50, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
     },
     lockedMissionContainer: {
         alignItems: 'center',
         paddingVertical: 15,
     },
     lockedIcon: {
-        fontSize: 40,
+        fontSize: 36,
         marginBottom: 10,
+        color: '#FFFFFF',
+        opacity: 0.8,
     },
     lockedText: {
-        color: '#888',
+        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: 'bold',
         marginBottom: 8,
-    },
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 15px rgba(255, 255, 255, 0.5)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.5)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 15,
+            }
+        ),
+    } as any,
     unlockTimeText: {
-        color: COLORS.gold,
+        color: '#FFFFFF',
         fontSize: 14,
         marginBottom: 5,
-    },
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 10px rgba(255, 255, 255, 0.4)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.4)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 10,
+            }
+        ),
+    } as any,
     unlockHint: {
-        color: '#666',
+        color: 'rgba(255, 255, 255, 0.6)',
         fontSize: 12,
+
         textAlign: 'center',
     },
 
