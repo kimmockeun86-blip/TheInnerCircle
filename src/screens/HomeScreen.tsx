@@ -886,9 +886,12 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                             <Text style={{ color: '#fff', fontSize: 24 }}>👤</Text>
                                         </View>
                                     </View>
-                                    {/* 개인정보 완전 숨김 - 이상형만 표시 */}
+                                    {/* 개인정보 숨김 - MBTI + 이상형만 표시 */}
                                     <Text style={styles.matchCandidateName}>
                                         비밀의 상대
+                                    </Text>
+                                    <Text style={styles.matchCandidateDetail}>
+                                        {matchCandidate.mbti || 'MBTI 비공개'}
                                     </Text>
                                     <View style={styles.matchCandidateDeficit}>
                                         <Text style={styles.matchCandidateDeficitText}>
