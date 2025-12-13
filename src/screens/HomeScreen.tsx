@@ -864,13 +864,13 @@ const styles = StyleSheet.create({
     },
     headerOrbitAnimation: {
         position: 'absolute',
-        width: 50,
-        height: 50,
+        width: 200,
+        height: 200,
         zIndex: 1,
-        top: 5,
+        top: -60,
         left: '50%',
-        marginLeft: -25,
-        opacity: 0.7,
+        marginLeft: -100,
+        opacity: 0.9,
     },
 
 
@@ -931,7 +931,16 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         letterSpacing: 3,
         marginBottom: 10,
-    },
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 255, 255, 0.4)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.8)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 20,
+            }
+        ),
+    } as any,
+
     // Growth Level Badge
     growthLevelBadge: {
         paddingHorizontal: 18,
@@ -963,14 +972,15 @@ const styles = StyleSheet.create({
         fontSize: 36,
         fontWeight: 'bold',
         ...(Platform.OS === 'web'
-            ? { textShadow: '0 0 15px rgba(255, 255, 255, 0.3)' }
+            ? { textShadow: '0 0 20px rgba(255, 255, 255, 0.6), 0 0 40px rgba(255, 255, 255, 0.3)' }
             : {
-                textShadowColor: 'rgba(255, 255, 255, 0.3)',
+                textShadowColor: 'rgba(255, 255, 255, 0.6)',
                 textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 15
+                textShadowRadius: 20
             }
         ),
     } as any,
+
 
     // Face Icon
     faceContainer: {
