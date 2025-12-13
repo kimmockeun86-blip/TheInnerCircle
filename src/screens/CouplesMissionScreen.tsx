@@ -12,6 +12,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
 import notificationService from '../services/NotificationService';
 
+// Couple placeholder image - 솔로모드와 유사한 스타일
+const couplePlaceholder = require('../../assets/couple_placeholder.png');
+
 
 interface MissionHistoryEntry {
     day: number;
@@ -388,9 +391,7 @@ const CouplesMissionScreen = () => {
                             {couplePhoto ? (
                                 <Image source={{ uri: couplePhoto }} style={styles.userPhoto} />
                             ) : (
-                                <View style={styles.userPhoto}>
-                                    <Text style={{ fontSize: 40, opacity: 0.5 }}>💑</Text>
-                                </View>
+                                <Image source={couplePlaceholder} style={styles.userPhoto} />
                             )}
                         </TouchableOpacity>
 
@@ -676,7 +677,7 @@ const styles = StyleSheet.create({
     missionCard: {
         padding: 25,
         alignItems: 'center',
-        borderColor: 'rgba(255, 215, 0, 0.3)',
+        borderColor: 'rgba(200, 100, 255, 0.3)',
     },
     specialCard: {
         borderColor: '#FF4500',
@@ -691,7 +692,7 @@ const styles = StyleSheet.create({
         fontFamily: FONTS.title,
     },
     specialLabel: {
-        color: '#FFD700',
+        color: '#FFFFFF',
     },
     missionText: {
         color: '#fff',
@@ -735,8 +736,8 @@ const styles = StyleSheet.create({
     // Analysis Card
     analysisCard: {
         padding: 20,
-        backgroundColor: 'rgba(255, 215, 0, 0.05)',
-        borderColor: 'rgba(255, 215, 0, 0.3)',
+        backgroundColor: 'rgba(200, 100, 255, 0.05)',
+        borderColor: 'rgba(200, 100, 255, 0.3)',
     },
     analysisLabel: {
         color: COLORS.gold,

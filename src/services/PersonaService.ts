@@ -154,6 +154,13 @@ export const coupleScripts: PersonaScript[] = [
         type: 'statement',
         text: "두 사람의 연결을\n영원히 유지하기 위해,\n관계 데이터를 정밀\n분석하겠습니다."
     },
+    // 이름 질문 추가
+    {
+        type: 'question',
+        id: 'userName',
+        text: "먼저, 당신의 식별 코드를\n입력하십시오.\n무엇이라 부르면 되겠습니까?",
+        placeholder: "이름 또는 닉네임"
+    },
     {
         type: 'question',
         id: 'coupleStatus',
