@@ -653,20 +653,9 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.6)',
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        backgroundColor: 'transparent',
         justifyContent: 'center',
         alignItems: 'center',
-        ...(Platform.OS === 'web'
-            ? { boxShadow: '0 0 15px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)' }
-            : {
-                shadowColor: '#FFFFFF',
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.4,
-                shadowRadius: 15,
-            }
-        ),
     } as any,
 
     // Mission Card - Same as HomeScreen

@@ -53,7 +53,7 @@ const MysticVisualizer = ({ isActive = true, mode = 'listening', sceneUrl, style
     </html>
   `;
 
-  // Web: Use regular View instead of LinearGradient to avoid pointerEvents warning
+  // Web: Use regular View instead of LinearGradient
   if (Platform.OS === 'web') {
     return (
       <View
@@ -81,10 +81,9 @@ const MysticVisualizer = ({ isActive = true, mode = 'listening', sceneUrl, style
   return (
     <LinearGradient
       colors={COLORS.backgroundGradient}
-      style={[styles.container, style]}
-      pointerEvents="none"
+      style={[styles.container, style, { pointerEvents: 'none' }]}
     >
-      <Animated.View style={[styles.webViewContainer, { opacity: fadeAnim }]} pointerEvents="none">
+      <Animated.View style={[styles.webViewContainer, { opacity: fadeAnim, pointerEvents: 'none' }]}>
         <WebView
           originWhitelist={['*']}
           source={{ html: htmlContent }}
