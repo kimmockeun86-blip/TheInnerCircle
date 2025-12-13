@@ -628,9 +628,33 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         <Text style={styles.greetingText}>
                             오늘의 수행
                         </Text>
-                        <Text style={{ color: '#888', fontSize: 14, marginBottom: 20 }}>
+
+                        {/* User Profile Photo - Priority: Interview > Journal > Placeholder */}
+                        <View style={styles.userPhotoContainer}>
+                            {(() => {
+                                // 1순위: 오르빗 인터뷰 사진
+                                if (userPhoto) {
+                                    return <Image source={{ uri: userPhoto }} style={styles.userPhoto} />;
+                                }
+                                // 2순위: 수행기록 최근 사진
+                                const recentJournalPhoto = journalHistory.find(j => j.imageUri)?.imageUri;
+                                if (recentJournalPhoto) {
+                                    return <Image source={{ uri: recentJournalPhoto }} style={styles.userPhoto} />;
+                                }
+                                // 3순위: 플레이스홀더
+                                return (
+                                    <View style={styles.userPhotoPlaceholder}>
+                                        <Text style={styles.userPhotoPlaceholderText}>👤</Text>
+                                    </View>
+                                );
+                            })()}
+                        </View>
+
+
+                        <Text style={{ color: '#888', fontSize: 14, marginBottom: 15 }}>
                             인연이 시작된 지 {dayCount}일째
                         </Text>
+
 
                         {/* ORBIT'S SIGNAL - AI Analysis */}
                         {aiAnalysis && (
@@ -935,6 +959,34 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
 
+    // User Photo in Main Content
+    userPhotoContainer: {
+        marginVertical: 10,
+        alignItems: 'center',
+    },
+    userPhoto: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    userPhotoPlaceholder: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    userPhotoPlaceholderText: {
+        fontSize: 40,
+        opacity: 0.5,
+    },
+
+
     scrollContent: {
         flexGrow: 1,
         paddingBottom: 120,
@@ -1005,6 +1057,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 36,
         fontWeight: 'bold',
+        marginBottom: 5,
         ...(Platform.OS === 'web'
             ? { textShadow: '0 0 20px rgba(255, 255, 255, 0.6), 0 0 40px rgba(255, 255, 255, 0.3)' }
             : {
@@ -1014,6 +1067,7 @@ const styles = StyleSheet.create({
             }
         ),
     } as any,
+
 
 
     // Face Icon
@@ -1093,14 +1147,15 @@ const styles = StyleSheet.create({
     },
     lockedMissionContainer: {
         alignItems: 'center',
-        paddingVertical: 20,
+        paddingVertical: 10,
     },
     countdownTimer: {
-        fontSize: 48,
-        fontWeight: '300',
+        fontSize: 42,
+        fontWeight: '400',
         color: '#FFFFFF',
-        letterSpacing: 6,
+        letterSpacing: 4,
         marginBottom: 15,
+        fontFamily: 'Orbitron_400Regular',
         ...(Platform.OS === 'web'
             ? { textShadow: '0 0 20px rgba(255, 255, 255, 0.5), 0 0 40px rgba(255, 255, 255, 0.2)' }
             : {
@@ -1112,20 +1167,12 @@ const styles = StyleSheet.create({
     } as any,
 
 
+
     lockedText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        ...(Platform.OS === 'web'
-            ? { textShadow: '0 0 15px rgba(255, 255, 255, 0.5)' }
-            : {
-                textShadowColor: 'rgba(255, 255, 255, 0.5)',
-                textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 15,
-            }
-        ),
-    } as any,
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 13,
+        fontWeight: 'normal',
+    },
     unlockTimeText: {
         color: '#FFFFFF',
         fontSize: 14,
@@ -1250,10 +1297,11 @@ const styles = StyleSheet.create({
     // Legacy styles for compatibility
     settingsIcon: { fontSize: 24 },
     mainContent: { paddingHorizontal: 20, alignItems: 'center', paddingTop: 20 },
-    greetingText: { color: '#fff', fontSize: 18, marginBottom: 40, opacity: 0.8 },
+    greetingText: { color: '#fff', fontSize: 18, marginBottom: 10, opacity: 0.8 },
     missionContainer: { width: '100%', marginBottom: 20 },
-    missionCard: { padding: 30, alignItems: 'center' },
-    missionTitle: { color: COLORS.gold, fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
+    missionCard: { padding: 20, alignItems: 'center' },
+    missionTitle: { color: COLORS.gold, fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
+
     missionText: { color: '#fff', fontSize: 18, textAlign: 'center', lineHeight: 28 },
     historyLink: { color: '#888', fontSize: 14, textDecorationLine: 'underline' },
 
