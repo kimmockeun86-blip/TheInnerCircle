@@ -27,6 +27,7 @@ import MatchingService from '../services/MatchingService';
 import { db } from '../config/firebase';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import StorageService from '../services/StorageService';
+import { CommonActions } from '@react-navigation/native';
 
 interface OnboardingScreenProps {
     navigation: any;
@@ -237,6 +238,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             // 네비게이션 함수 정의 (에러 안전)
             const navigateToNextScreen = () => {
                 try {
+                    console.log('[Onboarding] 네비게이션 시작: phase =', phase);
                     if (phase === 'couple') {
                         const coupleProfile = {
                             goal: answers['coupleGoal'],
@@ -246,9 +248,19 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                         };
                         AsyncStorage.setItem('coupleProfile', JSON.stringify(coupleProfile));
                         AsyncStorage.setItem('isCoupled', 'true');
-                        navigation.replace('CouplesMission');
+                        navigation.dispatch(
+                            CommonActions.reset({
+                                index: 0,
+                                routes: [{ name: 'CouplesMission' }]
+                            })
+                        );
                     } else {
-                        navigation.replace('MainTabs');
+                        navigation.dispatch(
+                            CommonActions.reset({
+                                index: 0,
+                                routes: [{ name: 'MainTabs' }]
+                            })
+                        );
                     }
                 } catch (navError) {
                     console.error('[Onboarding] 네비게이션 에러:', navError);
