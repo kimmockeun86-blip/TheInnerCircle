@@ -186,7 +186,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             const uniqueId = `user_${Date.now()}_${Math.random().toString(36).substring(7)}`;
             await AsyncStorage.setItem('userId', uniqueId);
 
-            // Get GPS location for matching
+            // Get GPS location for matching (non-blocking)
             let userLocation = null;
             try {
                 userLocation = await LocationService.getCurrentLocation();
@@ -195,7 +195,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                 console.log('[Onboarding] GPS 위치 수집 실패 (무시)');
             }
 
-            // Save user profile to Firestore
+            // Save user profile to Firestore (non-blocking)
             try {
                 const userProfile = {
                     uid: uniqueId,
@@ -206,16 +206,42 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     job: answers['userJob'] || '미입력',
                     location: userLocation,
                     dayCount: 1,
-                    isMatchingActive: phase !== 'couple', // 솔로모드만 매칭 활성화
+                    isMatchingActive: phase !== 'couple',
                     createdAt: Timestamp.now()
                 };
 
-                await setDoc(doc(db, 'users', uniqueId), userProfile);
-                console.log('[Onboarding] Firestore 사용자 프로필 저장 완료:', uniqueId);
+                setDoc(doc(db, 'users', uniqueId), userProfile)
+                    .then(() => console.log('[Onboarding] Firestore 저장 완료:', uniqueId))
+                    .catch(e => console.error('[Onboarding] Firestore 저장 실패:', e));
             } catch (e) {
-                console.error('[Onboarding] Firestore 저장 실패:', e);
-                // 실패해도 계속 진행 (로컬 저장은 완료됨)
+                console.error('[Onboarding] Firestore 준비 실패:', e);
             }
+
+            // 네비게이션 함수 정의 (에러 안전)
+            const navigateToNextScreen = () => {
+                try {
+                    if (phase === 'couple') {
+                        const coupleProfile = {
+                            goal: answers['coupleGoal'],
+                            wish: answers['coupleWish'],
+                            future: answers['coupleFuture'],
+                            partnerDesc: answers['partnerDescription']
+                        };
+                        AsyncStorage.setItem('coupleProfile', JSON.stringify(coupleProfile));
+                        AsyncStorage.setItem('isCoupled', 'true');
+                        navigation.replace('CouplesMission');
+                    } else {
+                        navigation.replace('Home', {
+                            name: answers['userName'] || '구도자',
+                            deficit: answers['userDeficit'] || '성장'
+                        });
+                    }
+                } catch (navError) {
+                    console.error('[Onboarding] 네비게이션 에러:', navError);
+                    // 강제 이동 시도
+                    navigation.navigate('Home');
+                }
+            };
 
             // Bright Flash Effect
             Animated.sequence([
@@ -229,31 +255,20 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     duration: 1000,
                     useNativeDriver: Platform.OS !== 'web',
                 })
-            ]).start(async () => {
-                if (phase === 'couple') {
-                    // Save Couple Profile
-                    const coupleProfile = {
-                        goal: answers['coupleGoal'],
-                        wish: answers['coupleWish'],
-                        future: answers['coupleFuture'],
-                        partnerDesc: answers['partnerDescription']
-                    };
-                    await AsyncStorage.setItem('coupleProfile', JSON.stringify(coupleProfile));
-                    await AsyncStorage.setItem('isCoupled', 'true');
-
-                    // Navigate to Couples Mission
-                    navigation.replace('CouplesMission');
-                } else {
-                    navigation.replace('Home', {
-                        name: answers['userName'] || '구도자',
-                        deficit: answers['userDeficit'] || '성장'
-                    });
-                }
+            ]).start(() => {
+                // 콜백은 sync로 실행
+                navigateToNextScreen();
             });
 
         } catch (error) {
             console.error('Error saving onboarding data:', error);
             Alert.alert('오류', '데이터 저장 중 문제가 발생했습니다.');
+            // 에러 발생해도 Home으로 이동 시도
+            try {
+                navigation.replace('Home', { name: '구도자', deficit: '성장' });
+            } catch (e) {
+                console.error('Navigation failed:', e);
+            }
         }
     };
 
