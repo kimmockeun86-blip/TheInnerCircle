@@ -753,6 +753,11 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                 <Text style={styles.missionTitle}>오늘의 리추얼</Text>
                                 {nextMissionUnlockTime ? (
                                     <View style={styles.lockedMissionContainer}>
+                                        {journalHistory.length > 0 && (
+                                            <Text style={{ color: COLORS.textDim, fontSize: 14, marginBottom: 10, textAlign: 'center' }}>
+                                                최근 완수한 미션: {journalHistory[0]?.mission || currentMissionText}
+                                            </Text>
+                                        )}
                                         <Text style={styles.countdownTimer}>{countdown}</Text>
                                         <Text style={styles.lockedText}>오전 9시에 돌아오겠습니다.</Text>
                                     </View>
