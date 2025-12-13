@@ -318,14 +318,18 @@ const CouplesMissionScreen = () => {
 
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <View style={styles.mainContent}>
-                        {/* Day Counter - Changed to D+ format */}
-                        <Text style={styles.dayText}>D + {daysTogether}</Text>
+                        {/* Day Counter */}
+                        <Text style={styles.dayText}>Day {daysTogether}</Text>
                         <Text style={styles.greetingText}>
-                            {isSpecialMission ? "운명의 날" : "오늘의 연결"}
+                            인연이 시작된 지 {daysTogether}일째
                         </Text>
-                        <Text style={styles.subText}>
-                            두 사람의 파장을 동기화하고 있습니다...
-                        </Text>
+
+                        {/* User Profile Photo - Same as HomeScreen */}
+                        <View style={styles.userPhotoContainer}>
+                            <View style={styles.userPhoto}>
+                                <Text style={{ fontSize: 40, opacity: 0.5 }}>💑</Text>
+                            </View>
+                        </View>
 
                         {/* AI Signal Display */}
                         {aiAnalysis && (
@@ -573,6 +577,32 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: FONTS.serif,
     },
+
+    // User Photo - Same as HomeScreen
+    userPhotoContainer: {
+        marginTop: 10,
+        marginBottom: 35,
+        alignItems: 'center',
+    },
+    userPhoto: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...(Platform.OS === 'web'
+            ? { boxShadow: '0 0 15px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)' }
+            : {
+                shadowColor: '#FFFFFF',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.4,
+                shadowRadius: 15,
+            }
+        ),
+    } as any,
 
     // Mission Card - Same as HomeScreen
     missionContainer: {

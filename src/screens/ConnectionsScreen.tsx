@@ -310,8 +310,15 @@ const ConnectionsScreen = () => {
                             Day {daysTogether}
                         </Text>
                         <Text style={styles.greetingText}>
-                            {isSpecialMission ? "운명의 날" : "깊어지는 사랑"}
+                            인연이 시작된 지 {daysTogether}일째
                         </Text>
+
+                        {/* User Profile Photo - Same as HomeScreen */}
+                        <View style={styles.userPhotoContainer}>
+                            <View style={styles.userPhoto}>
+                                <Text style={{ fontSize: 40, opacity: 0.5 }}>💑</Text>
+                            </View>
+                        </View>
 
                         {/* AI Analysis Display (Same as HomeScreen) */}
                         {aiAnalysis && (
@@ -532,25 +539,61 @@ const styles = StyleSheet.create({
         fontFamily: FONTS.serif,
     },
     dayText: {
-        color: COLORS.gold,
-        fontSize: 16,
+        color: '#FFFFFF',
+        fontSize: 48,
         fontWeight: 'bold',
-        marginTop: 20,
-        marginBottom: 5,
+        marginTop: 30,
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 15px rgba(255, 255, 255, 0.3)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.3)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 15,
+            }
+        ),
         fontFamily: FONTS.serif,
-    },
+    } as any,
+
     greetingText: {
         color: '#fff',
         fontSize: 28,
         fontWeight: 'bold',
-        marginBottom: 30,
+        marginBottom: 10,
         textAlign: 'center',
         fontFamily: FONTS.serif,
     },
+
+    // User Photo - Same as HomeScreen
+    userPhotoContainer: {
+        marginTop: 10,
+        marginBottom: 35,
+        alignItems: 'center',
+    },
+    userPhoto: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...(Platform.OS === 'web'
+            ? { boxShadow: '0 0 15px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.2)' }
+            : {
+                shadowColor: '#FFFFFF',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.4,
+                shadowRadius: 15,
+            }
+        ),
+    } as any,
+
     missionContainer: {
         width: '100%',
         marginBottom: 20,
     },
+
     missionCard: {
         padding: 25,
         alignItems: 'center',

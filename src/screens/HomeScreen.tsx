@@ -632,8 +632,9 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     <View style={styles.mainContent}>
                         <Text style={styles.dayText}>Day {dayCount}</Text>
                         <Text style={styles.greetingText}>
-                            인연이 시작된 지 {dayCount}일째
+                            내면 여정 {dayCount}일째
                         </Text>
+
 
                         {/* User Profile Photo - Clickable */}
                         <TouchableOpacity
