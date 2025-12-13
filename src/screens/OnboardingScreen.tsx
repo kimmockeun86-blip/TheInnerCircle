@@ -357,26 +357,8 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                             title={option.label}
                             onPress={() => {
                                 const valueToSave = String(option.value);
-
-                                // Special handling for location
-                                if (currentScript.id === 'userLocation' && option.value === 'Other') {
-                                    Alert.alert(
-                                        '안내',
-                                        '현재 매칭 파동은 서울과 경기 지역에만 닿고 있습니다.\n하지만 내면의 성장을 위한 수련은 언제든 가능합니다.',
-                                        [
-                                            {
-                                                text: '확인',
-                                                onPress: () => {
-                                                    setAnswers({ ...answers, [currentScript.id!]: valueToSave });
-                                                    handleNext(valueToSave);
-                                                }
-                                            }
-                                        ]
-                                    );
-                                } else {
-                                    setAnswers({ ...answers, [currentScript.id!]: valueToSave });
-                                    handleNext(valueToSave);
-                                }
+                                setAnswers({ ...answers, [currentScript.id!]: valueToSave });
+                                handleNext(valueToSave);
                             }}
                             variant="outline"
                             style={{ marginBottom: 10, width: '100%', borderColor: '#FFF' }}

@@ -1018,8 +1018,8 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                             <Text style={styles.introText}>
                                 당신의 결핍인 '{deficit}'을(를) 성장의 씨앗으로 삼아,{'\n'}
                                 10일간의 내면 여행을 시작합니다.{'\n\n'}
-                                매일 주어지는 미션을 수행하고{'\\n'}
-                                기록을 남겨주세요.{'\\n\\n'}
+                                매일 주어지는 미션을 수행하고{'\n'}
+                                기록을 남겨주세요.{'\n\n'}
                                 당신의 영혼을 돌보는 멘토 '오르빗'이 함께합니다.
                             </Text>
                             <HolyButton
