@@ -11,6 +11,7 @@ import HolyButton from '../components/HolyButton';
 import { COLORS, LAYOUT, FONTS } from '../theme/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import notificationService from '../services/NotificationService';
+import LocationService from '../services/LocationService';
 
 // Placeholder images
 const malePlaceholder = require('../../assets/male_placeholder.png');
@@ -240,8 +241,19 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                     await loadJournalHistory();
 
+                    // GPS 위치 수집 (매칭 시스템용)
+                    try {
+                        const location = await LocationService.getCurrentLocation();
+                        if (location) {
+                            console.log('[HomeScreen] GPS 위치 수집 완료:', location);
+                        }
+                    } catch (e) {
+                        console.log('GPS 위치 수집 실패 (무시):', e);
+                    }
+
                     // Background Matching Check (Day 10+)
                     if (currentDayCount >= 10 && !storedMatchResult) {
+
                         checkBackgroundMatching();
                         // Check inbox for new letters
                         try {
