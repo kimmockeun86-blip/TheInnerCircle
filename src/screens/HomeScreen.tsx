@@ -1012,22 +1012,31 @@ const styles = StyleSheet.create({
         textAlign: 'justify',
     },
 
-    // Signal Card (ORBIT's Analysis)
+    // Signal Card (ORBIT's Analysis) - Same style as mission card
     signalCard: {
         marginBottom: 15,
-        backgroundColor: 'rgba(100, 50, 150, 0.15)',
-        borderColor: 'rgba(150, 100, 255, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderColor: 'rgba(255, 255, 255, 0.15)',
     },
     signalLabel: {
-        color: COLORS.gold,
+        color: '#FFFFFF',
         fontSize: 12,
         fontWeight: 'bold',
         letterSpacing: 2,
         marginBottom: 10,
-    },
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 10px rgba(255, 255, 255, 0.5)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.5)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 10,
+            }
+        ),
+    } as any,
     signalText: {
         color: 'rgba(255, 255, 255, 0.85)',
         fontSize: 14,
+
         lineHeight: 22,
     },
 
