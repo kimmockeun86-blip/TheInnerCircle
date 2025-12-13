@@ -9,6 +9,26 @@ const fs = require('fs');
 const mongoose = require('mongoose');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+// Firebase Admin SDK
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin (using service account or default credentials)
+try {
+    admin.initializeApp({
+        credential: admin.credential.cert({
+            projectId: "orbit-920a0",
+            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL
+        }),
+        storageBucket: "orbit-920a0.firebasestorage.app"
+    });
+    console.log('Firebase Admin SDK initialized.');
+} catch (e) {
+    console.log('Firebase Admin SDK initialization skipped (already initialized or missing credentials)');
+}
+
+const firestore = admin.firestore ? admin.firestore() : null;
+
 console.log('Dependencies loaded.');
 
 const app = express();
