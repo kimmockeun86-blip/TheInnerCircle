@@ -22,6 +22,10 @@ import { COLORS } from '../theme/theme';
 import MysticVisualizer from '../components/MysticVisualizer';
 import HolyButton from '../components/HolyButton';
 import { personaScripts, soloScripts, coupleScripts, PersonaScript } from '../services/PersonaService';
+import LocationService from '../services/LocationService';
+import MatchingService from '../services/MatchingService';
+import { db } from '../config/firebase';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 
 interface OnboardingScreenProps {
     navigation: any;
@@ -177,6 +181,41 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             }
             await AsyncStorage.setItem('hasOnboarded', 'true');
             await AsyncStorage.setItem('dayCount', '1');
+
+            // Generate unique user ID
+            const uniqueId = `user_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+            await AsyncStorage.setItem('userId', uniqueId);
+
+            // Get GPS location for matching
+            let userLocation = null;
+            try {
+                userLocation = await LocationService.getCurrentLocation();
+                console.log('[Onboarding] GPS 위치 수집:', userLocation);
+            } catch (e) {
+                console.log('[Onboarding] GPS 위치 수집 실패 (무시)');
+            }
+
+            // Save user profile to Firestore
+            try {
+                const userProfile = {
+                    uid: uniqueId,
+                    name: answers['userName'] || '구도자',
+                    age: parseInt(answers['userAge']) || 25,
+                    gender: answers['userGender'] || '미입력',
+                    deficit: answers['userDeficit'] || '성장',
+                    job: answers['userJob'] || '미입력',
+                    location: userLocation,
+                    dayCount: 1,
+                    isMatchingActive: phase !== 'couple', // 솔로모드만 매칭 활성화
+                    createdAt: Timestamp.now()
+                };
+
+                await setDoc(doc(db, 'users', uniqueId), userProfile);
+                console.log('[Onboarding] Firestore 사용자 프로필 저장 완료:', uniqueId);
+            } catch (e) {
+                console.error('[Onboarding] Firestore 저장 실패:', e);
+                // 실패해도 계속 진행 (로컬 저장은 완료됨)
+            }
 
             // Bright Flash Effect
             Animated.sequence([

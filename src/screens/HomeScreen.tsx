@@ -12,6 +12,7 @@ import { COLORS, LAYOUT, FONTS } from '../theme/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import notificationService from '../services/NotificationService';
 import LocationService from '../services/LocationService';
+import MatchingService from '../services/MatchingService';
 
 // Placeholder images
 const malePlaceholder = require('../../assets/male_placeholder.png');
@@ -112,26 +113,57 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
         }
     };
 
-    // Background Matching - Silently check for compatible matches
+    // Background Matching - Silently check for compatible matches via Firebase
     const checkBackgroundMatching = async () => {
         try {
-            const storedLocation = await AsyncStorage.getItem('userLocation') || 'Seoul';
-            const storedGender = await AsyncStorage.getItem('userGender') || 'male';
-            const storedMbti = await AsyncStorage.getItem('userMBTI') || '';
+            const storedUserId = await AsyncStorage.getItem('userId');
+            const storedGender = await AsyncStorage.getItem('userGender') || '남성';
             const storedDeficit = await AsyncStorage.getItem('userDeficit') || '';
+            const storedAge = await AsyncStorage.getItem('userAge');
+            const location = await LocationService.getSavedLocation();
 
-            const result = await api.getMatchingCandidates({
-                userId: `user_${name}`,
-                userLocation: storedLocation,
-                userGender: storedGender,
-                userMbti: storedMbti,
-                userDeficit: storedDeficit
-            });
+            // Create user profile for matching
+            const userProfile = {
+                uid: storedUserId || `user_${name}`,
+                name: name,
+                age: parseInt(storedAge || '25'),
+                gender: storedGender,
+                deficit: storedDeficit,
+                location: location,
+                dayCount: dayCount,
+                isMatchingActive: true
+            };
 
-            if (result.success && result.candidates.length > 0) {
-                // Found a match candidate! Show as special mission
-                setMatchCandidate(result.candidates[0]);
-                console.log('[ORBIT] 🎯 Match candidate found:', result.candidates[0].name);
+            // Try Firebase MatchingService first
+            const candidates = await MatchingService.findMatchCandidates(userProfile);
+
+            if (candidates.length > 0) {
+                // Found match candidates from Firebase!
+                const topCandidate = candidates[0];
+                setMatchCandidate({
+                    id: topCandidate.uid,
+                    name: topCandidate.name,
+                    age: topCandidate.age,
+                    photo: topCandidate.photo,
+                    bio: topCandidate.bio || '',
+                    deficit: topCandidate.deficit,
+                    distance: topCandidate.distanceText
+                });
+                console.log('[ORBIT] 🎯 Firebase에서 매칭 후보 발견:', topCandidate.name, topCandidate.distanceText);
+            } else {
+                // Fallback to old API (Mock data)
+                const result = await api.getMatchingCandidates({
+                    userId: `user_${name}`,
+                    userLocation: location ? 'Seoul' : 'Seoul',
+                    userGender: storedGender,
+                    userMbti: '',
+                    userDeficit: storedDeficit
+                });
+
+                if (result.success && result.candidates.length > 0) {
+                    setMatchCandidate(result.candidates[0]);
+                    console.log('[ORBIT] 🎯 Mock 데이터에서 매칭 후보 발견:', result.candidates[0].name);
+                }
             }
         } catch (error) {
             console.error('Background matching error:', error);
