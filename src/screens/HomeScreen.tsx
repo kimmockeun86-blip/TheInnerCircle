@@ -875,10 +875,17 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                             {matchCandidate && (
                                 <View style={styles.matchCandidateProfile}>
-                                    <Image
-                                        source={{ uri: matchCandidate.photo }}
-                                        style={styles.matchCandidatePhoto}
-                                    />
+                                    {/* 블러 처리된 사진 - 매칭 수락 전 */}
+                                    <View style={styles.blurPhotoContainer}>
+                                        <Image
+                                            source={{ uri: matchCandidate.photo }}
+                                            style={[styles.matchCandidatePhoto, { opacity: 0.7 }]}
+                                            blurRadius={Platform.OS === 'ios' ? 15 : 10}
+                                        />
+                                        <View style={styles.blurOverlay}>
+                                            <Text style={{ color: '#fff', fontSize: 24 }}>👤</Text>
+                                        </View>
+                                    </View>
                                     <Text style={styles.matchCandidateName}>
                                         {matchCandidate.name}, {matchCandidate.age}
                                     </Text>
@@ -1538,7 +1545,9 @@ const styles = StyleSheet.create({
     matchModalBadge: { color: COLORS.gold, fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 5 },
     matchModalTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
     matchCandidateProfile: { alignItems: 'center', marginBottom: 20 },
-    matchCandidatePhoto: { width: 100, height: 100, borderRadius: 50, marginBottom: 15, borderWidth: 2, borderColor: COLORS.gold },
+    blurPhotoContainer: { position: 'relative', width: 100, height: 100, marginBottom: 15 },
+    blurOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 50, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+    matchCandidatePhoto: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: COLORS.gold },
     matchCandidateName: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
     matchCandidateDetail: { color: '#aaa', fontSize: 14, marginTop: 5 },
     matchCandidateDeficit: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, marginTop: 10 },
