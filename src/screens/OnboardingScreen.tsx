@@ -26,6 +26,7 @@ import LocationService from '../services/LocationService';
 import MatchingService from '../services/MatchingService';
 import { db } from '../config/firebase';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
+import StorageService from '../services/StorageService';
 
 interface OnboardingScreenProps {
     navigation: any;
@@ -195,9 +196,20 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                 console.log('[Onboarding] GPS 위치 수집 실패 (무시)');
             }
 
+            // Upload profile photo to Firebase Storage (non-blocking)
+            let photoURL = null;
+            if (selectedImage) {
+                try {
+                    photoURL = await StorageService.uploadProfilePhoto(uniqueId, selectedImage);
+                    console.log('[Onboarding] 프로필 사진 업로드 완료:', photoURL);
+                } catch (e) {
+                    console.log('[Onboarding] 프로필 사진 업로드 실패 (무시)');
+                }
+            }
+
             // Save user profile to Firestore (non-blocking)
             try {
-                const userProfile = {
+                const userProfile: any = {
                     uid: uniqueId,
                     name: answers['userName'] || '구도자',
                     age: parseInt(answers['userAge']) || 25,
@@ -209,6 +221,11 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     isMatchingActive: phase !== 'couple',
                     createdAt: Timestamp.now()
                 };
+
+                // Add photoURL if available
+                if (photoURL) {
+                    userProfile.photoURL = photoURL;
+                }
 
                 setDoc(doc(db, 'users', uniqueId), userProfile)
                     .then(() => console.log('[Onboarding] Firestore 저장 완료:', uniqueId))
