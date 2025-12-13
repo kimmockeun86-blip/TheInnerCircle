@@ -269,22 +269,27 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                 }
             };
 
-            // Bright Flash Effect
-            Animated.sequence([
-                Animated.timing(flashAnim, {
-                    toValue: 1,
-                    duration: 500,
-                    useNativeDriver: Platform.OS !== 'web',
-                }),
-                Animated.timing(flashAnim, {
-                    toValue: 0,
-                    duration: 1000,
-                    useNativeDriver: Platform.OS !== 'web',
-                })
-            ]).start(() => {
-                // 콜백은 sync로 실행
+            // Bright Flash Effect (웹에서는 애니메이션 콜백 문제 회피)
+            if (Platform.OS === 'web') {
+                // 웹: 애니메이션 없이 바로 네비게이션
                 navigateToNextScreen();
-            });
+            } else {
+                // 네이티브: 애니메이션 후 네비게이션
+                Animated.sequence([
+                    Animated.timing(flashAnim, {
+                        toValue: 1,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(flashAnim, {
+                        toValue: 0,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    })
+                ]).start(() => {
+                    navigateToNextScreen();
+                });
+            }
 
         } catch (error) {
             console.error('Error saving onboarding data:', error);
