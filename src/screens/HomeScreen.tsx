@@ -199,9 +199,21 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 const letters = await MatchingService.getReceivedLetters(storedUserId || `user_${name}`);
                 if (letters.length > 0) {
                     const reply = letters[0];
+
+                    // Save match to Firestore
+                    const matchResult = await MatchingService.acceptMatch(
+                        storedUserId || `user_${name}`,
+                        matchCandidate.id
+                    );
+
+                    if (matchResult.success) {
+                        console.log('[ORBIT] 매칭 저장 완료:', matchResult.matchId);
+                    }
+
                     setMatchResult('success');
                     await AsyncStorage.setItem('matchResult', 'success');
                     await AsyncStorage.setItem('matchedPartner', JSON.stringify(matchCandidate));
+                    await AsyncStorage.setItem('isCoupled', 'coupled');
                     Alert.alert('🎉 축하합니다!', `${matchCandidate.name}님도 만남을 원했습니다!\n커플 미션이 시작됩니다.`, [
                         { text: '시작하기', onPress: () => navigation.replace('CouplesMission', {} as any) }
                     ]);
