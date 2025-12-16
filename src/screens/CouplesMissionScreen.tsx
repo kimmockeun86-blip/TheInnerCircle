@@ -11,6 +11,7 @@ import { COLORS, FONTS } from '../theme/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
 import notificationService from '../services/NotificationService';
+import MatchingService from '../services/MatchingService';
 
 // Couple placeholder image - 솔로모드와 유사한 스타일
 const couplePlaceholder = require('../../assets/couple_placeholder.png');
@@ -54,6 +55,7 @@ const CouplesMissionScreen = () => {
     const [relationshipLevel, setRelationshipLevel] = useState(1);
     const [relationshipPhase, setRelationshipPhase] = useState('탐색기');
     const [nextMissionUnlockTime, setNextMissionUnlockTime] = useState<string | null>(null);
+    const [countdown, setCountdown] = useState('00:00:00');
 
 
     // Visualizer Mode
@@ -74,25 +76,19 @@ const CouplesMissionScreen = () => {
 
             if (lastCompletedDate) {
                 const now = new Date();
-                const lastDate = new Date(lastCompletedDate);
-                const isSameDay = now.getDate() === lastDate.getDate() &&
-                    now.getMonth() === lastDate.getMonth() &&
-                    now.getFullYear() === lastDate.getFullYear();
-
                 const unlockHour = 9;
-                const currentHour = now.getHours();
 
-                if (isSameDay) {
-                    const tomorrow = new Date(now);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(unlockHour, 0, 0, 0);
-                    setNextMissionUnlockTime(tomorrow.toLocaleString());
-                    await notificationService.scheduleMissionNotification();
-                    canUnlock = false;
-                } else if (currentHour < unlockHour) {
-                    const todayUnlock = new Date(now);
-                    todayUnlock.setHours(unlockHour, 0, 0, 0);
-                    setNextMissionUnlockTime(todayUnlock.toLocaleString());
+                // "바로 돌아오는 오전 9시" 계산
+                const next9AM = new Date(now);
+                if (now.getHours() >= unlockHour) {
+                    // 오전 9시 이후면 다음날 오전 9시
+                    next9AM.setDate(next9AM.getDate() + 1);
+                }
+                next9AM.setHours(unlockHour, 0, 0, 0);
+
+                // 아직 다음 9시가 안 왔으면 대기
+                if (now < next9AM) {
+                    setNextMissionUnlockTime(next9AM.toLocaleString());
                     await notificationService.scheduleMissionNotification();
                     canUnlock = false;
                 } else {
@@ -138,7 +134,39 @@ const CouplesMissionScreen = () => {
             const storedCouplePhoto = await AsyncStorage.getItem('couplePhoto');
             if (storedCouplePhoto) setCouplePhoto(storedCouplePhoto);
 
-            // Load Current Mission
+            // ============================================
+            // 🎯 관리자 부여 미션 체크 (OrbitAdmin 서버)
+            // ============================================
+            try {
+                const adminApiUrl = Platform.OS === 'web' ? 'http://localhost:3001' : 'http://localhost:3001';
+                const userId = await AsyncStorage.getItem('userId') || storedName || '';
+                if (userId) {
+                    const res = await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`);
+                    const data = await res.json();
+                    if (data.success && data.user?.assignedMission) {
+                        const adminMission = data.user.assignedMission;
+                        const missionDay = data.user.missionDay;
+                        const today = new Date().toISOString().split('T')[0];
+
+                        // 오늘 부여된 미션이거나 최근 미션이면 적용
+                        console.log(`[ORBIT Couple] 🎯 관리자 미션 발견: ${adminMission}`);
+                        setCurrentMissionText(adminMission);
+                        await AsyncStorage.setItem(`couple_mission_day_${currentDay}`, adminMission);
+                        setAiAnalysis('관리자가 특별히 부여한 리추얼입니다.');
+
+                        // 미션 적용 후 서버에서 삭제 (선택사항)
+                        // await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`, {
+                        //     method: 'PUT',
+                        //     headers: { 'Content-Type': 'application/json' },
+                        //     body: JSON.stringify({ assignedMission: null })
+                        // });
+                    }
+                }
+            } catch (adminErr) {
+                console.log('[ORBIT Couple] 관리자 서버 연결 실패 (정상 - 로컬 미션 사용)');
+            }
+
+            // Load Current Mission (로컬 저장소)
             const storedMission = await AsyncStorage.getItem(`couple_mission_day_${currentDay}`);
             const storedAnalysis = await AsyncStorage.getItem(`couple_analysis_day_${currentDay}`);
             const storedFeedback = await AsyncStorage.getItem(`couple_feedback_day_${currentDay}`);
@@ -187,95 +215,176 @@ const CouplesMissionScreen = () => {
         }, [])
     );
 
+    // Countdown timer (same as HomeScreen - fixed)
+    const calculateCountdown = () => {
+        const now = new Date();
+        const next9AM = new Date(now);
+
+        // 오전 9시 이전이면 오늘 9시, 이후면 내일 9시
+        if (now.getHours() >= 9) {
+            next9AM.setDate(next9AM.getDate() + 1);
+        }
+        next9AM.setHours(9, 0, 0, 0);
+
+        const diff = next9AM.getTime() - now.getTime();
+        if (diff <= 0) {
+            setCountdown('00:00:00');
+            return;
+        }
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        setCountdown(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+    };
+
+    useEffect(() => {
+        if (nextMissionUnlockTime) {
+            calculateCountdown();
+            const interval = setInterval(calculateCountdown, 1000);
+            return () => clearInterval(interval);
+        }
+    }, [nextMissionUnlockTime]);
+
+    // [개발자용] 타이머 넘기기 - 테스트용
+    const skipTimer = async () => {
+        await AsyncStorage.removeItem('coupleLastCompletedDate');
+        setNextMissionUnlockTime(null);
+        Alert.alert('✅ 개발자 모드', '타이머가 리셋되었습니다. 페이지를 새로고침합니다.', [
+            { text: '확인', onPress: () => window.location?.reload?.() }
+        ]);
+    };
+
     const pickImage = async () => {
-        Alert.alert(
-            "사진 추가",
-            "사진을 가져올 방법을 선택하세요.",
-            [
-                {
-                    text: "카메라로 촬영",
-                    onPress: async () => {
-                        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-                        if (status !== 'granted') {
-                            Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
-                            return;
+        // 웹에서는 직접 file input 사용
+        if (Platform.OS === 'web') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e: any) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event: any) => {
+                        setSelectedImage(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        } else {
+            // 모바일에서는 기존 Alert 사용
+            Alert.alert(
+                "사진 추가",
+                "사진을 가져올 방법을 선택하세요.",
+                [
+                    {
+                        text: "카메라로 촬영",
+                        onPress: async () => {
+                            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                            if (status !== 'granted') {
+                                Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+                                return;
+                            }
+                            const result = await ImagePicker.launchCameraAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: false,
+                                aspect: [4, 3],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                setSelectedImage(result.assets[0].uri);
+                            }
                         }
-                        const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: false,
-                            aspect: [4, 3],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            setSelectedImage(result.assets[0].uri);
+                    },
+                    {
+                        text: "앨범에서 선택",
+                        onPress: async () => {
+                            const result = await ImagePicker.launchImageLibraryAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: false,
+                                aspect: [4, 3],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                setSelectedImage(result.assets[0].uri);
+                            }
                         }
-                    }
-                },
-                {
-                    text: "앨범에서 선택",
-                    onPress: async () => {
-                        const result = await ImagePicker.launchImageLibraryAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: false,
-                            aspect: [4, 3],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            setSelectedImage(result.assets[0].uri);
-                        }
-                    }
-                },
-                { text: "취소", style: "cancel" }
-            ]
-        );
+                    },
+                    { text: "취소", style: "cancel" }
+                ]
+            );
+        }
     };
 
     // Pick Couple Photo
     const pickCouplePhoto = async () => {
-        Alert.alert(
-            "커플 사진",
-            "둘만의 사진을 추가하세요",
-            [
-                {
-                    text: "카메라",
-                    onPress: async () => {
-                        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-                        if (status !== 'granted') {
-                            Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
-                            return;
+        // 웹에서는 직접 file input 사용
+        if (Platform.OS === 'web') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async (e: any) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = async (event: any) => {
+                        const photoUri = event.target.result;
+                        setCouplePhoto(photoUri);
+                        await AsyncStorage.setItem('couplePhoto', photoUri);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        } else {
+            // 모바일에서는 기존 Alert 사용
+            Alert.alert(
+                "커플 사진",
+                "둘만의 사진을 추가하세요",
+                [
+                    {
+                        text: "카메라",
+                        onPress: async () => {
+                            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                            if (status !== 'granted') {
+                                Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+                                return;
+                            }
+                            const result = await ImagePicker.launchCameraAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: true,
+                                aspect: [1, 1],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                const photoUri = result.assets[0].uri;
+                                setCouplePhoto(photoUri);
+                                await AsyncStorage.setItem('couplePhoto', photoUri);
+                            }
                         }
-                        const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: true,
-                            aspect: [1, 1],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            const photoUri = result.assets[0].uri;
-                            setCouplePhoto(photoUri);
-                            await AsyncStorage.setItem('couplePhoto', photoUri);
+                    },
+                    {
+                        text: "앨범",
+                        onPress: async () => {
+                            const result = await ImagePicker.launchImageLibraryAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: true,
+                                aspect: [1, 1],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                const photoUri = result.assets[0].uri;
+                                setCouplePhoto(photoUri);
+                                await AsyncStorage.setItem('couplePhoto', photoUri);
+                            }
                         }
-                    }
-                },
-                {
-                    text: "앨범",
-                    onPress: async () => {
-                        const result = await ImagePicker.launchImageLibraryAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: true,
-                            aspect: [1, 1],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            const photoUri = result.assets[0].uri;
-                            setCouplePhoto(photoUri);
-                            await AsyncStorage.setItem('couplePhoto', photoUri);
-                        }
-                    }
-                },
-                { text: "취소", style: "cancel" }
-            ]
-        );
+                    },
+                    { text: "취소", style: "cancel" }
+                ]
+            );
+        }
     };
 
     const handleAnalyze = async () => {
@@ -357,6 +466,26 @@ const CouplesMissionScreen = () => {
                 setMissionHistory(updatedHistory);
                 await AsyncStorage.setItem('coupleMissionHistory', JSON.stringify(updatedHistory));
 
+                // Firebase에도 커플 수행기록 저장 (비동기, 실패해도 앱 동작에 영향 없음)
+                try {
+                    const storedUserId = await AsyncStorage.getItem('userId');
+                    await MatchingService.saveJournalRecord({
+                        id: `couple_journal_${Date.now()}`,
+                        uid: storedUserId || '',
+                        type: 'couple',
+                        day: daysTogether,
+                        date: new Date().toLocaleDateString(),
+                        content: reflection,
+                        mission: currentMissionText,
+                        analysis: data.analysis,
+                        feedback: data.feedback,
+                        createdAt: new Date().toISOString()
+                    });
+                    console.log('[ORBIT Couple] ✅ Firebase 수행기록 저장 완료');
+                } catch (firebaseError) {
+                    console.log('[ORBIT Couple] Firebase 수행기록 저장 실패 (무시):', firebaseError);
+                }
+
                 // Relationship Level progression (separate from Day)
                 // Day는 날짜 기반 (loadData에서 처리), 여기서는 레벨만 결정
                 const storedRelLevel = await AsyncStorage.getItem('coupleRelationshipLevel');
@@ -383,11 +512,14 @@ const CouplesMissionScreen = () => {
                 // Mark today as completed (Day will increase on next 9 AM unlock)
                 await AsyncStorage.setItem('coupleLastCompletedDate', new Date().toISOString());
 
-                // Set lock time for tomorrow 9 AM
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                tomorrow.setHours(9, 0, 0, 0);
-                setNextMissionUnlockTime(tomorrow.toLocaleString());
+                // "바로 돌아오는 오전 9시" 설정
+                const now = new Date();
+                const next9AM = new Date(now);
+                if (now.getHours() >= 9) {
+                    next9AM.setDate(next9AM.getDate() + 1);
+                }
+                next9AM.setHours(9, 0, 0, 0);
+                setNextMissionUnlockTime(next9AM.toLocaleString());
 
                 setReflection('');
                 setSelectedImage(null);
@@ -409,21 +541,41 @@ const CouplesMissionScreen = () => {
         <View style={styles.container}>
             {/* Background - Same as HomeScreen */}
             <View style={styles.visualizerBackground}>
-                <MysticVisualizer
-                    isActive={true}
-                    mode={visualizerMode}
-                    sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode"
-                />
+                <MysticVisualizer isActive={true} mode={visualizerMode} sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode" />
             </View>
 
             <SafeAreaView style={styles.safeArea}>
                 {/* Header - Same as HomeScreen */}
                 <View style={styles.header}>
+                    {/* Spline Animation - Behind Text (Same as HomeScreen) */}
+                    {Platform.OS === 'web' && (
+                        <View style={styles.headerOrbitAnimation}>
+                            <iframe
+                                srcDoc={`<!DOCTYPE html><html><head><style>*{margin:0;padding:0;}html,body{width:100%;height:100%;overflow:hidden;background:transparent;}spline-viewer{width:100%;height:100%;display:block;transform:scale(0.175);transform-origin:center center;}</style><script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js"></script></head><body><spline-viewer url="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"></spline-viewer></body></html>`}
+                                style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
+                                title="Orbit Animation"
+                            />
+                        </View>
+                    )}
+                    {/* ORBIT Text - On Top */}
                     <Text style={styles.headerTitle}>ORBIT</Text>
                 </View>
 
+                {/* 개발자 도구 - 좌상단 고정 */}
+                <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 999, flexDirection: 'row', gap: 5 }}>
+                    <TouchableOpacity
+                        onPress={skipTimer}
+                        style={{ backgroundColor: 'rgba(255,0,255,0.3)', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#FF00FF' }}
+                    >
+                        <Text style={{ color: '#FF00FF', fontSize: 10 }}>⏭️ 타이머</Text>
+                    </TouchableOpacity>
+                </View>
 
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                    showsHorizontalScrollIndicator={false}
+                >
                     <View style={styles.mainContent}>
                         {/* Day Counter */}
                         <Text style={styles.dayText}>Day {daysTogether}</Text>
@@ -460,18 +612,17 @@ const CouplesMissionScreen = () => {
                         <View style={styles.missionContainer}>
                             <GlassCard style={[styles.missionCard, isSpecialMission && styles.specialCard, nextMissionUnlockTime && styles.lockedCard]}>
                                 <Text style={[styles.missionLabel, isSpecialMission && styles.specialLabel]}>
-                                    {isSpecialMission ? "✨ SPECIAL RITUAL" : "TODAY'S CONNECTION"}
+                                    {isSpecialMission ? "✨ 특별 리추얼" : "오늘의 리추얼"}
                                 </Text>
                                 {nextMissionUnlockTime ? (
                                     <View style={styles.lockedMissionContainer}>
-                                        <Text style={styles.lockedIcon}>◯</Text>
-                                        <Text style={styles.lockedText}>미션이 잠겨 있습니다</Text>
-                                        <Text style={styles.unlockTimeText}>
-                                            공개 예정: {nextMissionUnlockTime}
-                                        </Text>
-                                        <Text style={styles.unlockHint}>
-                                            다음날 오전 9시에 새로운 미션이 공개됩니다
-                                        </Text>
+                                        <Text style={styles.countdownTimer}>{countdown}</Text>
+                                        <Text style={styles.lockedText}>오전 9시에 돌아오겠습니다.</Text>
+                                        {missionHistory.length > 0 && (
+                                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginTop: 20, textAlign: 'center' }}>
+                                                최근 완수한 미션{'\n'}{missionHistory[0]?.mission || currentMissionText}
+                                            </Text>
+                                        )}
                                     </View>
                                 ) : (
                                     <Text style={styles.missionText}>
@@ -482,12 +633,14 @@ const CouplesMissionScreen = () => {
                         </View>
 
 
-                        {/* Action Button */}
-                        <HolyButton
-                            title={currentMissionText ? "나의 수행 기록하기" : "여정 시작하기"}
-                            onPress={() => setJournalModalVisible(true)}
-                            style={styles.actionButton}
-                        />
+                        {/* Action Button - Hidden when locked */}
+                        {!nextMissionUnlockTime && (
+                            <HolyButton
+                                title={currentMissionText ? "추억 기록하기" : "여정 시작하기"}
+                                onPress={() => setJournalModalVisible(true)}
+                                style={styles.actionButton}
+                            />
+                        )}
                     </View>
                 </ScrollView>
             </SafeAreaView>
@@ -603,16 +756,13 @@ const CouplesMissionScreen = () => {
                     </ScrollView>
                 </SafeAreaView>
             </Modal>
-        </View>
+        </View >
     );
 };
 
 const styles = StyleSheet.create({
     // Container - Same as HomeScreen
-    container: {
-        flex: 1,
-        backgroundColor: '#000',
-    },
+    container: { flex: 1, backgroundColor: '#000' },
     visualizerBackground: {
         position: 'absolute',
         top: 0,
@@ -621,10 +771,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         zIndex: 0,
     },
-    safeArea: {
-        flex: 1,
-        zIndex: 10,
-    },
+    safeArea: { flex: 1, zIndex: 10 },
 
     // Header - Same as HomeScreen
     header: {
@@ -635,13 +782,33 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'android' ? 40 : 20,
         position: 'relative',
     },
+    headerOrbitAnimation: {
+        position: 'absolute',
+        width: 400,
+        height: 400,
+        zIndex: 1,
+        top: -150,
+        left: '50%',
+        marginLeft: -200,
+        opacity: 0.6,
+    },
     headerTitle: {
         color: '#FFFFFF',
         fontSize: 18,
         fontWeight: 'bold',
         letterSpacing: 3,
         fontFamily: FONTS.title,
-    },
+        zIndex: 10,
+        marginTop: 20,
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 15px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.5), 0 0 45px rgba(255, 255, 255, 0.3)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.8)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 15,
+            }
+        ),
+    } as any,
 
     settingsIcon: {
         fontSize: 24,
@@ -650,7 +817,7 @@ const styles = StyleSheet.create({
     // Content - Same as HomeScreen
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 120,
+        paddingBottom: 180,
         alignItems: 'center',
     },
     mainContent: {
@@ -663,32 +830,33 @@ const styles = StyleSheet.create({
     // Day Display - Modified for Connection
     dayText: {
         color: '#FFFFFF',
-        fontSize: 48,
+        fontSize: 36,
         fontWeight: 'bold',
-        marginTop: 30,
+        marginTop: 20,
+        marginBottom: 5,
         ...(Platform.OS === 'web'
-            ? { textShadow: '0 0 15px rgba(255, 255, 255, 0.3)' }
+            ? { textShadow: '0 0 20px rgba(255, 255, 255, 0.6), 0 0 40px rgba(255, 255, 255, 0.3)' }
             : {
-                textShadowColor: 'rgba(255, 255, 255, 0.3)',
+                textShadowColor: 'rgba(255, 255, 255, 0.6)',
                 textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 15,
+                textShadowRadius: 20,
             }
         ),
         fontFamily: FONTS.title,
     } as any,
     greetingText: {
         color: '#fff',
-        fontSize: 24,
+        fontSize: 16,
         fontWeight: 'bold',
-        marginTop: 10,
+        marginTop: 5,
         marginBottom: 5,
         textAlign: 'center',
         fontFamily: FONTS.serif,
     },
     subText: {
         color: '#888',
-        fontSize: 14,
-        marginBottom: 30,
+        fontSize: 12,
+        marginBottom: 20,
         textAlign: 'center',
         fontFamily: FONTS.serif,
     },
@@ -732,11 +900,10 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 69, 0, 0.1)',
     },
     missionLabel: {
-        color: 'rgba(255, 255, 255, 0.6)',
-        fontSize: 12,
+        color: COLORS.gold,
+        fontSize: 18,
         fontWeight: 'bold',
-        letterSpacing: 2,
-        marginBottom: 15,
+        marginBottom: 10,
         fontFamily: FONTS.title,
     },
     specialLabel: {
@@ -744,30 +911,45 @@ const styles = StyleSheet.create({
     },
     missionText: {
         color: '#fff',
-        fontSize: 18,
+        fontSize: 14,
         textAlign: 'center',
-        lineHeight: 28,
+        lineHeight: 22,
         fontFamily: FONTS.serif,
     },
 
     // Locked Mission Styles
     lockedCard: {
-        borderColor: 'rgba(100, 100, 100, 0.4)',
-        backgroundColor: 'rgba(50, 50, 50, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
     },
     lockedMissionContainer: {
         alignItems: 'center',
-        paddingVertical: 15,
+        paddingVertical: 10,
     },
+    countdownTimer: {
+        fontSize: 42,
+        fontWeight: '400',
+        color: '#FFFFFF',
+        letterSpacing: 4,
+        marginBottom: 15,
+        fontFamily: 'Orbitron_400Regular',
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 20px rgba(255, 255, 255, 0.5), 0 0 40px rgba(255, 255, 255, 0.2)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.5)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 20,
+            }
+        ),
+    } as any,
     lockedIcon: {
         fontSize: 40,
         marginBottom: 10,
     },
     lockedText: {
-        color: '#888',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 8,
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 13,
+        fontWeight: 'normal',
     },
     unlockTimeText: {
         color: COLORS.gold,

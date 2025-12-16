@@ -198,14 +198,19 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             }
 
             // Upload profile photo to Firebase Storage (non-blocking)
+            // Note: selectedImage might be cleared after handleNext, so use answers['userPhoto'] instead
+            const userPhotoUri = answers['userPhoto'] || selectedImage;
             let photoURL = null;
-            if (selectedImage) {
+            if (userPhotoUri) {
                 try {
-                    photoURL = await StorageService.uploadProfilePhoto(uniqueId, selectedImage);
+                    console.log('[Onboarding] 프로필 사진 업로드 시작:', userPhotoUri);
+                    photoURL = await StorageService.uploadProfilePhoto(uniqueId, userPhotoUri);
                     console.log('[Onboarding] 프로필 사진 업로드 완료:', photoURL);
                 } catch (e) {
-                    console.log('[Onboarding] 프로필 사진 업로드 실패 (무시)');
+                    console.error('[Onboarding] 프로필 사진 업로드 실패:', e);
                 }
+            } else {
+                console.log('[Onboarding] 프로필 사진 없음 (userPhoto:', answers['userPhoto'], ', selectedImage:', selectedImage, ')');
             }
 
             // Save user profile to Firestore (non-blocking)
@@ -304,17 +309,22 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     };
 
     const pickImage = async () => {
-        // 웹에서는 카메라가 작동하지 않으므로 바로 파일 선택기 열기
+        // 웹에서는 직접 file input 사용
         if (Platform.OS === 'web') {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [1, 1],
-                quality: 0.8,
-            });
-            if (!result.canceled) {
-                setSelectedImage(result.assets[0].uri);
-            }
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e: any) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event: any) => {
+                        setSelectedImage(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
             return;
         }
 

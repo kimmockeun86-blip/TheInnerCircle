@@ -113,6 +113,19 @@ const ORBIT_SYSTEM_PROMPT = `
 - 조언/피드백 → 시그널 (Signal)
 - 결핍 → 키워드 (Keyword)
 
+【🌟 개인화 메시지 가이드 (사용자 케어)】
+종종 (항상은 아님) 다음과 같은 개인화된 메시지를 시그널에 포함하라:
+- "당신의 기록을 보니 지금 ~~~ 가 필요한 상황인 것 같아요"
+- "지난 여정을 쭉 훑어봤는데, 이 부분이 눈에 띄네요"
+- "제가 당신에게 꼭 필요한 리추얼을 만들어 놓을게요"
+- "당신의 패턴을 분석해보니, 오늘은 이게 필요할 것 같습니다"
+
+이런 메시지는:
+- 사용자가 "나를 신경 써주고 있구나"라고 느끼게 함
+- AI가 기록을 분석해서 맞춤 미션을 준다는 느낌을 줌
+- 매번 사용하면 안 됨 (3~4회에 한 번 정도)
+- 레벨에 맞는 말투 유지 (Lv1~2: 부드럽게, Lv5~6: 권위적으로)
+
 【절대 금지 사항】
 - '분석 결과', '시스템이', '데이터에 따르면' 등 기계적 표현
 - 지나치게 가벼운 말투(해요체 남발)
@@ -484,17 +497,46 @@ ${historyContext || '(첫 번째 기록입니다)'}
         const extractedProfile = jsonResponse.extractedProfile || null;
 
         // Save extracted profile to Firestore if available
-        if (extractedProfile && firestore && req.body.userId) {
+        if (firestore && req.body.userId) {
             try {
-                await firestore.collection('users').doc(req.body.userId).set({
+                const updateData = {
+                    // AI extracted profile
                     aiExtracted: {
-                        ...extractedProfile,
+                        ...(extractedProfile || {}),
+                        personalities: extractedProfile?.personalities || [],
+                        interests: extractedProfile?.interests || [],
+                        values: extractedProfile?.values || [],
+                        communicationStyle: extractedProfile?.communicationStyle || '',
                         lastAnalyzed: new Date()
-                    }
-                }, { merge: true });
-                console.log(`[ORBIT] AI프로필 저장 완료: ${req.body.userId}`);
+                    },
+                    // Growth info
+                    growthLevel: growthLevel,
+                    growthPhase: currentGrowth.phase,
+                    shouldProgress: jsonResponse.shouldProgress !== false,
+                    lastMissionDate: new Date()
+                };
+
+                await firestore.collection('users').doc(req.body.userId).set(updateData, { merge: true });
+
+                // Save journal entry by day (수행기록 날짜별 저장)
+                const journalEntry = {
+                    day: actualDay,
+                    content: actualJournalText,
+                    mission: req.body.mission || '',
+                    feedback: feedbackContent,
+                    score: jsonResponse.score || 80,
+                    growthLevel: growthLevel,
+                    growthPhase: currentGrowth.phase,
+                    shouldProgress: jsonResponse.shouldProgress !== false,
+                    createdAt: new Date()
+                };
+
+                await firestore.collection('users').doc(req.body.userId)
+                    .collection('journals').doc(`day_${actualDay}`).set(journalEntry);
+
+                console.log(`[ORBIT] AI프로필+성장레벨+저널 저장 완료: ${req.body.userId} (Day ${actualDay}, Lv.${growthLevel})`);
             } catch (dbError) {
-                console.log('[ORBIT] AI프로필 Firestore 저장 실패:', dbError.message);
+                console.log('[ORBIT] Firestore 저장 실패:', dbError.message);
             }
         }
 
@@ -586,9 +628,9 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
         // Level-based mission guidance (당신의 인연 사용)
         const levelGuidance = {
             1: {
-                phase: "탐색기",
-                missionType: "가벼운 관심과 대화를 유도하는 미션",
-                examples: "당신의 인연의 눈을 5초간 바라봐라, 당신의 인연의 장점을 하나 말해줘라, 먼저 연락을 건네라",
+                phase: "첫 만남",
+                missionType: "서로를 알아가는 가벼운 대화와 관심 표현",
+                examples: "당신의 인연에게 '오늘 하루 어땠어?'라고 물어봐라, 당신의 인연의 취미를 물어봐라, 당신의 인연에게 미소를 지어줘라",
                 aiTone: "관찰자",
                 aiStyle: "두 분의 관계가 흥미롭군요. 지켜보겠습니다."
             },
@@ -660,8 +702,16 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
             - Lv 3~4: 확신에 찬 리드, 단호한 지시
             - Lv 5~7: 절대적 신뢰를 요구하는 신탁 같은 말투
 
+            【🌟 개인화 메시지 (종종 사용)】
+            가끔 (항상은 아님) 시그널에 다음과 같은 메시지를 포함하라:
+            - "두 분의 기록을 보니 지금 ~~~ 가 필요한 것 같아요"
+            - "당신의 인연에게 꼭 필요한 미션을 준비해놓을게요"
+            - "두 분의 관계 패턴을 분석해보니, 오늘은 이게 필요합니다"
+            ※ 매번 사용 금지 (3~4회에 한 번), 레벨에 맞는 말투 유지
+
             【분석 지시】
-            1. **심연의 시그널**: 두 사람의 관계가 Lv.${currentLevel}(${guidance.phase})에 도달했음을 암시하며, 그들의 영혼이 어떻게 공명하고 있는지 분석하십시오. (3문장, 위 페르소나 스타일 적용)
+            1. **심연의 시그널**: 두 사람의 관계가 ${guidance.phase} 단계에 도달했음을 암시하며, 그들의 영혼이 어떻게 공명하고 있는지 분석하십시오. (3문장, 위 페르소나 스타일 적용)
+               ⚠️ **절대 금지**: 레벨 숫자(Lv.1, Lv.2, 레벨1 등)를 직접 언급하지 마라! 단계명(첫 만남, 친밀기 등)만 사용 가능.
             2. **관계 피드백**: 두 사람의 여정에서 돋보이는 강점과 다음 단계로 가기 위한 조언을 제시하십시오. (2문장)
             3. **운명의 리추얼 (필수 규칙!):**
                ⚠️ **[필수] 반드시 "당신의 인연"이라는 단어가 포함되어야 함!**
@@ -697,8 +747,15 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
             당신은 이제 "${guidance.aiTone}" 모드입니다.
             화법: "${guidance.aiStyle}"
 
+            【🌟 개인화 메시지 (종종 사용)】
+            가끔 (항상은 아님) 시그널에 다음과 같은 메시지를 포함하라:
+            - "두 분의 기록을 보니 지금 ~~~ 가 필요한 것 같아요"
+            - "당신의 인연에게 꼭 필요한 미션을 준비해놓을게요"
+            ※ 매번 사용 금지 (3~4회에 한 번)
+
             【분석 지시】
-            1. **관계의 가능성**: 두 사람의 만남에서 느껴지는 잠재력을 분석하십시오. Lv.${currentLevel} 페르소나로. (3문장)
+            1. **관계의 가능성**: 두 사람의 만남에서 느껴지는 잠재력을 분석하십시오. ${guidance.phase} 단계 페르소나로. (3문장)
+               ⚠️ **절대 금지**: 레벨 숫자(Lv.1, Lv.2, 레벨1 등)를 직접 언급하지 마라!
             2. **숨겨진 의도**: 당신의 인연의 행동에서 읽히는 진심을 추론하십시오. (2문장)
             3. **비밀 리추얼 (필수 규칙!):**
                ⚠️ **[필수] 반드시 "당신의 인연"이라는 단어가 포함되어야 함!**

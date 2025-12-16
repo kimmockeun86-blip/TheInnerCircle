@@ -72,6 +72,33 @@ class NotificationService {
         // For mobile, would use expo-notifications scheduleNotificationAsync
     }
 
+    // 🔔 미션 미완료 리마인더 알림 (오전 9시)
+    async scheduleMissionReminderNotification(): Promise<void> {
+        const now = new Date();
+        const next9AM = new Date();
+        next9AM.setHours(9, 0, 0, 0);
+
+        if (now.getHours() >= 9) {
+            next9AM.setDate(next9AM.getDate() + 1);
+        }
+
+        const msUntil9AM = next9AM.getTime() - now.getTime();
+
+        // 알림 예약 저장
+        await AsyncStorage.setItem('scheduledReminder', next9AM.toISOString());
+
+        if (Platform.OS === 'web') {
+            setTimeout(() => {
+                this.showNotification({
+                    title: '🌟 ORBIT',
+                    body: '미션을 기록하고, 인생을 계획하세요. 저는 당신과 함께하겠습니다.',
+                });
+            }, msUntil9AM);
+
+            console.log(`[Notification] 미션 미완료 리마인더 예약: ${next9AM.toLocaleString()}`);
+        }
+    }
+
     async cancelAllNotifications(): Promise<void> {
         await AsyncStorage.removeItem('scheduledNotification');
         // For mobile: await Notifications.cancelAllScheduledNotificationsAsync();

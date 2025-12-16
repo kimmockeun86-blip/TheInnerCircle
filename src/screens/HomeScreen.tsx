@@ -76,6 +76,16 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     const [matchCandidateModalVisible, setMatchCandidateModalVisible] = useState(false);
     const [letterContent, setLetterContent] = useState('');
     const [photoModalVisible, setPhotoModalVisible] = useState(false);
+    const [letterSent, setLetterSent] = useState(false);
+
+    // 받은 편지 시스템
+    const [receivedLetter, setReceivedLetter] = useState<{ from: string; content: string; date: string } | null>(null);
+    const [receivedLetterModalVisible, setReceivedLetterModalVisible] = useState(false);
+
+    // 만남 확정 시스템
+    const [meetingConfirmed, setMeetingConfirmed] = useState(false);
+    const [meetingDate, setMeetingDate] = useState<string | null>(null);
+    const [meetingDateModalVisible, setMeetingDateModalVisible] = useState(false);
 
 
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
@@ -163,6 +173,23 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 if (result.success && result.candidates.length > 0) {
                     setMatchCandidate(result.candidates[0]);
                     console.log('[ORBIT] 🎯 Mock 데이터에서 매칭 후보 발견:', result.candidates[0].name);
+                } else {
+                    // 모든 방법 실패 시 테스트용 mock 데이터 생성
+                    const mockGender = storedGender === '남성' ? '여성' : '남성';
+                    const mockCandidate = {
+                        id: 'mock_user_' + Date.now(),
+                        name: mockGender === '여성' ? '하늘' : '민준',
+                        age: 28,
+                        photo: mockGender === '여성'
+                            ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300'
+                            : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300',
+                        bio: '진정한 사랑을 찾아 여정 중입니다.',
+                        deficit: storedDeficit || '성장',
+                        mbti: 'INFP',
+                        distance: '5km 이내'
+                    };
+                    setMatchCandidate(mockCandidate);
+                    console.log('[ORBIT] 🎯 테스트용 Mock 데이터 생성:', mockCandidate.name);
                 }
             }
         } catch (error) {
@@ -192,6 +219,20 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             Alert.alert('성공', firebaseResult.message);
             setMatchCandidateModalVisible(false);
             setLetterContent('');
+            setLetterSent(true);
+            await AsyncStorage.setItem('letterSent', 'true');
+
+            // 상대방 편지 수신 시뮬레이션 (5초 후)
+            setTimeout(async () => {
+                const simulatedLetter = {
+                    from: matchCandidate?.name || '비밀의 상대',
+                    content: '안녕하세요! 편지 잘 받았어요. 저도 정말 설레네요. 커피 한잔 하면서 이야기 나눠요. 연락 기다릴게요!',
+                    date: new Date().toLocaleDateString('ko-KR')
+                };
+                setReceivedLetter(simulatedLetter);
+                await AsyncStorage.setItem('receivedLetter', JSON.stringify(simulatedLetter));
+                Alert.alert('편지 도착', '상대방에게서 답장이 도착했습니다.');
+            }, 5000);
 
             // Check for replies after 3 seconds (simulation for now)
             setTimeout(async () => {
@@ -342,6 +383,25 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     const storedMatchResult = await AsyncStorage.getItem('matchResult');
                     if (storedMatchResult) setMatchResult(storedMatchResult as any);
 
+                    // 편지/만남 관련 데이터 복원
+                    const storedLetterSent = await AsyncStorage.getItem('letterSent');
+                    if (storedLetterSent === 'true') setLetterSent(true);
+
+                    const storedReceivedLetter = await AsyncStorage.getItem('receivedLetter');
+                    if (storedReceivedLetter) {
+                        try {
+                            setReceivedLetter(JSON.parse(storedReceivedLetter));
+                        } catch (e) {
+                            console.log('Received letter parse failed');
+                        }
+                    }
+
+                    const storedMeetingConfirmed = await AsyncStorage.getItem('meetingConfirmed');
+                    if (storedMeetingConfirmed === 'true') setMeetingConfirmed(true);
+
+                    const storedMeetingDate = await AsyncStorage.getItem('meetingDate');
+                    if (storedMeetingDate) setMeetingDate(storedMeetingDate);
+
                     await loadJournalHistory();
 
                     // GPS 위치 수집 (매칭 시스템용)
@@ -367,6 +427,15 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                             }
                         } catch (e) {
                             console.log('Inbox check failed silently');
+                        }
+
+                        // 편지 모달 자동 열림 체크 (SpecialMissionIntroScreen에서 돌아온 경우)
+                        const openLetterModal = await AsyncStorage.getItem('openLetterModal');
+                        if (openLetterModal === 'true') {
+                            await AsyncStorage.removeItem('openLetterModal');
+                            setTimeout(() => {
+                                setMatchCandidateModalVisible(true);
+                            }, 500);
                         }
                     }
 
@@ -499,46 +568,65 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     }, [nextMissionUnlockTime]);
 
     const pickImage = async () => {
-        Alert.alert(
-            "사진 추가",
-            "사진을 가져올 방법을 선택하세요.",
-            [
-                {
-                    text: "카메라로 촬영",
-                    onPress: async () => {
-                        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-                        if (status !== 'granted') {
-                            Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
-                            return;
+        // 웹에서는 직접 file input 사용
+        if (Platform.OS === 'web') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e: any) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event: any) => {
+                        setSelectedImage(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        } else {
+            // 모바일에서는 기존 Alert 사용
+            Alert.alert(
+                "사진 추가",
+                "사진을 가져올 방법을 선택하세요.",
+                [
+                    {
+                        text: "카메라로 촬영",
+                        onPress: async () => {
+                            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                            if (status !== 'granted') {
+                                Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+                                return;
+                            }
+                            const result = await ImagePicker.launchCameraAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: false,
+                                aspect: [4, 3],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                setSelectedImage(result.assets[0].uri);
+                            }
                         }
-                        const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: false,
-                            aspect: [4, 3],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            setSelectedImage(result.assets[0].uri);
+                    },
+                    {
+                        text: "앨범에서 선택",
+                        onPress: async () => {
+                            const result = await ImagePicker.launchImageLibraryAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: false,
+                                aspect: [4, 3],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                setSelectedImage(result.assets[0].uri);
+                            }
                         }
-                    }
-                },
-                {
-                    text: "앨범에서 선택",
-                    onPress: async () => {
-                        const result = await ImagePicker.launchImageLibraryAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: false,
-                            aspect: [4, 3],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            setSelectedImage(result.assets[0].uri);
-                        }
-                    }
-                },
-                { text: "취소", style: "cancel" }
-            ]
-        );
+                    },
+                    { text: "취소", style: "cancel" }
+                ]
+            );
+        }
     };
 
     const handleCompleteReflection = async () => {
@@ -586,6 +674,11 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             }));
 
             const formData = new FormData();
+            // User ID for Firebase storage
+            const storedUserId = await AsyncStorage.getItem('userId');
+            if (storedUserId) {
+                formData.append('userId', storedUserId);
+            }
             // Context-aware data
             formData.append('userProfile', JSON.stringify(userProfile));
             formData.append('history', JSON.stringify(history));
@@ -806,8 +899,46 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                             <HolyButton
                                 title="수행 기록 남기기"
                                 onPress={() => setJournalModalVisible(true)}
-                                style={{ marginTop: 20, marginBottom: 20 }}
+                                style={{ marginTop: 20, marginBottom: 10 }}
                             />
+                        )}
+
+                        {/* Day 10+ 특별미션 버튼 */}
+                        {dayCount >= 10 && matchCandidate && !matchResult && !letterSent && (
+                            <HolyButton
+                                title="특별미션 시작하기"
+                                variant="outline"
+                                onPress={() => navigation.navigate('SpecialMissionIntro' as any)}
+                                style={{ marginTop: 10, marginBottom: 10 }}
+                            />
+                        )}
+
+                        {/* 받은 편지 읽기 버튼 */}
+                        {receivedLetter && !meetingConfirmed && (
+                            <HolyButton
+                                title="받은 편지 읽기"
+                                variant="outline"
+                                onPress={() => setReceivedLetterModalVisible(true)}
+                                style={{ marginTop: 10, marginBottom: 10 }}
+                            />
+                        )}
+
+                        {/* 만남 확정 버튼 */}
+                        {receivedLetter && !meetingConfirmed && (
+                            <HolyButton
+                                title="만남 확정하기"
+                                onPress={() => setMeetingDateModalVisible(true)}
+                                style={{ marginTop: 10, marginBottom: 20 }}
+                            />
+                        )}
+
+                        {/* 만남 확정됨 상태 */}
+                        {meetingConfirmed && meetingDate && (
+                            <View style={{ marginTop: 10, marginBottom: 20, alignItems: 'center' }}>
+                                <Text style={{ color: '#00FF88', fontSize: 16, fontWeight: 'bold' }}>
+                                    {meetingDate} 만남 예정
+                                </Text>
+                            </View>
                         )}
 
                     </View>
@@ -840,45 +971,67 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                         <TouchableOpacity
                             style={styles.photoChangeButton}
-                            onPress={() => {
+                            onPress={async () => {
                                 setPhotoModalVisible(false);
-                                Alert.alert(
-                                    "프로필 사진 변경",
-                                    "사진을 가져올 방법을 선택하세요.",
-                                    [
-                                        {
-                                            text: "카메라로 촬영",
-                                            onPress: async () => {
-                                                const result = await ImagePicker.launchCameraAsync({
-                                                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                                                    allowsEditing: true,
-                                                    aspect: [1, 1],
-                                                    quality: 0.8,
-                                                });
-                                                if (!result.canceled) {
-                                                    setUserPhoto(result.assets[0].uri);
-                                                    await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+
+                                // 웹에서는 직접 file input 사용
+                                if (Platform.OS === 'web') {
+                                    const input = document.createElement('input');
+                                    input.type = 'file';
+                                    input.accept = 'image/*';
+                                    input.onchange = async (e: any) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            const reader = new FileReader();
+                                            reader.onload = async (event: any) => {
+                                                const uri = event.target.result;
+                                                setUserPhoto(uri);
+                                                await AsyncStorage.setItem('userPhoto', uri);
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
+                                    };
+                                    input.click();
+                                } else {
+                                    // 모바일에서는 기존 Alert 사용
+                                    Alert.alert(
+                                        "프로필 사진 변경",
+                                        "사진을 가져올 방법을 선택하세요.",
+                                        [
+                                            {
+                                                text: "카메라로 촬영",
+                                                onPress: async () => {
+                                                    const result = await ImagePicker.launchCameraAsync({
+                                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                        allowsEditing: true,
+                                                        aspect: [1, 1],
+                                                        quality: 0.8,
+                                                    });
+                                                    if (!result.canceled) {
+                                                        setUserPhoto(result.assets[0].uri);
+                                                        await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        {
-                                            text: "앨범에서 선택",
-                                            onPress: async () => {
-                                                const result = await ImagePicker.launchImageLibraryAsync({
-                                                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                                                    allowsEditing: true,
-                                                    aspect: [1, 1],
-                                                    quality: 0.8,
-                                                });
-                                                if (!result.canceled) {
-                                                    setUserPhoto(result.assets[0].uri);
-                                                    await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+                                            },
+                                            {
+                                                text: "앨범에서 선택",
+                                                onPress: async () => {
+                                                    const result = await ImagePicker.launchImageLibraryAsync({
+                                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                        allowsEditing: true,
+                                                        aspect: [1, 1],
+                                                        quality: 0.8,
+                                                    });
+                                                    if (!result.canceled) {
+                                                        setUserPhoto(result.assets[0].uri);
+                                                        await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        { text: "취소", style: "cancel" }
-                                    ]
-                                );
+                                            },
+                                            { text: "취소", style: "cancel" }
+                                        ]
+                                    );
+                                }
                             }}
                         >
                             <Text style={styles.photoChangeButtonText}>사진 변경</Text>
@@ -891,7 +1044,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 <Modal visible={matchCandidateModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalOverlay}>
                         <GlassCard style={styles.matchCandidateModal}>
-                            <Text style={styles.matchModalBadge}>✨ 특별 미션</Text>
+                            <Text style={styles.matchModalBadge}>특별 미션</Text>
                             <Text style={styles.matchModalTitle}>운명의 신호</Text>
 
                             {matchCandidate && (
@@ -903,9 +1056,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                             style={[styles.matchCandidatePhoto, { opacity: 0.7 }]}
                                             blurRadius={Platform.OS === 'ios' ? 15 : 10}
                                         />
-                                        <View style={styles.blurOverlay}>
-                                            <Text style={{ color: '#fff', fontSize: 24 }}>👤</Text>
-                                        </View>
+                                        <View style={styles.blurOverlay} />
                                     </View>
                                     {/* 개인정보 숨김 - MBTI + 이상형만 표시 */}
                                     <Text style={styles.matchCandidateName}>
@@ -916,14 +1067,14 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                     </Text>
                                     <View style={styles.matchCandidateDeficit}>
                                         <Text style={styles.matchCandidateDeficitText}>
-                                            💫 이상형: {matchCandidate.deficit}
+                                            이상형: {matchCandidate.deficit}
                                         </Text>
                                     </View>
                                 </View>
                             )}
 
                             <Text style={styles.matchModalInstruction}>
-                                이 분에게 첫 편지를 보내보세요
+                                가볍게 자기소개와 인사를 해보세요. 커피 한잔 마시는거 어떠세요? 약속장소와 날짜를 정하기 위해 상대방과 연락할 번호나 메일, 메신저 아이디를 교환하는 것도 좋습니다.
                             </Text>
                             <TextInput
                                 style={styles.letterInput}
@@ -949,6 +1100,85 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                     style={{ flex: 1 }}
                                 />
                             </View>
+                        </GlassCard>
+                    </View>
+                </Modal>
+
+                {/* 받은 편지 읽기 모달 */}
+                <Modal visible={receivedLetterModalVisible} animationType="slide" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <GlassCard style={styles.matchCandidateModal}>
+                            <Text style={styles.matchModalBadge}>받은 편지</Text>
+                            <Text style={styles.matchModalTitle}>{receivedLetter?.from}님의 편지</Text>
+
+                            <View style={{
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                borderRadius: 12,
+                                padding: 20,
+                                marginVertical: 20,
+                                width: '100%'
+                            }}>
+                                <Text style={{ color: '#FFF', fontSize: 16, lineHeight: 24 }}>
+                                    {receivedLetter?.content}
+                                </Text>
+                                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 10, textAlign: 'right' }}>
+                                    {receivedLetter?.date}
+                                </Text>
+                            </View>
+
+                            <View style={styles.matchModalButtons}>
+                                <HolyButton
+                                    title="닫기"
+                                    variant="outline"
+                                    onPress={() => setReceivedLetterModalVisible(false)}
+                                    style={{ flex: 1 }}
+                                />
+                            </View>
+                        </GlassCard>
+                    </View>
+                </Modal>
+
+                {/* 만남 날짜 선택 모달 */}
+                <Modal visible={meetingDateModalVisible} animationType="slide" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <GlassCard style={styles.matchCandidateModal}>
+                            <Text style={styles.matchModalBadge}>만남 확정</Text>
+                            <Text style={styles.matchModalTitle}>만남 날짜 선택</Text>
+
+                            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center', marginVertical: 20 }}>
+                                {matchCandidate?.name || receivedLetter?.from}님과 만날 날짜를 선택해주세요.
+                            </Text>
+
+                            <View style={{ width: '100%', gap: 10 }}>
+                                {[1, 2, 3, 5, 7].map((days) => {
+                                    const date = new Date();
+                                    date.setDate(date.getDate() + days);
+                                    const dateStr = date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+                                    return (
+                                        <HolyButton
+                                            key={days}
+                                            title={dateStr}
+                                            variant="outline"
+                                            onPress={async () => {
+                                                setMeetingDate(dateStr);
+                                                setMeetingConfirmed(true);
+                                                setMeetingDateModalVisible(false);
+                                                await AsyncStorage.setItem('meetingDate', dateStr);
+                                                await AsyncStorage.setItem('meetingConfirmed', 'true');
+                                                Alert.alert('만남 확정', `${dateStr}에 만나기로 했습니다. 그 날 오르빗이 특별미션을 드릴게요!`);
+                                            }}
+                                            style={{ width: '100%' }}
+                                        />
+                                    );
+                                })}
+                            </View>
+
+                            <HolyButton
+                                title="취소"
+                                variant="outline"
+                                onPress={() => setMeetingDateModalVisible(false)}
+                                style={{ marginTop: 20, width: '100%' }}
+                            />
                         </GlassCard>
                     </View>
                 </Modal>

@@ -48,6 +48,21 @@ export interface Letter {
     createdAt: string;
 }
 
+// 수행기록 인터페이스
+export interface JournalRecord {
+    id: string;
+    uid: string;           // 사용자 ID
+    type: 'solo' | 'couple'; // 기록 타입
+    day: number;
+    date: string;
+    content: string;       // 저널 내용
+    mission: string;       // 수행한 미션
+    analysis?: string;     // AI 분석 결과
+    feedback?: string;     // AI 피드백
+    imageUrl?: string;     // 이미지 URL
+    createdAt: string;
+}
+
 // 매칭 가중치
 const MATCH_WEIGHTS = {
     DISTANCE: 0.50,  // 50%
@@ -268,6 +283,47 @@ class MatchingService {
         } catch (error) {
             console.error('Accept match error:', error);
             return { success: false };
+        }
+    }
+
+    // 수행기록 저장 (Firebase Firestore)
+    async saveJournalRecord(record: JournalRecord): Promise<boolean> {
+        try {
+            const journalRef = doc(db, 'journals', record.id);
+            await setDoc(journalRef, {
+                ...record,
+                savedAt: Timestamp.now()
+            });
+
+            console.log('[MatchingService] 수행기록 저장 완료:', record.id);
+            return true;
+        } catch (error) {
+            console.error('[MatchingService] 수행기록 저장 실패:', error);
+            return false;
+        }
+    }
+
+    // 수행기록 조회 (특정 사용자)
+    async getJournalRecords(uid: string): Promise<JournalRecord[]> {
+        try {
+            const journalsQuery = query(
+                collection(db, 'journals'),
+                where('uid', '==', uid),
+                orderBy('createdAt', 'desc'),
+                limit(50)
+            );
+
+            const querySnapshot = await getDocs(journalsQuery);
+            const journals: JournalRecord[] = [];
+
+            querySnapshot.forEach(docSnap => {
+                journals.push(docSnap.data() as JournalRecord);
+            });
+
+            return journals;
+        } catch (error) {
+            console.error('[MatchingService] 수행기록 조회 실패:', error);
+            return [];
         }
     }
 }

@@ -25,6 +25,7 @@ export type RootStackParamList = {
     Settings: undefined;
     Admin: undefined;
     UserList: undefined;
+    SpecialMissionIntro: undefined;
 };
 
 

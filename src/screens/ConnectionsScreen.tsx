@@ -139,94 +139,134 @@ const ConnectionsScreen = () => {
     );
 
     const pickImage = async () => {
-        Alert.alert(
-            "사진 추가",
-            "사진을 가져올 방법을 선택하세요.",
-            [
-                {
-                    text: "카메라로 촬영",
-                    onPress: async () => {
-                        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-                        if (status !== 'granted') {
-                            Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
-                            return;
+        // 웹에서는 직접 file input 사용
+        if (Platform.OS === 'web') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e: any) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event: any) => {
+                        setSelectedImage(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        } else {
+            // 모바일에서는 기존 Alert 사용
+            Alert.alert(
+                "사진 추가",
+                "사진을 가져올 방법을 선택하세요.",
+                [
+                    {
+                        text: "카메라로 촬영",
+                        onPress: async () => {
+                            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                            if (status !== 'granted') {
+                                Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+                                return;
+                            }
+                            const result = await ImagePicker.launchCameraAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: false,
+                                aspect: [4, 3],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                setSelectedImage(result.assets[0].uri);
+                            }
                         }
-                        const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: false,
-                            aspect: [4, 3],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            setSelectedImage(result.assets[0].uri);
+                    },
+                    {
+                        text: "앨범에서 선택",
+                        onPress: async () => {
+                            const result = await ImagePicker.launchImageLibraryAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: false,
+                                aspect: [4, 3],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                setSelectedImage(result.assets[0].uri);
+                            }
                         }
-                    }
-                },
-                {
-                    text: "앨범에서 선택",
-                    onPress: async () => {
-                        const result = await ImagePicker.launchImageLibraryAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: false,
-                            aspect: [4, 3],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            setSelectedImage(result.assets[0].uri);
-                        }
-                    }
-                },
-                { text: "취소", style: "cancel" }
-            ]
-        );
+                    },
+                    { text: "취소", style: "cancel" }
+                ]
+            );
+        }
     };
 
     // Pick Couple Photo
     const pickCouplePhoto = async () => {
-        Alert.alert(
-            "커플 사진",
-            "둘만의 사진을 추가하세요",
-            [
-                {
-                    text: "카메라",
-                    onPress: async () => {
-                        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-                        if (status !== 'granted') {
-                            Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
-                            return;
+        // 웹에서는 직접 file input 사용
+        if (Platform.OS === 'web') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async (e: any) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = async (event: any) => {
+                        const photoUri = event.target.result;
+                        setCouplePhoto(photoUri);
+                        await AsyncStorage.setItem('couplePhoto', photoUri);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        } else {
+            // 모바일에서는 기존 Alert 사용
+            Alert.alert(
+                "커플 사진",
+                "둘만의 사진을 추가하세요",
+                [
+                    {
+                        text: "카메라",
+                        onPress: async () => {
+                            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                            if (status !== 'granted') {
+                                Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+                                return;
+                            }
+                            const result = await ImagePicker.launchCameraAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: true,
+                                aspect: [1, 1],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                const photoUri = result.assets[0].uri;
+                                setCouplePhoto(photoUri);
+                                await AsyncStorage.setItem('couplePhoto', photoUri);
+                            }
                         }
-                        const result = await ImagePicker.launchCameraAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: true,
-                            aspect: [1, 1],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            const photoUri = result.assets[0].uri;
-                            setCouplePhoto(photoUri);
-                            await AsyncStorage.setItem('couplePhoto', photoUri);
+                    },
+                    {
+                        text: "앨범",
+                        onPress: async () => {
+                            const result = await ImagePicker.launchImageLibraryAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: true,
+                                aspect: [1, 1],
+                                quality: 0.8,
+                            });
+                            if (!result.canceled) {
+                                const photoUri = result.assets[0].uri;
+                                setCouplePhoto(photoUri);
+                                await AsyncStorage.setItem('couplePhoto', photoUri);
+                            }
                         }
-                    }
-                },
-                {
-                    text: "앨범",
-                    onPress: async () => {
-                        const result = await ImagePicker.launchImageLibraryAsync({
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                            allowsEditing: true,
-                            aspect: [1, 1],
-                            quality: 0.8,
-                        });
-                        if (!result.canceled) {
-                            const photoUri = result.assets[0].uri;
-                            setCouplePhoto(photoUri);
-                            await AsyncStorage.setItem('couplePhoto', photoUri);
-                        }
-                    }
-                },
-                { text: "취소", style: "cancel" }
-            ]
-        );
+                    },
+                    { text: "취소", style: "cancel" }
+                ]
+            );
+        }
     };
 
     const handleAnalyze = async () => {
