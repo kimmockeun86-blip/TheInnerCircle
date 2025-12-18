@@ -78,7 +78,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 20,
+        bottom: 35, // Increased for Android navigation bar
         left: 20,
         right: 20,
         borderRadius: 25,

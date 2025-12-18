@@ -6,7 +6,9 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build": "cd server && npm install",
+    "start:server": "node server/server.js"
   },
   "dependencies": {
     "@expo-google-fonts/noto-sans-kr": "^0.4.2",

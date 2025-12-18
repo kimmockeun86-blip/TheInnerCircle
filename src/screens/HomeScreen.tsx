@@ -87,6 +87,14 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     const [meetingDate, setMeetingDate] = useState<string | null>(null);
     const [meetingDateModalVisible, setMeetingDateModalVisible] = useState(false);
 
+    // 만남 후 유지 선택 시스템
+    const [specialMissionCompleted, setSpecialMissionCompleted] = useState(false);
+    const [meetingDecisionModalVisible, setMeetingDecisionModalVisible] = useState(false);
+    const [myMeetingDecision, setMyMeetingDecision] = useState<'continue' | 'stop' | null>(null);
+    const [partnerMeetingDecision, setPartnerMeetingDecision] = useState<'continue' | 'stop' | 'waiting' | null>(null);
+    const [meetingResultModalVisible, setMeetingResultModalVisible] = useState(false);
+    const [isMeetingDay, setIsMeetingDay] = useState(false);
+
 
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
     const sparkleAnim2 = useRef(new Animated.Value(0)).current;
@@ -287,6 +295,109 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
         }
     };
 
+    // 특별 미션 완료 후 만남 결정 요청
+    const handleSpecialMissionComplete = async () => {
+        setSpecialMissionCompleted(true);
+        await AsyncStorage.setItem('specialMissionCompleted', 'true');
+        setMeetingDecisionModalVisible(true);
+    };
+
+    // 만남 유지 결정 처리
+    const handleMeetingDecision = async (decision: 'continue' | 'stop') => {
+        setMyMeetingDecision(decision);
+        await AsyncStorage.setItem('myMeetingDecision', decision);
+        setMeetingDecisionModalVisible(false);
+
+        // 상대방 응답 대기 상태로 설정
+        setPartnerMeetingDecision('waiting');
+        await AsyncStorage.setItem('partnerMeetingDecision', 'waiting');
+
+        // Firebase에 내 결정 저장
+        try {
+            const storedUserId = await AsyncStorage.getItem('userId');
+            const myUid = storedUserId || `user_${name}`;
+            const partnerUid = matchCandidate?.id || 'partner';
+            const matchId = MatchingService.generateMatchId(myUid, partnerUid);
+
+            // 내 결정 저장
+            await MatchingService.saveMeetingDecision(matchId, myUid, decision);
+            await AsyncStorage.setItem('currentMatchId', matchId);
+            await AsyncStorage.setItem('partnerUid', partnerUid);
+
+            // 상대방 결정 폴링 시작 (5초 간격, 최대 60초)
+            let attempts = 0;
+            const maxAttempts = 12;
+
+            const checkPartnerDecision = async () => {
+                attempts++;
+                const partnerDecision = await MatchingService.getPartnerMeetingDecision(matchId, partnerUid);
+
+                if (partnerDecision) {
+                    // 상대방이 결정함
+                    setPartnerMeetingDecision(partnerDecision);
+                    await AsyncStorage.setItem('partnerMeetingDecision', partnerDecision);
+                    setMeetingResultModalVisible(true);
+                } else if (attempts < maxAttempts) {
+                    // 아직 결정 안함, 계속 폴링
+                    setTimeout(checkPartnerDecision, 5000);
+                } else {
+                    // 60초 경과 - 아직도 응답 없음
+                    Alert.alert(
+                        '상대방 응답 대기 중',
+                        '상대방이 아직 결정하지 않았어요. 나중에 다시 확인해볼게요.',
+                        [{ text: '확인' }]
+                    );
+                }
+            };
+
+            // 첫 번째 확인은 3초 후
+            setTimeout(checkPartnerDecision, 3000);
+
+        } catch (e) {
+            console.log('Decision save failed:', e);
+            Alert.alert('오류', '결정 저장에 실패했습니다. 다시 시도해주세요.');
+        }
+    };
+
+    // 매칭 결과 처리 (양쪽 모두 continue면 커플 성사)
+    const handleMeetingResult = async () => {
+        setMeetingResultModalVisible(false);
+
+        if (myMeetingDecision === 'continue' && partnerMeetingDecision === 'continue') {
+            // 🎉 커플 성사!
+            await AsyncStorage.setItem('isCoupled', 'coupled');
+            await AsyncStorage.setItem('matchResult', 'success');
+            if (matchCandidate) {
+                await AsyncStorage.setItem('matchedPartner', JSON.stringify(matchCandidate));
+            }
+
+            // Firebase에 매칭 저장
+            const storedUserId = await AsyncStorage.getItem('userId');
+            await MatchingService.acceptMatch(
+                storedUserId || `user_${name}`,
+                matchCandidate?.id || 'partner'
+            );
+
+            navigation.replace('CouplesMission', {} as any);
+        } else {
+            // 거절됨 - 솔로 미션으로 계속
+            await AsyncStorage.removeItem('matchCandidate');
+            await AsyncStorage.removeItem('matchedPartner');
+            await AsyncStorage.removeItem('meetingConfirmed');
+            await AsyncStorage.removeItem('meetingDate');
+            await AsyncStorage.removeItem('specialMissionCompleted');
+            await AsyncStorage.removeItem('myMeetingDecision');
+            await AsyncStorage.removeItem('partnerMeetingDecision');
+            setMatchCandidate(null);
+            setMeetingConfirmed(false);
+            setMeetingDate(null);
+            setSpecialMissionCompleted(false);
+            setMyMeetingDecision(null);
+            setPartnerMeetingDecision(null);
+            setIsMeetingDay(false);
+        }
+    };
+
     const checkDayProgression = async () => {
         const lastCompletedDate = await AsyncStorage.getItem('lastCompletedDate');
         if (!lastCompletedDate) return true;
@@ -400,7 +511,25 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     if (storedMeetingConfirmed === 'true') setMeetingConfirmed(true);
 
                     const storedMeetingDate = await AsyncStorage.getItem('meetingDate');
-                    if (storedMeetingDate) setMeetingDate(storedMeetingDate);
+                    if (storedMeetingDate) {
+                        setMeetingDate(storedMeetingDate);
+                        // 오늘이 만남 날짜인지 확인
+                        const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+                        if (storedMeetingDate === today) {
+                            setIsMeetingDay(true);
+                        }
+                    }
+
+                    // 특별 미션 완료 상태 로드
+                    const storedSpecialMissionCompleted = await AsyncStorage.getItem('specialMissionCompleted');
+                    if (storedSpecialMissionCompleted === 'true') setSpecialMissionCompleted(true);
+
+                    // 만남 결정 상태 로드
+                    const storedMyDecision = await AsyncStorage.getItem('myMeetingDecision');
+                    if (storedMyDecision) setMyMeetingDecision(storedMyDecision as 'continue' | 'stop');
+
+                    const storedPartnerDecision = await AsyncStorage.getItem('partnerMeetingDecision');
+                    if (storedPartnerDecision) setPartnerMeetingDecision(storedPartnerDecision as 'continue' | 'stop' | 'waiting');
 
                     await loadJournalHistory();
 
@@ -612,6 +741,11 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     {
                         text: "앨범에서 선택",
                         onPress: async () => {
+                            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                            if (status !== 'granted') {
+                                Alert.alert('권한 필요', '앨범 접근 권한이 필요합니다.');
+                                return;
+                            }
                             const result = await ImagePicker.launchImageLibraryAsync({
                                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                                 allowsEditing: false,
@@ -783,7 +917,14 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     }
                 });
 
-                setAnalysisModalVisible(true);
+                // 만남 당일이면 특별 미션 완료 처리 및 만남 유지 선택 모달 표시
+                if (isMeetingDay && meetingConfirmed && !specialMissionCompleted) {
+                    setSpecialMissionCompleted(true);
+                    await AsyncStorage.setItem('specialMissionCompleted', 'true');
+                    setMeetingDecisionModalVisible(true);
+                } else {
+                    setAnalysisModalVisible(true);
+                }
 
             } else {
                 Alert.alert('오류', '분석 실패: ' + (response.message || '알 수 없는 오류'));
@@ -855,7 +996,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                     return <Image source={{ uri: recentJournalPhoto }} style={styles.userPhoto} />;
                                 }
                                 // 3순위: 성별에 따른 플레이스홀더 이미지
-                                const placeholder = userGender === '여성' ? femalePlaceholder : malePlaceholder;
+                                const placeholder = (userGender === 'female' || userGender === '여성') ? femalePlaceholder : malePlaceholder;
                                 return <Image source={placeholder} style={styles.userPhoto} />;
                             })()}
                         </TouchableOpacity>
@@ -933,10 +1074,40 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         )}
 
                         {/* 만남 확정됨 상태 */}
-                        {meetingConfirmed && meetingDate && (
+                        {meetingConfirmed && meetingDate && !isMeetingDay && !specialMissionCompleted && (
                             <View style={{ marginTop: 10, marginBottom: 20, alignItems: 'center' }}>
                                 <Text style={{ color: '#00FF88', fontSize: 16, fontWeight: 'bold' }}>
-                                    {meetingDate} 만남 예정
+                                    💫 {meetingDate} 만남 예정
+                                </Text>
+                                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 5 }}>
+                                    그 날이 되면 특별 미션이 열립니다
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* 만남 당일 - 특별 미션 버튼 */}
+                        {meetingConfirmed && isMeetingDay && !specialMissionCompleted && (
+                            <View style={{ marginTop: 10, marginBottom: 20, alignItems: 'center' }}>
+                                <Text style={{ color: COLORS.gold, fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
+                                    ✨ 오늘이 만남의 날입니다!
+                                </Text>
+                                <HolyButton
+                                    title="💫 특별 미션 기록하기"
+                                    onPress={() => setJournalModalVisible(true)}
+                                    style={{ marginBottom: 10 }}
+                                />
+                                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textAlign: 'center' }}>
+                                    미션 기록 후 만남을 계속할지 선택하게 됩니다
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* 상대방 응답 대기 중 */}
+                        {specialMissionCompleted && partnerMeetingDecision === 'waiting' && (
+                            <View style={{ marginTop: 10, marginBottom: 20, alignItems: 'center' }}>
+                                <ActivityIndicator size="small" color={COLORS.gold} />
+                                <Text style={{ color: COLORS.gold, fontSize: 14, marginTop: 10 }}>
+                                    상대방의 응답을 기다리는 중...
                                 </Text>
                             </View>
                         )}
@@ -964,7 +1135,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                 if (recentJournalPhoto) {
                                     return <Image source={{ uri: recentJournalPhoto }} style={styles.photoModalImage} />;
                                 }
-                                const placeholder = userGender === '여성' ? femalePlaceholder : malePlaceholder;
+                                const placeholder = (userGender === 'female' || userGender === '여성') ? femalePlaceholder : malePlaceholder;
                                 return <Image source={placeholder} style={styles.photoModalImage} />;
                             })()}
                         </View>
@@ -1183,6 +1354,86 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     </View>
                 </Modal>
 
+                {/* 만남 유지 선택 모달 */}
+                <Modal visible={meetingDecisionModalVisible} animationType="slide" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <GlassCard style={styles.matchCandidateModal}>
+                            <Text style={styles.matchModalBadge}>💫 결정의 순간</Text>
+                            <Text style={styles.matchModalTitle}>만남을 이어가시겠습니까?</Text>
+
+                            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center', marginVertical: 20, lineHeight: 22 }}>
+                                {matchCandidate?.name || receivedLetter?.from}님과의 만남은 어떠셨나요?{'\n'}
+                                이 인연을 계속 이어가고 싶으신가요?
+                            </Text>
+
+                            <View style={{ width: '100%', gap: 15 }}>
+                                <HolyButton
+                                    title="💕 계속 만남을 이어가고 싶어요"
+                                    onPress={() => handleMeetingDecision('continue')}
+                                    style={{ width: '100%' }}
+                                />
+                                <HolyButton
+                                    title="🙏 아쉽지만, 여기까지만 할게요"
+                                    variant="outline"
+                                    onPress={() => handleMeetingDecision('stop')}
+                                    style={{ width: '100%' }}
+                                />
+                            </View>
+
+                            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 20 }}>
+                                상대방도 같은 선택을 해야 인연이 이어집니다
+                            </Text>
+                        </GlassCard>
+                    </View>
+                </Modal>
+
+                {/* 매칭 결과 모달 */}
+                <Modal visible={meetingResultModalVisible} animationType="fade" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <GlassCard style={styles.matchCandidateModal}>
+                            {myMeetingDecision === 'continue' && partnerMeetingDecision === 'continue' ? (
+                                <>
+                                    <Text style={{ fontSize: 60, textAlign: 'center', marginBottom: 15 }}>🎉</Text>
+                                    <Text style={[styles.matchModalTitle, { color: COLORS.gold }]}>인연이 이어집니다!</Text>
+                                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center', marginVertical: 20, lineHeight: 24 }}>
+                                        축하드려요! 두 분 모두 만남을 계속하길 원하셨어요.{'\n'}
+                                        이제 함께하는 커플 미션이 시작됩니다.{'\n\n'}
+                                        서로를 더 깊이 알아가는 여정이 될 거예요. ✨
+                                    </Text>
+                                </>
+                            ) : myMeetingDecision === 'stop' ? (
+                                <>
+                                    <Text style={{ fontSize: 60, textAlign: 'center', marginBottom: 15 }}>🌱</Text>
+                                    <Text style={[styles.matchModalTitle, { color: '#A0A0A0' }]}>새로운 시작</Text>
+                                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center', marginVertical: 20, lineHeight: 24 }}>
+                                        모든 만남에는 의미가 있어요.{'\n'}
+                                        이번 경험도 당신의 성장에 소중한 밑거름이 될 거예요.{'\n\n'}
+                                        다음에 만날 인연을 위해 계속 성장해나가요. 🌟
+                                    </Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={{ fontSize: 60, textAlign: 'center', marginBottom: 15 }}>🌿</Text>
+                                    <Text style={[styles.matchModalTitle, { color: '#A0A0A0' }]}>다른 길을 걷게 되었어요</Text>
+                                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center', marginVertical: 20, lineHeight: 24 }}>
+                                        아쉽지만, 상대방은 다른 선택을 했어요.{'\n'}
+                                        하지만 괜찮아요, 당신에게 맞는 인연은{'\n'}
+                                        반드시 나타날 거예요.{'\n\n'}
+                                        지금까지의 여정이 헛되지 않았어요.{'\n'}
+                                        더 멋진 만남을 위해 함께 걸어가요. 💪
+                                    </Text>
+                                </>
+                            )}
+
+                            <HolyButton
+                                title={myMeetingDecision === 'continue' && partnerMeetingDecision === 'continue' ? "커플 미션 시작하기" : "홈으로 돌아가기"}
+                                onPress={handleMeetingResult}
+                                style={{ width: '100%', marginTop: 10 }}
+                            />
+                        </GlassCard>
+                    </View>
+                </Modal>
+
                 {/* Journal Modal */}
                 <Modal visible={journalModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalOverlay}>
@@ -1207,7 +1458,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                             <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
                                 <Text style={styles.imagePickerText}>
-                                    {selectedImage ? "사진 변경하기" : "사진 추가하기 (선택)"}
+                                    {selectedImage ? "📷 사진 변경하기" : "📷 오늘의 미소를 기록하세요"}
                                 </Text>
                             </TouchableOpacity>
 
@@ -1223,13 +1474,13 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                     title="취소"
                                     onPress={() => setJournalModalVisible(false)}
                                     variant="ghost"
-                                    style={{ flex: 1, marginRight: 10 }}
+                                    style={{ minWidth: 100, paddingHorizontal: 20 }}
                                 />
                                 <HolyButton
                                     title={isAnalyzing ? "전송 중..." : "기록 완료"}
                                     onPress={handleCompleteReflection}
                                     disabled={isAnalyzing}
-                                    style={{ flex: 1 }}
+                                    style={{ minWidth: 100, paddingHorizontal: 20 }}
                                 />
                             </View>
                         </GlassCard>
@@ -1750,7 +2001,7 @@ const styles = StyleSheet.create({
     imagePickerButton: { marginBottom: 20, alignItems: 'center' },
     imagePickerText: { color: COLORS.gold, fontSize: 13 },
     previewImage: { width: '100%', height: 180, borderRadius: 12, marginBottom: 20, overflow: 'hidden' as const },
-    modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
+    modalButtons: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, minHeight: 50 },
 
     analysisModalContent: { width: '90%', padding: 25, alignItems: 'center' },
     analysisTitle: { color: COLORS.gold, fontSize: 22, fontWeight: 'bold', marginBottom: 20 },

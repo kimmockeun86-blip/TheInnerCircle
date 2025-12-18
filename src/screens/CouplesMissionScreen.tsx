@@ -301,6 +301,11 @@ const CouplesMissionScreen = () => {
                     {
                         text: "앨범에서 선택",
                         onPress: async () => {
+                            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                            if (status !== 'granted') {
+                                Alert.alert('권한 필요', '앨범 접근 권한이 필요합니다.');
+                                return;
+                            }
                             const result = await ImagePicker.launchImageLibraryAsync({
                                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                                 allowsEditing: false,

@@ -41,95 +41,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     const [photoZoomVisible, setPhotoZoomVisible] = useState(false);
     const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
 
-    // Admin Access Control (김목은 + 플스4)
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [showAllUsers, setShowAllUsers] = useState(false);
-
-    // Journal View Modal
-    const [journalModalVisible, setJournalModalVisible] = useState(false);
-    const [selectedUserJournals, setSelectedUserJournals] = useState<any[]>([]);
-
-    const mockUsers: UserData[] = [
-        {
-            name: currentUser?.name || '구도자',
-            dayCount: currentUser?.dayCount || '1',
-            deficit: currentUser?.deficit || '미설정',
-            gender: currentUser?.gender || '남성',
-            job: currentUser?.job || '개발자',
-            age: currentUser?.age || '30',
-            location: currentUser?.location || '서울',
-            photo: currentUser?.photo,
-            idealType: currentUser?.idealType || '지혜롭고 차분한 사람',
-            isCurrentUser: true
-        },
-        {
-            name: '김철수',
-            dayCount: '3',
-            deficit: '외로움',
-            gender: '남성',
-            job: '회사원',
-            age: '28',
-            location: '경기',
-            photo: 'https://randomuser.me/api/portraits/men/32.jpg',
-            idealType: '밝고 긍정적인 에너지를 가진 사람',
-            isCurrentUser: false
-        },
-        {
-            name: '이영희',
-            dayCount: '7',
-            deficit: '불안',
-            gender: '여성',
-            job: '디자이너',
-            age: '26',
-            location: '서울',
-            photo: 'https://randomuser.me/api/portraits/women/44.jpg',
-            idealType: '예술적 감각이 통하는 사람',
-            isCurrentUser: false
-        },
-        {
-            name: '박지성',
-            dayCount: '10',
-            deficit: '공허함',
-            gender: '남성',
-            job: '운동선수',
-            age: '32',
-            location: '부산',
-            photo: 'https://randomuser.me/api/portraits/men/85.jpg',
-            idealType: '함께 성장할 수 있는 사람',
-            isCurrentUser: false
-        },
-        // Mock Female Users for Testing
-        { name: '김민지', dayCount: '2', deficit: '외로움', gender: '여성', job: '마케터', age: '27', location: '서울', photo: 'https://randomuser.me/api/portraits/women/10.jpg', idealType: '유머러스한 사람', isCurrentUser: false },
-        { name: '이수진', dayCount: '5', deficit: '불안', gender: '여성', job: '간호사', age: '29', location: '경기', photo: 'https://randomuser.me/api/portraits/women/22.jpg', idealType: '따뜻한 사람', isCurrentUser: false },
-        { name: '박서연', dayCount: '8', deficit: '자존감', gender: '여성', job: '교사', age: '31', location: '인천', photo: 'https://randomuser.me/api/portraits/women/33.jpg', idealType: '성실한 사람', isCurrentUser: false },
-        { name: '최유나', dayCount: '1', deficit: '무기력', gender: '여성', job: '프리랜서', age: '25', location: '서울', photo: 'https://randomuser.me/api/portraits/women/45.jpg', idealType: '꿈이 있는 사람', isCurrentUser: false },
-        { name: '정하은', dayCount: '9', deficit: '스트레스', gender: '여성', job: '개발자', age: '28', location: '대전', photo: 'https://randomuser.me/api/portraits/women/56.jpg', idealType: '대화가 잘 통하는 사람', isCurrentUser: false },
-        { name: '강지영', dayCount: '4', deficit: '우울', gender: '여성', job: '디자이너', age: '26', location: '부산', photo: 'https://randomuser.me/api/portraits/women/67.jpg', idealType: '감성적인 사람', isCurrentUser: false },
-        { name: '윤서아', dayCount: '6', deficit: '고독', gender: '여성', job: '작가', age: '30', location: '제주', photo: 'https://randomuser.me/api/portraits/women/78.jpg', idealType: '자연을 사랑하는 사람', isCurrentUser: false },
-        { name: '임수정', dayCount: '3', deficit: '피로', gender: '여성', job: '약사', age: '33', location: '서울', photo: 'https://randomuser.me/api/portraits/women/89.jpg', idealType: '건강한 사람', isCurrentUser: false },
-        { name: '한지민', dayCount: '7', deficit: '불면', gender: '여성', job: '승무원', age: '29', location: '경기', photo: 'https://randomuser.me/api/portraits/women/90.jpg', idealType: '배려심 깊은 사람', isCurrentUser: false },
-        { name: '오혜진', dayCount: '10', deficit: '불안정', gender: '여성', job: '요가 강사', age: '32', location: '서울', photo: 'https://randomuser.me/api/portraits/women/91.jpg', idealType: '차분한 사람', isCurrentUser: false },
-    ];
-
-    const handleAssignMissionToUser = async () => {
-        if (!targetMission.trim()) {
-            Alert.alert('알림', '미션 내용을 입력해주세요.');
-            return;
-        }
-
-        if (selectedUser?.isCurrentUser) {
-            try {
-                const day = parseInt(selectedUser.dayCount, 10);
-                await AsyncStorage.setItem(`mission_day_${day}`, targetMission);
-                Alert.alert('성공', `${selectedUser.name}님(Day ${day})에게 미션이 부여되었습니다.\n홈 화면을 새로고침하세요.`);
-            } catch (e) {
-                Alert.alert('오류', '저장 실패');
-            }
-        } else {
-            Alert.alert('성공', `[Mock] ${selectedUser?.name}님에게 미션이 부여되었습니다.\n"${targetMission}"`);
-        }
-        setTargetMission('');
-    };
 
     useEffect(() => {
         loadUserData();
@@ -147,15 +58,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             const location = await AsyncStorage.getItem('userLocation');
             const photo = await AsyncStorage.getItem('userPhoto');
             const idealType = await AsyncStorage.getItem('userIdealType');
-            const hobbies = await AsyncStorage.getItem('userHobbies');
-
-            // Admin Access Check: 김목은 + 플스4 (개발 모드에서만 활성화)
-            // @ts-ignore - __DEV__ is defined by React Native
-            if (__DEV__ && name === '김목은' && hobbies && hobbies.includes('플스4')) {
-                setIsAdmin(true);
-            } else {
-                setIsAdmin(false);
-            }
 
             setCurrentUser({
                 name: name || '구도자',

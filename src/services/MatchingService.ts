@@ -326,6 +326,55 @@ class MatchingService {
             return [];
         }
     }
+
+    // 만남 결정 저장
+    async saveMeetingDecision(
+        matchId: string,
+        userUid: string,
+        decision: 'continue' | 'stop'
+    ): Promise<boolean> {
+        try {
+            const decisionRef = doc(db, 'meetingDecisions', `${matchId}_${userUid}`);
+            await setDoc(decisionRef, {
+                matchId,
+                userUid,
+                decision,
+                decidedAt: Timestamp.now()
+            });
+
+            console.log('[MatchingService] 만남 결정 저장:', { matchId, userUid, decision });
+            return true;
+        } catch (error) {
+            console.error('[MatchingService] 만남 결정 저장 실패:', error);
+            return false;
+        }
+    }
+
+    // 상대방 만남 결정 조회
+    async getPartnerMeetingDecision(
+        matchId: string,
+        partnerUid: string
+    ): Promise<'continue' | 'stop' | null> {
+        try {
+            const decisionRef = doc(db, 'meetingDecisions', `${matchId}_${partnerUid}`);
+            const decisionDoc = await getDoc(decisionRef);
+
+            if (decisionDoc.exists()) {
+                return decisionDoc.data().decision as 'continue' | 'stop';
+            }
+            return null;
+        } catch (error) {
+            console.error('[MatchingService] 상대방 결정 조회 실패:', error);
+            return null;
+        }
+    }
+
+    // 매칭 ID 생성 (두 사용자 UID 조합)
+    generateMatchId(uid1: string, uid2: string): string {
+        // 정렬해서 항상 같은 ID 생성
+        const sorted = [uid1, uid2].sort();
+        return `match_${sorted[0]}_${sorted[1]}`;
+    }
 }
 
 export default MatchingService.getInstance();

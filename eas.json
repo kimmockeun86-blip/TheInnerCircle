@@ -15,11 +15,20 @@
             "distribution": "internal",
             "android": {
                 "buildType": "apk"
+            },
+            "env": {
+                "APP_ENV": "preview"
             }
         },
         "production": {
             "android": {
                 "buildType": "app-bundle"
+            },
+            "ios": {
+                "autoIncrement": true
+            },
+            "env": {
+                "APP_ENV": "production"
             }
         }
     },

@@ -171,7 +171,17 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
 
     const handleScreenTap = () => {
         if (currentScript.type === 'statement' && !currentScript.buttonText) {
-            handleNext();
+            if (isTyping) {
+                // 타이핑 중이면 텍스트 전체 표시 (스킵)
+                if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+                if (timerRef.current) clearTimeout(timerRef.current);
+                setDisplayedText(currentScript.text || '');
+                setIsTyping(false);
+                // 자동 진행 안함 - 다시 터치해야 다음으로
+            } else {
+                // 타이핑 완료 상태면 다음으로
+                handleNext();
+            }
         }
     };
 

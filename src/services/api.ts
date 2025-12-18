@@ -1,14 +1,16 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import logger from '../utils/logger';
 
-// Force 127.0.0.1 for local debugging
-const BASE_URL = Platform.OS === 'web'
-    ? 'http://localhost:3000/api'
-    : Platform.OS === 'android'
-        ? 'http://10.0.2.2:3000/api'
-        : 'http://localhost:3000/api';
+// API URL을 Expo Constants에서 읽기 (app.config.js에서 환경별로 설정)
+// 폴백: 직접 프로덕션 URL 사용
+const BASE_URL = Constants.expoConfig?.extra?.apiUrl
+    || 'https://theinnercircle-9xye.onrender.com/api';
 
+// 현재 환경 로깅
+const appEnv = Constants.expoConfig?.extra?.appEnv || 'production';
+logger.log(`[API] Environment: ${appEnv}`);
 logger.log('[API] Initialized with BASE_URL:', BASE_URL, 'Platform:', Platform.OS);
 
 const client = axios.create({
