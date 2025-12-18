@@ -185,6 +185,67 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Support Page for App Store
+app.get('/support', (req, res) => {
+    res.send(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORBIT - 고객 지원</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1A0B2E 0%, #3D0052 50%, #000020 100%);
+            min-height: 100vh; color: #fff;
+            display: flex; flex-direction: column; align-items: center; padding: 40px 20px;
+        }
+        .container { max-width: 600px; width: 100%; text-align: center; }
+        .logo { font-size: 48px; margin-bottom: 10px; }
+        h1 { font-size: 32px; margin-bottom: 10px; letter-spacing: 3px; }
+        .subtitle { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 40px; }
+        .card {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px; padding: 30px; margin-bottom: 20px; backdrop-filter: blur(10px);
+        }
+        h2 { font-size: 20px; margin-bottom: 20px; color: #FFD700; }
+        p { line-height: 1.8; color: rgba(255,255,255,0.8); margin-bottom: 15px; }
+        .contact-info {
+            background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3);
+            border-radius: 12px; padding: 20px; margin-top: 20px;
+        }
+        .contact-info a { color: #FFD700; text-decoration: none; font-size: 18px; }
+        .faq-item { text-align: left; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-question { font-weight: bold; margin-bottom: 10px; color: #fff; }
+        .faq-answer { color: rgba(255,255,255,0.7); font-size: 14px; }
+        footer { margin-top: 40px; color: rgba(255,255,255,0.4); font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🌙</div>
+        <h1>ORBIT</h1>
+        <p class="subtitle">내면 성장과 진정한 연결</p>
+        <div class="card">
+            <h2>📧 고객 지원</h2>
+            <p>ORBIT 앱 사용 중 문의사항이 있으시면<br>아래 이메일로 연락해 주세요.</p>
+            <div class="contact-info"><a href="mailto:support@soulmate-orbit.com">support@soulmate-orbit.com</a></div>
+        </div>
+        <div class="card">
+            <h2>❓ 자주 묻는 질문</h2>
+            <div class="faq-item"><div class="faq-question">미션은 언제 새로 열리나요?</div><div class="faq-answer">매일 오전 9시에 새로운 미션이 열립니다.</div></div>
+            <div class="faq-item"><div class="faq-question">매칭은 어떻게 이루어지나요?</div><div class="faq-answer">10일간의 여정을 마친 후, AI가 비슷한 성향의 상대를 찾아 연결해 드립니다.</div></div>
+            <div class="faq-item"><div class="faq-question">데이터는 안전하게 보관되나요?</div><div class="faq-answer">네, 모든 데이터는 암호화되어 안전하게 보관됩니다.</div></div>
+            <div class="faq-item"><div class="faq-question">계정을 삭제하고 싶어요.</div><div class="faq-answer">앱 내 설정 > 데이터 관리에서 계정 삭제가 가능합니다.</div></div>
+        </div>
+        <footer>© 2024 The Inner Circle. All rights reserved.</footer>
+    </div>
+</body>
+</html>`);
+});
+
 // Request Logging Middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
