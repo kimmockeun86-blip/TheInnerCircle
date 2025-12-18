@@ -171,7 +171,10 @@ const CouplesMissionScreen = () => {
             const storedAnalysis = await AsyncStorage.getItem(`couple_analysis_day_${currentDay}`);
             const storedFeedback = await AsyncStorage.getItem(`couple_feedback_day_${currentDay}`);
 
-            if (storedAnalysis) setAiAnalysis(storedAnalysis);
+            // "(연결 실패)" 포함된 오래된 에러 메시지는 표시하지 않음
+            if (storedAnalysis && !storedAnalysis.includes('연결 실패')) {
+                setAiAnalysis(storedAnalysis);
+            }
             if (storedFeedback) setAiFeedback(storedFeedback);
 
             if (storedMission) {
@@ -566,16 +569,6 @@ const CouplesMissionScreen = () => {
                     <Text style={styles.headerTitle}>ORBIT</Text>
                 </View>
 
-                {/* 개발자 도구 - 좌상단 고정 */}
-                <View style={{ position: 'absolute', top: 10, left: 10, zIndex: 999, flexDirection: 'row', gap: 5 }}>
-                    <TouchableOpacity
-                        onPress={skipTimer}
-                        style={{ backgroundColor: 'rgba(255,0,255,0.3)', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#FF00FF' }}
-                    >
-                        <Text style={{ color: '#FF00FF', fontSize: 10 }}>⏭️ 타이머</Text>
-                    </TouchableOpacity>
-                </View>
-
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
@@ -822,7 +815,7 @@ const styles = StyleSheet.create({
     // Content - Same as HomeScreen
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 180,
+        paddingBottom: 250,
         alignItems: 'center',
     },
     mainContent: {

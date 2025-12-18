@@ -285,7 +285,7 @@ app.post('/api/analysis/profile', async (req, res) => {
         console.error('ORBIT API Error (Profile):', error.message);
         res.json({
             success: true,
-            analysis: "당신의 내면에서 흥미로운 패턴이 감지됩니다. 숨겨진 키워드가 표면으로 드러나려 합니다. (연결 실패)",
+            analysis: "당신의 내면에서 흥미로운 패턴이 감지됩니다. 숨겨진 키워드가 표면으로 드러나려 합니다.",
             recommendedMission: "5분간 고요히 앉아라"
         });
     }
@@ -903,7 +903,7 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
         console.error('ORBIT Couple Analysis Error:', error.message);
         res.json({
             success: true,
-            analysis: "두 분의 인연이 아름답게 이어지고 있습니다. (연결 실패)",
+            analysis: "두 분의 인연이 아름답게 이어지고 있습니다.",
             feedback: "진심을 더 자주 표현하십시오.",
             nextMission: "그의 손을 잡아라"
         });
@@ -1047,7 +1047,7 @@ app.post('/api/analysis/couple-profile', async (req, res) => {
         console.error('ORBIT Couple Profile Error:', error.message);
         res.json({
             success: true,
-            analysis: "두 분의 여정이 하나로 수렴하기 시작했습니다. 이 인연이 빛나게 될 것입니다. (연결 실패)",
+            analysis: "두 분의 여정이 하나로 수렴하기 시작했습니다. 이 인연이 빛나게 될 것입니다.",
             recommendedMission: "서로의 눈을 1분간 바라보라"
         });
     }

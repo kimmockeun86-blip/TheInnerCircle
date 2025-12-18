@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS } from '../theme/theme';
 import logger from '../utils/logger';
 
@@ -14,8 +15,12 @@ const TAB_CONFIG: { [key: string]: { icon: keyof typeof Ionicons.glyphMap; iconF
 };
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
+    const insets = useSafeAreaInsets();
+    // 기본 20 + SafeArea bottom inset (최소 15)
+    const bottomOffset = 20 + Math.max(insets.bottom, 15);
+
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { bottom: bottomOffset }]}>
             <View style={styles.blurContainer}>
                 <View style={styles.tabBar}>
                     {state.routes.map((route: any, index: number) => {
@@ -78,7 +83,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 35, // Increased for Android navigation bar
+        // bottom은 동적으로 계산됨 (useSafeAreaInsets)
         left: 20,
         right: 20,
         borderRadius: 25,
@@ -93,7 +98,8 @@ const styles = StyleSheet.create({
     },
     blurContainer: {
         flex: 1,
-        backgroundColor: 'transparent',
+        backgroundColor: 'rgba(20, 10, 30, 0.95)', // 불투명한 어두운 배경
+        borderRadius: 25,
     },
     tabBar: {
         flexDirection: 'row',
