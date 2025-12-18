@@ -12,19 +12,59 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 // Firebase Admin SDK
 const admin = require('firebase-admin');
 
-// Initialize Firebase Admin using service account key file
-try {
-    const serviceAccount = require('./serviceAccountKey.json');
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        storageBucket: "orbit-920a0.firebasestorage.app"
-    });
-    console.log('Firebase Admin SDK initialized successfully.');
-} catch (e) {
-    console.log('Firebase Admin SDK initialization skipped:', e.message);
+// Initialize Firebase Admin - 환경 변수 우선, 없으면 파일 사용
+let firebaseInitialized = false;
+
+// 방법 1: 환경 변수로 초기화 (Render 배포용)
+if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+            }),
+            storageBucket: "orbit-920a0.firebasestorage.app"
+        });
+        console.log('Firebase Admin SDK initialized with environment variables.');
+        firebaseInitialized = true;
+    } catch (e) {
+        console.log('Firebase init with env vars failed:', e.message);
+    }
 }
 
-const firestore = admin.firestore ? admin.firestore() : null;
+// 방법 2: serviceAccountKey.json 파일로 초기화
+if (!firebaseInitialized) {
+    // Render Secret Files 경로 우선 확인
+    const possiblePaths = [
+        '/etc/secrets/serviceAccountKey.json',  // Render Secret Files
+        './serviceAccountKey.json'               // 로컬 개발
+    ];
+
+    for (const filePath of possiblePaths) {
+        try {
+            const fs = require('fs');
+            if (fs.existsSync(filePath)) {
+                const serviceAccount = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                admin.initializeApp({
+                    credential: admin.credential.cert(serviceAccount),
+                    storageBucket: "orbit-920a0.firebasestorage.app"
+                });
+                console.log(`Firebase Admin SDK initialized with file: ${filePath}`);
+                firebaseInitialized = true;
+                break;
+            }
+        } catch (e) {
+            console.log(`Firebase init with ${filePath} failed:`, e.message);
+        }
+    }
+
+    if (!firebaseInitialized) {
+        console.log('Firebase Admin SDK initialization skipped: No valid config found');
+    }
+}
+
+const firestore = firebaseInitialized ? admin.firestore() : null;
 
 console.log('Dependencies loaded.');
 
