@@ -674,11 +674,17 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
         const calculateCountdown = () => {
             const now = new Date();
-            const tomorrow = new Date(now);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(9, 0, 0, 0);
+            const target = new Date(now);
 
-            const diff = tomorrow.getTime() - now.getTime();
+            // 오늘 오전 9시 설정
+            target.setHours(9, 0, 0, 0);
+
+            // 이미 오전 9시가 지났으면 내일 9시로 설정
+            if (now.getTime() >= target.getTime()) {
+                target.setDate(target.getDate() + 1);
+            }
+
+            const diff = target.getTime() - now.getTime();
             if (diff <= 0) {
                 setCountdown('00:00:00');
                 return;
@@ -896,11 +902,14 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 await AsyncStorage.removeItem('missionStatus');
                 await AsyncStorage.setItem('lastCompletedDate', new Date().toISOString());
 
-                // Set lock time for tomorrow 9 AM
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                tomorrow.setHours(9, 0, 0, 0);
-                setNextMissionUnlockTime(tomorrow.toLocaleString());
+                // Set lock time for next 9 AM (오늘 9시 이전이면 오늘, 이후면 내일)
+                const now = new Date();
+                const target = new Date(now);
+                target.setHours(9, 0, 0, 0);
+                if (now.getTime() >= target.getTime()) {
+                    target.setDate(target.getDate() + 1);
+                }
+                setNextMissionUnlockTime(target.toLocaleString());
 
                 setJournalModalVisible(false);
                 setJournalInput('');
@@ -1229,48 +1238,53 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 <Modal visible={matchCandidateModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalOverlay}>
                         <GlassCard style={styles.matchCandidateModal}>
-                            <Text style={styles.matchModalBadge}>특별 미션</Text>
-                            <Text style={styles.matchModalTitle}>운명의 신호</Text>
+                            <ScrollView
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={{ paddingBottom: 10 }}
+                            >
+                                <Text style={styles.matchModalBadge}>특별 미션</Text>
+                                <Text style={styles.matchModalTitle}>운명의 신호</Text>
 
-                            {matchCandidate && (
-                                <View style={styles.matchCandidateProfile}>
-                                    {/* 블러 처리된 사진 - 매칭 수락 전 */}
-                                    <View style={styles.blurPhotoContainer}>
-                                        <Image
-                                            source={{ uri: matchCandidate.photo }}
-                                            style={[styles.matchCandidatePhoto, { opacity: 0.7 }]}
-                                            blurRadius={Platform.OS === 'ios' ? 15 : 10}
-                                        />
-                                        <View style={styles.blurOverlay} />
-                                    </View>
-                                    {/* 개인정보 숨김 - MBTI + 이상형만 표시 */}
-                                    <Text style={styles.matchCandidateName}>
-                                        비밀의 상대
-                                    </Text>
-                                    <Text style={styles.matchCandidateDetail}>
-                                        {matchCandidate.mbti || 'MBTI 비공개'}
-                                    </Text>
-                                    <View style={styles.matchCandidateDeficit}>
-                                        <Text style={styles.matchCandidateDeficitText}>
-                                            이상형: {matchCandidate.deficit}
+                                {matchCandidate && (
+                                    <View style={styles.matchCandidateProfile}>
+                                        {/* 블러 처리된 사진 - 매칭 수락 전 */}
+                                        <View style={styles.blurPhotoContainer}>
+                                            <Image
+                                                source={{ uri: matchCandidate.photo }}
+                                                style={[styles.matchCandidatePhoto, { opacity: 0.7 }]}
+                                                blurRadius={Platform.OS === 'ios' ? 15 : 10}
+                                            />
+                                            <View style={styles.blurOverlay} />
+                                        </View>
+                                        {/* 개인정보 숨김 - MBTI + 이상형만 표시 */}
+                                        <Text style={styles.matchCandidateName}>
+                                            비밀의 상대
                                         </Text>
+                                        <Text style={styles.matchCandidateDetail}>
+                                            {matchCandidate.mbti || 'MBTI 비공개'}
+                                        </Text>
+                                        <View style={styles.matchCandidateDeficit}>
+                                            <Text style={styles.matchCandidateDeficitText}>
+                                                이상형: {matchCandidate.deficit}
+                                            </Text>
+                                        </View>
                                     </View>
-                                </View>
-                            )}
+                                )}
 
-                            <Text style={styles.matchModalInstruction}>
-                                가볍게 자기소개와 인사를 해보세요. 커피 한잔 마시는거 어떠세요? 약속장소와 날짜를 정하기 위해 상대방과 연락할 번호나 메일, 메신저 아이디를 교환하는 것도 좋습니다.
-                            </Text>
-                            <TextInput
-                                style={styles.letterInput}
-                                multiline
-                                placeholder="진심을 담아 편지를 작성해주세요... (500자 이내)"
-                                placeholderTextColor="rgba(255,255,255,0.5)"
-                                value={letterContent}
-                                onChangeText={setLetterContent}
-                                maxLength={500}
-                            />
-                            <Text style={styles.letterCharCount}>{letterContent.length}/500</Text>
+                                <Text style={styles.matchModalInstruction}>
+                                    가볍게 자기소개와 인사를 해보세요. 커피 한잔 마시는거 어떠세요? 약속장소와 날짜를 정하기 위해 상대방과 연락할 번호나 메일, 메신저 아이디를 교환하는 것도 좋습니다.
+                                </Text>
+                                <TextInput
+                                    style={styles.letterInput}
+                                    multiline
+                                    placeholder="진심을 담아 편지를 작성해주세요... (500자 이내)"
+                                    placeholderTextColor="rgba(255,255,255,0.5)"
+                                    value={letterContent}
+                                    onChangeText={setLetterContent}
+                                    maxLength={500}
+                                />
+                                <Text style={styles.letterCharCount}>{letterContent.length}/500</Text>
+                            </ScrollView>
 
                             <View style={styles.matchModalButtons}>
                                 <HolyButton

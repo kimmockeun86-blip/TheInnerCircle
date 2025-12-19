@@ -496,8 +496,8 @@ const styles = StyleSheet.create({
         fontFamily: FONTS.serif,
     },
     visualizerContainer: {
-        width: 200,
-        height: 200,
+        width: 280,
+        height: 280,
         alignItems: 'center',
         justifyContent: 'center',
     },
