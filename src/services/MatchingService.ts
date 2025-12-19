@@ -132,8 +132,8 @@ class MatchingService {
             // 점수순 정렬
             candidates.sort((a, b) => b.score - a.score);
 
-            console.log(`[MatchingService] ${candidates.length}명의 후보 발견`);
-            return candidates.slice(0, 10); // 상위 10명
+            console.log(`[MatchingService] ${candidates.length}명의 후보 중 최상위 1명 선택`);
+            return candidates.slice(0, 1); // 단 한 명만 반환 (문서 정책)
         } catch (error) {
             console.error('Find candidates error:', error);
             return [];
