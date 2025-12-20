@@ -19,6 +19,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "리추얼 기록 사진 촬영에 사용됩니다.",
         "NSPhotoLibraryUsageDescription": "리추얼 기록에 사진을 첨부하기 위해 사용됩니다.",
+        "NSLocationWhenInUseUsageDescription": "가까운 거리의 인연을 찾기 위해 위치를 사용합니다.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -33,7 +34,9 @@
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ]
     },
     "web": {
