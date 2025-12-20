@@ -246,6 +246,75 @@ app.get('/support', (req, res) => {
 </html>`);
 });
 
+// Privacy Policy Page for App Store
+app.get('/privacy', (req, res) => {
+    res.send(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORBIT - 개인정보 처리방침</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1A0B2E 0%, #3D0052 50%, #000020 100%);
+            min-height: 100vh; color: #ffffff; padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px; margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05); border-radius: 20px;
+            padding: 40px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        h1 { text-align: center; font-size: 28px; margin-bottom: 10px;
+            background: linear-gradient(90deg, #FF00FF, #00FFFF);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .date { text-align: center; color: #888; margin-bottom: 30px; }
+        h2 { font-size: 18px; margin-top: 30px; margin-bottom: 15px; color: #FF00FF; }
+        p, li { line-height: 1.8; color: #ddd; margin-bottom: 10px; }
+        ul { margin-left: 20px; }
+        .contact { margin-top: 40px; padding: 20px; background: rgba(255, 0, 255, 0.1);
+            border-radius: 10px; text-align: center; }
+        .contact a { color: #00FFFF; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔮 ORBIT 개인정보 처리방침</h1>
+        <p class="date">시행일: 2025년 12월 20일</p>
+        <h2>1. 개인정보의 수집 및 이용 목적</h2>
+        <p>ORBIT(이하 "앱")은 다음 목적으로 개인정보를 수집합니다:</p>
+        <ul>
+            <li>서비스 제공 및 사용자 경험 개선</li>
+            <li>AI 기반 맞춤형 미션 및 피드백 제공</li>
+            <li>매칭 서비스 제공 (위치 기반)</li>
+            <li>고객 문의 응대</li>
+        </ul>
+        <h2>2. 수집하는 개인정보 항목</h2>
+        <ul>
+            <li><strong>필수 정보:</strong> 이름, 성별, 나이, MBTI</li>
+            <li><strong>선택 정보:</strong> 프로필 사진, 직업, 자기소개</li>
+            <li><strong>위치 정보:</strong> 매칭 서비스 제공을 위한 현재 위치 (사용자 동의 시에만)</li>
+            <li><strong>자동 수집 정보:</strong> 기기 정보, 앱 사용 기록</li>
+        </ul>
+        <h2>3. 개인정보의 보유 및 이용 기간</h2>
+        <p>수집된 개인정보는 서비스 이용 기간 동안 보유되며, 회원 탈퇴 시 즉시 파기됩니다.</p>
+        <h2>4. 개인정보의 제3자 제공</h2>
+        <p>ORBIT은 사용자의 동의 없이 개인정보를 제3자에게 제공하지 않습니다. 다만, 법령에 의해 요구되는 경우 또는 서비스 제공을 위해 필요한 경우에는 예외로 합니다.</p>
+        <h2>5. 이용자의 권리</h2>
+        <p>사용자는 언제든지 개인정보 열람, 정정, 삭제, 처리 정지를 요청할 수 있습니다.</p>
+        <h2>6. 개인정보 보호책임자</h2>
+        <div class="contact">
+            <p><strong>개인정보 보호책임자</strong></p>
+            <p>이메일: <a href="mailto:kimmockeun86@gmail.com">kimmockeun86@gmail.com</a></p>
+        </div>
+    </div>
+</body>
+</html>`);
+});
+
+
 // Request Logging Middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
