@@ -1385,6 +1385,273 @@ app.post('/api/matching/accept', (req, res) => {
     }
 });
 
+// ================================
+// FCM 푸시 알림 시스템
+// ================================
+
+// FCM 토큰 저장소 (메모리 - 실제로는 Firestore 사용 권장)
+const fcmTokens = new Map();
+
+// 1. FCM 토큰 등록
+app.post('/api/fcm/register', async (req, res) => {
+    try {
+        const { userId, token, platform } = req.body;
+
+        if (!userId || !token) {
+            return res.status(400).json({ success: false, error: 'userId and token required' });
+        }
+
+        // 메모리에 저장 (실제로는 Firestore에 저장)
+        fcmTokens.set(userId, { token, platform, updatedAt: new Date() });
+
+        // Firestore에도 저장 (영구 저장)
+        if (firestore) {
+            await firestore.collection('fcmTokens').doc(userId).set({
+                token,
+                platform,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+
+        console.log(`[FCM] Token registered for user: ${userId} (${platform})`);
+        res.json({ success: true, message: 'Token registered' });
+
+    } catch (error) {
+        console.error('[FCM] Register error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 2. 단일 사용자에게 푸시 알림 발송
+app.post('/api/fcm/send', async (req, res) => {
+    try {
+        const { userId, title, body, data } = req.body;
+
+        if (!firebaseInitialized) {
+            return res.status(500).json({ success: false, error: 'Firebase not initialized' });
+        }
+
+        // 토큰 조회
+        let token = fcmTokens.get(userId)?.token;
+
+        // Firestore에서 조회
+        if (!token && firestore) {
+            const doc = await firestore.collection('fcmTokens').doc(userId).get();
+            if (doc.exists) {
+                token = doc.data().token;
+            }
+        }
+
+        if (!token) {
+            return res.status(404).json({ success: false, error: 'Token not found for user' });
+        }
+
+        // FCM 메시지 전송
+        const message = {
+            notification: {
+                title: title || 'ORBIT',
+                body: body || '새로운 알림이 있습니다',
+            },
+            data: data || {},
+            token: token,
+            android: {
+                priority: 'high',
+                notification: {
+                    channelId: 'orbit-notifications',
+                    icon: 'notification_icon',
+                    color: '#FF00FF',
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                        badge: 1,
+                    }
+                }
+            }
+        };
+
+        const response = await admin.messaging().send(message);
+        console.log(`[FCM] Message sent to ${userId}:`, response);
+
+        res.json({ success: true, messageId: response });
+
+    } catch (error) {
+        console.error('[FCM] Send error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 3. 모든 사용자에게 푸시 알림 발송 (브로드캐스트)
+app.post('/api/fcm/broadcast', async (req, res) => {
+    try {
+        const { title, body, data } = req.body;
+
+        if (!firebaseInitialized) {
+            return res.status(500).json({ success: false, error: 'Firebase not initialized' });
+        }
+
+        // 모든 토큰 수집
+        const tokens = [];
+
+        if (firestore) {
+            const snapshot = await firestore.collection('fcmTokens').get();
+            snapshot.forEach(doc => {
+                const token = doc.data().token;
+                if (token) tokens.push(token);
+            });
+        }
+
+        if (tokens.length === 0) {
+            return res.json({ success: true, sent: 0, message: 'No tokens to send' });
+        }
+
+        // 멀티캐스트 메시지
+        const message = {
+            notification: {
+                title: title || 'ORBIT',
+                body: body || '새로운 알림이 있습니다',
+            },
+            data: data || {},
+            android: {
+                priority: 'high',
+                notification: {
+                    channelId: 'orbit-notifications',
+                    icon: 'notification_icon',
+                    color: '#FF00FF',
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                    }
+                }
+            },
+            tokens: tokens,
+        };
+
+        const response = await admin.messaging().sendEachForMulticast(message);
+        console.log(`[FCM] Broadcast sent: ${response.successCount}/${tokens.length} successful`);
+
+        res.json({
+            success: true,
+            sent: response.successCount,
+            failed: response.failureCount,
+            total: tokens.length
+        });
+
+    } catch (error) {
+        console.error('[FCM] Broadcast error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 4. 미션 알림 발송 (오전 9시 스케줄용)
+app.post('/api/fcm/mission-notification', async (req, res) => {
+    try {
+        if (!firebaseInitialized) {
+            return res.status(500).json({ success: false, error: 'Firebase not initialized' });
+        }
+
+        const tokens = [];
+        if (firestore) {
+            const snapshot = await firestore.collection('fcmTokens').get();
+            snapshot.forEach(doc => {
+                const token = doc.data().token;
+                if (token) tokens.push(token);
+            });
+        }
+
+        if (tokens.length === 0) {
+            return res.json({ success: true, sent: 0 });
+        }
+
+        const message = {
+            notification: {
+                title: '🌅 새로운 미션이 공개되었습니다!',
+                body: '오르빗이 오늘의 리추얼을 준비했습니다. 지금 확인하세요.',
+            },
+            data: { type: 'mission_unlock' },
+            android: {
+                priority: 'high',
+                notification: {
+                    channelId: 'orbit-notifications',
+                    icon: 'notification_icon',
+                    color: '#FF00FF',
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                        badge: 1,
+                    }
+                }
+            },
+            tokens: tokens,
+        };
+
+        const response = await admin.messaging().sendEachForMulticast(message);
+        console.log(`[FCM] Mission notification: ${response.successCount}/${tokens.length} sent`);
+
+        res.json({ success: true, sent: response.successCount });
+
+    } catch (error) {
+        console.error('[FCM] Mission notification error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 5. 매칭/편지 알림 발송
+app.post('/api/fcm/match-notification', async (req, res) => {
+    try {
+        const { targetUserId, fromName, type } = req.body;
+
+        if (!firebaseInitialized) {
+            return res.status(500).json({ success: false, error: 'Firebase not initialized' });
+        }
+
+        let token = fcmTokens.get(targetUserId)?.token;
+        if (!token && firestore) {
+            const doc = await firestore.collection('fcmTokens').doc(targetUserId).get();
+            if (doc.exists) token = doc.data().token;
+        }
+
+        if (!token) {
+            return res.status(404).json({ success: false, error: 'Token not found' });
+        }
+
+        let title, body;
+        if (type === 'letter') {
+            title = '📬 새로운 편지가 도착했습니다!';
+            body = `${fromName}님으로부터 편지가 왔어요. 지금 확인해보세요.`;
+        } else if (type === 'match') {
+            title = '💕 새로운 인연이 발견되었습니다!';
+            body = `${fromName}님이 당신에게 관심을 보였습니다.`;
+        } else {
+            title = 'ORBIT';
+            body = '새로운 알림이 있습니다';
+        }
+
+        const message = {
+            notification: { title, body },
+            data: { type: type || 'general', fromName: fromName || '' },
+            token: token,
+        };
+
+        const response = await admin.messaging().send(message);
+        console.log(`[FCM] Match notification sent to ${targetUserId}:`, response);
+
+        res.json({ success: true, messageId: response });
+
+    } catch (error) {
+        console.error('[FCM] Match notification error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`ORBIT Server running on port ${PORT} (0.0.0.0)`);
 });
