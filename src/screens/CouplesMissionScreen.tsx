@@ -12,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
 import notificationService from '../services/NotificationService';
 import MatchingService from '../services/MatchingService';
+import HeaderSpline from '../components/HeaderSpline';
 import { WebView } from 'react-native-webview';
 
 // Couple placeholder image - 솔로모드와 유사한 스타일
@@ -556,29 +557,10 @@ const CouplesMissionScreen = () => {
             <SafeAreaView style={styles.safeArea}>
                 {/* Header - Same as HomeScreen */}
                 <View style={styles.header}>
-                    {/* Spline Animation - Behind Text (Same as HomeScreen) */}
-                    {Platform.OS === 'web' ? (
-                        <View style={styles.headerOrbitAnimation}>
-                            <iframe
-                                srcDoc={`<!DOCTYPE html><html><head><style>*{margin:0;padding:0;}html,body{width:100%;height:100%;overflow:hidden;background:transparent;}spline-viewer{width:100%;height:100%;display:block;transform:scale(0.175);transform-origin:center center;}</style><script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js"></script></head><body><spline-viewer url="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"></spline-viewer></body></html>`}
-                                style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
-                                title="Orbit Animation"
-                            />
-                        </View>
-                    ) : (
-                        <View style={styles.headerOrbitAnimation}>
-                            <WebView
-                                originWhitelist={['*']}
-                                source={{ html: `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>*{margin:0;padding:0;}html,body{width:100%;height:100%;overflow:hidden;background:transparent;}spline-viewer{width:100%;height:100%;display:block;transform:scale(0.175);transform-origin:center center;}</style><script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js"></script></head><body><spline-viewer url="https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode"></spline-viewer></body></html>` }}
-                                style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}
-                                javaScriptEnabled={true}
-                                domStorageEnabled={true}
-                                scrollEnabled={false}
-                                androidHardwareAccelerationDisabled={false}
-                                androidLayerType="hardware"
-                            />
-                        </View>
-                    )}
+                    {/* HeaderSpline - ORBIT 로고 뒤 애니메이션 */}
+                    <View style={styles.headerOrbitAnimation}>
+                        <HeaderSpline width={200} height={80} />
+                    </View>
                     {/* ORBIT Text - On Top */}
                     <Text style={styles.headerTitle}>ORBIT</Text>
                 </View>
