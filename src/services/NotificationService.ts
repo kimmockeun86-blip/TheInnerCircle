@@ -27,7 +27,7 @@ class NotificationService {
     private expoPushToken: string | null = null;
 
     // 푸시 토큰 가져오기 (모바일용)
-    async registerForPushNotifications(): Promise<string | null> {
+    async registerForPushNotifications(userId?: string): Promise<string | null> {
         if (Platform.OS === 'web') {
             return null;
         }
@@ -57,10 +57,44 @@ class NotificationService {
             this.expoPushToken = tokenData.data;
             await AsyncStorage.setItem('expoPushToken', this.expoPushToken);
             console.log('[Notification] 푸시 토큰:', this.expoPushToken);
+
+            // 서버로 토큰 전송
+            if (userId && this.expoPushToken) {
+                await this.registerTokenWithServer(userId, this.expoPushToken);
+            }
+
             return this.expoPushToken;
         } catch (error) {
             console.log('[Notification] 푸시 토큰 가져오기 실패:', error);
             return null;
+        }
+    }
+
+    // 서버로 FCM 토큰 등록
+    async registerTokenWithServer(userId: string, token: string): Promise<boolean> {
+        try {
+            const API_URL = 'https://theinnercircle-9xye.onrender.com/api';
+            const response = await fetch(`${API_URL}/fcm/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    token,
+                    platform: Platform.OS,
+                }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                console.log('[Notification] 서버에 토큰 등록 성공');
+                return true;
+            } else {
+                console.log('[Notification] 서버 토큰 등록 실패:', data.error);
+                return false;
+            }
+        } catch (error) {
+            console.log('[Notification] 서버 토큰 등록 오류:', error);
+            return false;
         }
     }
 
