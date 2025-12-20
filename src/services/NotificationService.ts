@@ -11,6 +11,8 @@ Notifications.setNotificationHandler({
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
     }),
 });
 
@@ -191,15 +193,6 @@ class NotificationService {
             title: '📬 새로운 편지가 도착했습니다!',
             body: `${fromName}님으로부터 편지가 왔어요. 지금 확인해보세요.`,
             data: { type: 'letter' },
-        });
-    }
-
-    // ✅ 미션 완료 축하 알림
-    async showMissionCompleteNotification(day: number): Promise<void> {
-        await this.showNotification({
-            title: '✨ 오늘의 미션 완료!',
-            body: `Day ${day} 미션을 완료하셨습니다. 내일도 함께해요.`,
-            data: { type: 'mission_complete' },
         });
     }
 
