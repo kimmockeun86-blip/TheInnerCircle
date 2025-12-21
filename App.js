@@ -23,6 +23,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import MatchingScreen from './src/screens/MatchingScreen';
 import SpecialMissionIntroScreen from './src/screens/SpecialMissionIntroScreen';
 import TabNavigator from './src/navigation/TabNavigator';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 const Stack = createStackNavigator();
 
@@ -219,57 +220,59 @@ export default function App() {
 
   // Web wrapper for centering
   const content = (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <NavigationContainer linking={{
-        prefixes: [],
-        config: {
-          screens: {
-            Onboarding: 'onboarding',
-            MainTabs: {
-              screens: {
-                Home: 'home',
-                Log: 'log',
-                Chat: 'chat',
-                Profile: 'profile',
-              }
-            },
-            Match: 'match',
-            CouplesMission: {
-              screens: {
-                Home: 'couples-mission/Home',
-                Log: 'couples-mission/Log',
-                Profile: 'couples-mission/Profile',
-              }
-            },
-            Settings: 'settings',
-            Admin: 'admin',
-            UserList: 'user-list',
-            Matching: 'matching',
-            SpecialMissionIntro: 'special-mission-intro',
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <NavigationContainer linking={{
+          prefixes: [],
+          config: {
+            screens: {
+              Onboarding: 'onboarding',
+              MainTabs: {
+                screens: {
+                  Home: 'home',
+                  Log: 'log',
+                  Chat: 'chat',
+                  Profile: 'profile',
+                }
+              },
+              Match: 'match',
+              CouplesMission: {
+                screens: {
+                  Home: 'couples-mission/Home',
+                  Log: 'couples-mission/Log',
+                  Profile: 'couples-mission/Profile',
+                }
+              },
+              Settings: 'settings',
+              Admin: 'admin',
+              UserList: 'user-list',
+              Matching: 'matching',
+              SpecialMissionIntro: 'special-mission-intro',
+            }
           }
-        }
-      }}>
-        <Stack.Navigator
-          initialRouteName={initialRoute}
-          screenOptions={{
-            headerShown: false,
-            cardStyle: { backgroundColor: '#000' },
-            presentation: 'card',
-          }}
-        >
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          <Stack.Screen name="MainTabs" component={TabNavigator} />
-          <Stack.Screen name="Match" component={MatchScreen} />
-          <Stack.Screen name="CouplesMission" component={CoupleTabNavigator} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          <Stack.Screen name="Admin" component={AdminScreen} />
-          <Stack.Screen name="UserList" component={UserListScreen} />
-          <Stack.Screen name="Matching" component={MatchingScreen} />
-          <Stack.Screen name="SpecialMissionIntro" component={SpecialMissionIntroScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+        }}>
+          <Stack.Navigator
+            initialRouteName={initialRoute}
+            screenOptions={{
+              headerShown: false,
+              cardStyle: { backgroundColor: '#000' },
+              presentation: 'card',
+            }}
+          >
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+            <Stack.Screen name="MainTabs" component={TabNavigator} />
+            <Stack.Screen name="Match" component={MatchScreen} />
+            <Stack.Screen name="CouplesMission" component={CoupleTabNavigator} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Admin" component={AdminScreen} />
+            <Stack.Screen name="UserList" component={UserListScreen} />
+            <Stack.Screen name="Matching" component={MatchingScreen} />
+            <Stack.Screen name="SpecialMissionIntro" component={SpecialMissionIntroScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 
   // Apply web centering wrapper

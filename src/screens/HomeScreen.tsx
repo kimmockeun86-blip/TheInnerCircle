@@ -15,6 +15,9 @@ import LocationService from '../services/LocationService';
 import MatchingService from '../services/MatchingService';
 import HeaderSpline from '../components/HeaderSpline';
 import { WebView } from 'react-native-webview';
+import JournalModal from '../components/JournalModal';
+import AnalysisModal from '../components/AnalysisModal';
+import IntroModal from '../components/IntroModal';
 
 // Placeholder images
 const malePlaceholder = require('../../assets/male_placeholder.png');
@@ -1497,24 +1500,11 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 </Modal>
 
                 {/* Analysis Result Modal */}
-                <Modal visible={analysisModalVisible} animationType="fade" transparent={true}>
-                    <View style={styles.modalOverlay}>
-                        <GlassCard style={styles.analysisModalContent}>
-                            <Text style={styles.analysisTitle}>오르빗의 시그널</Text>
-                            <ScrollView style={{ maxHeight: 300 }}>
-                                <Text style={styles.analysisText}>
-                                    {currentAnalysis?.feedback}
-                                </Text>
-                            </ScrollView>
-
-                            <HolyButton
-                                title="확인"
-                                onPress={() => setAnalysisModalVisible(false)}
-                                style={{ marginTop: 20, width: '100%' }}
-                            />
-                        </GlassCard>
-                    </View>
-                </Modal>
+                <AnalysisModal
+                    visible={analysisModalVisible}
+                    onClose={() => setAnalysisModalVisible(false)}
+                    feedback={currentAnalysis?.feedback || null}
+                />
 
                 {/* History Modal */}
                 <Modal visible={historyModalVisible} animationType="slide">
@@ -1541,28 +1531,15 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 </Modal>
 
                 {/* Intro Modal */}
-                <Modal visible={introModalVisible} animationType="fade" transparent={true}>
-                    <View style={styles.modalOverlay}>
-                        <GlassCard style={styles.introContent}>
-                            <Text style={styles.introTitle}>환영합니다, {name}님.</Text>
-                            <Text style={styles.introText}>
-                                당신의 결핍인 '{deficit}'을(를) 성장의 씨앗으로 삼아,{'\n'}
-                                내면의 여행을 시작합니다.{'\n\n'}
-                                매일 주어지는 미션을 수행하고{'\n'}
-                                기록을 남겨주세요.{'\n\n'}
-                                당신의 영혼을 돌보는 멘토 '오르빗'이 함께합니다.
-                            </Text>
-                            <HolyButton
-                                title="여정 시작하기"
-                                onPress={async () => {
-                                    setIntroModalVisible(false);
-                                    await AsyncStorage.setItem('hasSeenIntro', 'true');
-                                }}
-                                style={{ marginTop: 30, width: '100%' }}
-                            />
-                        </GlassCard>
-                    </View>
-                </Modal>
+                <IntroModal
+                    visible={introModalVisible}
+                    onClose={async () => {
+                        setIntroModalVisible(false);
+                        await AsyncStorage.setItem('hasSeenIntro', 'true');
+                    }}
+                    userName={name}
+                    userDeficit={deficit}
+                />
 
             </SafeAreaView>
         </View>

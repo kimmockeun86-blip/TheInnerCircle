@@ -26,7 +26,6 @@ interface UserData {
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
-    console.log('⚙️ SettingsScreen Component Rendered');
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [customMission, setCustomMission] = useState('');
