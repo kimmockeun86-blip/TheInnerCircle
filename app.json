@@ -14,7 +14,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.theinnercircle.app",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "buildNumber": "9",
       "infoPlist": {
         "NSCameraUsageDescription": "리추얼 기록 사진 촬영에 사용됩니다.",
