@@ -137,10 +137,11 @@ const CouplesMissionScreen = () => {
             if (storedCouplePhoto) setCouplePhoto(storedCouplePhoto);
 
             // ============================================
-            // 🎯 관리자 부여 미션 체크 (OrbitAdmin 서버)
-            // ============================================
             try {
-                const adminApiUrl = Platform.OS === 'web' ? 'http://localhost:3001' : 'http://localhost:3001';
+                // OrbitAdmin API URL (로컬 또는 프로덕션)
+                const adminApiUrl = Platform.OS === 'web' && window.location.hostname === 'localhost'
+                    ? 'http://localhost:3001'
+                    : 'https://orbit-adminfinalfight.onrender.com';
                 const userId = await AsyncStorage.getItem('userId') || storedName || '';
                 if (userId) {
                     const res = await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`);
@@ -559,7 +560,7 @@ const CouplesMissionScreen = () => {
                 <View style={styles.header}>
                     {/* HeaderSpline - ORBIT 로고 뒤 애니메이션 */}
                     <View style={styles.headerOrbitAnimation}>
-                        <HeaderSpline width={200} height={80} />
+                        <HeaderSpline width={300} height={300} />
                     </View>
                     {/* ORBIT Text - On Top */}
                     <Text style={styles.headerTitle}>ORBIT</Text>
@@ -778,14 +779,18 @@ const styles = StyleSheet.create({
     },
     headerOrbitAnimation: {
         position: 'absolute',
-        width: 400,
-        height: 400,
+        width: 300,
+        height: 300,
         zIndex: 1,
-        top: -150,
-        left: '50%',
-        marginLeft: -200,
-        opacity: 0.6,
-    },
+        top: -100,
+        opacity: 0.7,
+        ...(Platform.OS === 'web' ? {
+            left: 'calc(50% - 150px)',
+        } : {
+            left: '50%',
+            marginLeft: -150,
+        }),
+    } as any,
     headerTitle: {
         color: '#FFFFFF',
         fontSize: 18,

@@ -28,6 +28,7 @@ import { db } from '../config/firebase';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import StorageService from '../services/StorageService';
 import { CommonActions } from '@react-navigation/native';
+import notificationService from '../services/NotificationService';
 
 interface OnboardingScreenProps {
     navigation: any;
@@ -205,6 +206,17 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                 console.log('[Onboarding] GPS 위치 수집:', userLocation);
             } catch (e) {
                 console.log('[Onboarding] GPS 위치 수집 실패 (무시)');
+            }
+
+            // 알림 권한 요청 및 푸시 토큰 등록 (non-blocking)
+            try {
+                console.log('[Onboarding] 알림 권한 요청...');
+                await notificationService.registerForPushNotifications(uniqueId);
+                // 미션 알림 스케줄 설정
+                await notificationService.scheduleMissionNotification();
+                console.log('[Onboarding] 알림 설정 완료');
+            } catch (e) {
+                console.log('[Onboarding] 알림 설정 실패 (무시):', e);
             }
 
             // Upload profile photo to Firebase Storage (non-blocking)

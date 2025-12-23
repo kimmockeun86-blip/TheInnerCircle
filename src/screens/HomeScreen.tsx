@@ -585,6 +585,101 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     useEffect(() => {
         const initializeData = async () => {
             try {
+                // ============================================
+                // 🎯 관리자(OrbitAdmin) 데이터 동기화
+                // ============================================
+                try {
+                    const storedUserId = await AsyncStorage.getItem('userId');
+                    const storedName = await AsyncStorage.getItem('userName');
+                    const userId = storedUserId || storedName || '';
+
+                    if (userId) {
+                        // OrbitAdmin API URL (로컬 또는 프로덕션)
+                        const adminApiUrl = Platform.OS === 'web' && window.location.hostname === 'localhost'
+                            ? 'http://localhost:3001'
+                            : 'https://orbit-adminfinalfight.onrender.com';
+
+                        const res = await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await res.json();
+
+                        if (data.success && data.user) {
+                            const adminUser = data.user;
+
+                            // 먼저 proposedMatch 체크 (편지 쓰기 단계 우선)
+                            // 관리자가 매칭 후보를 제안한 경우 (편지 쓰기 단계로)
+                            if (adminUser.hasProposedMatch && adminUser.proposedMatch) {
+                                console.log('[ORBIT] 🎯 관리자 매칭 후보 발견:', adminUser.proposedMatch.name);
+                                const proposed = adminUser.proposedMatch;
+
+                                // 로컬에 매칭 후보 저장
+                                setMatchCandidate({
+                                    id: proposed.id,
+                                    name: proposed.name || '파트너',
+                                    age: proposed.age,
+                                    photo: proposed.photo,
+                                    bio: proposed.bio || '',
+                                    deficit: proposed.deficit,
+                                    distance: '관리자 매칭'
+                                });
+
+                                // Day10 특별 미션 상황처럼 설정
+                                await AsyncStorage.setItem('dayCount', '10');
+                                setDayCount(10);
+                                await AsyncStorage.setItem('day10Done', 'true');
+                                setDay10Done(true);
+
+                                // isCoupled는 false로 설정해야 커플 모드로 안 감
+                                await AsyncStorage.setItem('isCoupled', 'solo');
+
+                                console.log('[ORBIT] 🎯 관리자 매칭 후보가 설정됨 - 편지 쓰기 단계로 이동');
+                                // proposedMatch가 있으면 isCoupled 체크 건너뛰기
+                            }
+                            // proposedMatch가 없을 때만 isCoupled 체크
+                            else if (adminUser.isCoupled && adminUser.partnerId) {
+                                console.log('[ORBIT] 🎯 관리자 매칭 발견! 파트너:', adminUser.partnerId);
+                                await AsyncStorage.setItem('isCoupled', 'coupled');
+                                await AsyncStorage.setItem('matchedPartnerId', adminUser.partnerId);
+
+                                // 파트너 정보 가져오기
+                                try {
+                                    const partnerRes = await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(adminUser.partnerId)}`);
+                                    const partnerData = await partnerRes.json();
+                                    if (partnerData.success && partnerData.user) {
+                                        await AsyncStorage.setItem('matchedPartner', JSON.stringify({
+                                            id: adminUser.partnerId,
+                                            name: partnerData.user.name || '파트너',
+                                            age: partnerData.user.age,
+                                            photo: partnerData.user.photo
+                                        }));
+                                    }
+                                } catch (e) {
+                                    console.log('[ORBIT] 파트너 정보 가져오기 실패');
+                                }
+
+                                // 커플 모드로 이동
+                                navigation.replace('CouplesMission', {} as any);
+                                return;
+                            }
+
+                            // 관리자가 미션을 부여한 경우
+                            if (adminUser.assignedMission) {
+                                console.log('[ORBIT] 🎯 관리자 미션 발견:', adminUser.assignedMission);
+                                const storedDay = await AsyncStorage.getItem('dayCount');
+                                const currentDay = storedDay ? parseInt(storedDay, 10) : 1;
+                                await AsyncStorage.setItem(`mission_day_${currentDay}`, adminUser.assignedMission);
+                                setCurrentMissionText(adminUser.assignedMission);
+                                setAiAnalysis('관리자가 특별히 부여한 리추얼입니다.');
+                            }
+                        }
+                    }
+                } catch (adminErr) {
+                    console.log('[ORBIT] 관리자 서버 연결 실패 (정상 - 로컬 데이터 사용)');
+                }
+
+                // 로컬 커플 상태 확인
                 const isCoupled = await AsyncStorage.getItem('isCoupled');
                 if (isCoupled === 'coupled') {
                     navigation.replace('CouplesMission', {} as any);
@@ -965,7 +1060,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 <View style={styles.header}>
                     {/* HeaderSpline - ORBIT 로고 뒤 애니메이션 */}
                     <View style={styles.headerOrbitAnimation}>
-                        <HeaderSpline width={200} height={80} />
+                        <HeaderSpline width={300} height={300} />
                     </View>
 
                     {/* ORBIT Text - On Top */}
@@ -1585,15 +1680,18 @@ const styles = StyleSheet.create({
 
     headerOrbitAnimation: {
         position: 'absolute',
-        width: 400,
-        height: 400,
+        width: 300,
+        height: 300,
         zIndex: 1,
-        top: -150,
-        left: '50%',
-        marginLeft: -200,
-        opacity: 0.6,
-
-    },
+        top: -100,
+        opacity: 0.7,
+        ...(Platform.OS === 'web' ? {
+            left: 'calc(50% - 150px)',
+        } : {
+            left: '50%',
+            marginLeft: -150,
+        }),
+    } as any,
 
     // Profile Photo Styles
     profilePhotoContainer: {

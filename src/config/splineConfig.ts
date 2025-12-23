@@ -8,13 +8,13 @@ export const SPLINE_URLS = {
     // 헤더 작은 애니메이션 (ORBIT 로고 뒤)
     HEADER_LOGO: 'https://prod.spline.design/cecqF9q8Ct3dtFcA/scene.splinecode',
 
-    // Spline Viewer 스크립트 URL
-    VIEWER_SCRIPT: 'https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js',
+    // Spline Viewer 스크립트 URL (latest version)
+    VIEWER_SCRIPT: 'https://unpkg.com/@splinetool/viewer@latest/build/spline-viewer.js',
 };
 
 export const SPLINE_CONFIG = {
     // 헤더 애니메이션 스케일
-    HEADER_SCALE: 0.175,
+    HEADER_SCALE: 0.15,
 
     // 페이드인 애니메이션 시간 (ms)
     FADE_DURATION: 3000,
