@@ -15,7 +15,7 @@
     "ios": {
       "bundleIdentifier": "com.theinnercircle.app",
       "supportsTablet": false,
-      "buildNumber": "10",
+      "buildNumber": "13",
       "infoPlist": {
         "NSCameraUsageDescription": "리추얼 기록 사진 촬영에 사용됩니다.",
         "NSPhotoLibraryUsageDescription": "리추얼 기록에 사진을 첨부하기 위해 사용됩니다.",
@@ -57,9 +57,12 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
+      "apiUrl": "https://theinnercircle-9xye.onrender.com/api",
+      "appEnv": "production",
       "eas": {
-        "projectId": "6994a27e-c819-4dfb-899a-32297b065c1c"
+        "projectId": "c071b646-217f-41ad-9839-4b44dd28257a"
       }
-    }
+    },
+    "owner": "orbitappkorea"
   }
 }
