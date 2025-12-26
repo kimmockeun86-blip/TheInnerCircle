@@ -214,6 +214,49 @@ export const api = {
             console.error('API Error [acceptMeeting]:', error.message);
             return { success: false, matched: false, message: '매칭 실패' };
         }
+    },
+
+    // ============================================
+    // Q. 아침/점심/저녁 맞춤 조언 (AI 동적 생성)
+    // ============================================
+    getPersonalizedAdvice: async (data: {
+        userId?: string,
+        name: string,
+        deficit: string,
+        currentMission: string,
+        recentJournals: Array<{ day: number; content: string; mission?: string }>,
+        timeOfDay: 'morning' | 'noon' | 'evening',
+        dayCount: number,
+        growthLevel: number
+    }) => {
+        try {
+            logger.log('[API] getPersonalizedAdvice calling:', { name: data.name, timeOfDay: data.timeOfDay });
+            const response = await client.post('/advice/personalized', data);
+            logger.log('[API] getPersonalizedAdvice success:', response.data);
+            return response.data;
+        } catch (error: any) {
+            console.error('API Error [getPersonalizedAdvice]:', error.message);
+            // Fallback advice
+            let fallbackAdvice = '';
+            let fallbackIcon = '';
+            if (data.timeOfDay === 'morning') {
+                fallbackAdvice = `좋은 아침이에요, ${data.name}님! 오늘도 새로운 하루가 시작되었어요. 오늘의 리추얼을 떠올리며 시작해보세요.`;
+                fallbackIcon = '🌅';
+            } else if (data.timeOfDay === 'noon') {
+                fallbackAdvice = `${data.name}님, 점심 시간이에요. 잠시 멈추고 오늘의 리추얼을 떠올려보세요.`;
+                fallbackIcon = '🌞';
+            } else {
+                fallbackAdvice = `${data.name}님, 오늘 하루 수고했어요. 오르빗에 기록을 남기면 내일이 더 명확해집니다.`;
+                fallbackIcon = '🌙';
+            }
+            return {
+                success: true,
+                advice: fallbackAdvice,
+                focusPrompt: '오늘의 리추얼은 어떻게 되어가고 있나요?',
+                timeOfDay: data.timeOfDay,
+                icon: fallbackIcon
+            };
+        }
     }
 };
 

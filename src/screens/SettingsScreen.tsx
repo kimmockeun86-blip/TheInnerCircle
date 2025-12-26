@@ -5,6 +5,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, FONTS, SPACING, LAYOUT } from '../theme/theme';
 import GlassCard from '../components/GlassCard';
 import HolyButton from '../components/HolyButton';
+import AdService from '../services/AdService';
 
 type SettingsScreenNavigationProp = StackNavigationProp<any, 'Settings'>;
 
@@ -35,6 +36,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     const [targetMission, setTargetMission] = useState('');
     const [adminActionModalVisible, setAdminActionModalVisible] = useState(false);
     const [resetModalVisible, setResetModalVisible] = useState(false);
+    const [isAdFree, setIsAdFree] = useState(false);
 
     // Photo Zoom State
     const [photoZoomVisible, setPhotoZoomVisible] = useState(false);
@@ -124,6 +126,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
     useEffect(() => {
         loadUserData();
+        // AdService 초기화 및 광고 제거 상태 확인
+        AdService.initialize().then(() => {
+            setIsAdFree(AdService.isAdFree());
+        });
     }, []);
 
     const loadUserData = async () => {
@@ -247,6 +253,44 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                         </Text>
                     </GlassCard>
 
+                    {/* 3. 광고 제거 구매 */}
+                    <GlassCard style={styles.section}>
+                        <Text style={styles.sectionTitle}>프리미엄</Text>
+                        {isAdFree ? (
+                            <View style={styles.adFreeContainer}>
+                                <Text style={styles.adFreeText}>✨ 광고 없음</Text>
+                                <Text style={styles.adFreeSubtext}>프리미엄 사용자입니다</Text>
+                            </View>
+                        ) : (
+                            <>
+                                <View style={styles.adPurchaseInfo}>
+                                    <Text style={styles.adPurchaseTitle}>광고 제거</Text>
+                                    <Text style={styles.adPurchaseDesc}>
+                                        광고 없이 깔끔하게 앱을 사용하세요.{'\n'}
+                                        한 번 구매로 영구적으로 광고가 제거됩니다.
+                                    </Text>
+                                </View>
+                                <HolyButton
+                                    title={`광고 제거 ${AdService.getAdRemovalPrice()}`}
+                                    onPress={async () => {
+                                        await AdService.purchaseAdRemoval();
+                                        setIsAdFree(AdService.isAdFree());
+                                    }}
+                                    style={{ marginTop: 15 }}
+                                />
+                                <TouchableOpacity
+                                    style={styles.restoreButton}
+                                    onPress={async () => {
+                                        await AdService.restorePurchases();
+                                        setIsAdFree(AdService.isAdFree());
+                                    }}
+                                >
+                                    <Text style={styles.restoreButtonText}>구매 복원</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </GlassCard>
+
 
 
                     {/* Reset Confirmation Modal */}
@@ -355,6 +399,16 @@ const styles = StyleSheet.create({
     analysisModalContent: { width: '90%', padding: 30, alignItems: 'center' },
     analysisTitle: { color: COLORS.gold, fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
     analysisText: { color: '#fff', fontSize: 16, lineHeight: 26, textAlign: 'center' },
+
+    // 광고 제거 관련 스타일
+    adFreeContainer: { alignItems: 'center', paddingVertical: 20 },
+    adFreeText: { color: COLORS.gold, fontSize: 20, fontWeight: 'bold', marginBottom: 5 },
+    adFreeSubtext: { color: '#888', fontSize: 14 },
+    adPurchaseInfo: { marginBottom: 10 },
+    adPurchaseTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
+    adPurchaseDesc: { color: '#aaa', fontSize: 14, lineHeight: 22 },
+    restoreButton: { marginTop: 15, alignItems: 'center', paddingVertical: 10 },
+    restoreButtonText: { color: '#888', fontSize: 14, textDecorationLine: 'underline' },
 });
 
 export default SettingsScreen;

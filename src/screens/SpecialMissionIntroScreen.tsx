@@ -9,6 +9,7 @@ import {
     StatusBar,
     Platform,
     TouchableWithoutFeedback,
+    Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../theme/theme';
@@ -135,11 +136,16 @@ const SpecialMissionIntroScreen: React.FC = () => {
         <TouchableWithoutFeedback onPress={handleScreenTap}>
             <View style={styles.container}>
                 <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+                {/* Cosmic Background Image */}
+                <Image
+                    source={require('../../assets/cosmic_background.png')}
+                    style={styles.cosmicBackground}
+                    resizeMode="cover"
+                />
                 <View style={styles.visualizerBackground}>
                     <MysticVisualizer
                         isActive={true}
                         mode="speaking"
-                        key={visualizerKey}
                         sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode"
                     />
                 </View>
@@ -174,13 +180,24 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: COLORS.background,
     },
+    cosmicBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+    },
     visualizerBackground: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 0,
+        zIndex: 1,
+        opacity: 0.6,
     },
     safeArea: {
         flex: 1,

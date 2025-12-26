@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StatusBar, View, ActivityIndicator, Platform, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -8,13 +8,17 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useFonts, Orbitron_400Regular, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 import { NotoSansKR_400Regular, NotoSansKR_700Bold } from '@expo-google-fonts/noto-sans-kr';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SplashScreen from 'expo-splash-screen';
+
+// 스플래시 화면 자동 숨김 방지 (앱 로딩 전)
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // 에러 무시 (이미 숨겨진 경우)
+});
 
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LogScreen from './src/screens/LogScreen';
-import AdminScreen from './src/screens/AdminScreen';
-import UserListScreen from './src/screens/UserListScreen';
 import MatchScreen from './src/screens/MatchScreen';
 import ConnectionsScreen from './src/screens/ConnectionsScreen';
 import CouplesMissionScreen from './src/screens/CouplesMissionScreen';
@@ -210,9 +214,43 @@ export default function App() {
     };
   }, [currentUserId]);
 
-  if (!fontsLoaded || !initialRoute) {
+  // 앱 준비 완료 시 스플래시 화면 숨김 (최소 2.5초 유지)
+  const [appIsReady, setAppIsReady] = useState(false);
+  const [splashMinTimePassed, setSplashMinTimePassed] = useState(false);
+
+  useEffect(() => {
+    // 최소 2.5초 대기
+    const timer = setTimeout(() => {
+      setSplashMinTimePassed(true);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded && initialRoute) {
+      setAppIsReady(true);
+    }
+  }, [fontsLoaded, initialRoute]);
+
+  // 스플래시 숨김 처리 - 앱 준비 및 최소 시간 경과 시 자동 숨김
+  useEffect(() => {
+    if (appIsReady && splashMinTimePassed) {
+      const hideSplash = async () => {
+        try {
+          await SplashScreen.hideAsync();
+          console.log('[App] 스플래시 화면 숨김 완료');
+        } catch (e) {
+          console.log('[App] 스플래시 숨김 에러 (무시):', e);
+        }
+      };
+      hideSplash();
+    }
+  }, [appIsReady, splashMinTimePassed]);
+
+  // 앱 준비 완료 전 로딩 화면 표시
+  if (!appIsReady || !splashMinTimePassed) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000020' }}>
         <ActivityIndicator size="large" color="#FFFFFF" />
       </View>
     );
@@ -245,8 +283,6 @@ export default function App() {
                 }
               },
               Settings: 'settings',
-              Admin: 'admin',
-              UserList: 'user-list',
               Matching: 'matching',
               SpecialMissionIntro: 'special-mission-intro',
             }
@@ -265,8 +301,6 @@ export default function App() {
             <Stack.Screen name="Match" component={MatchScreen} />
             <Stack.Screen name="CouplesMission" component={CoupleTabNavigator} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="Admin" component={AdminScreen} />
-            <Stack.Screen name="UserList" component={UserListScreen} />
             <Stack.Screen name="Matching" component={MatchingScreen} />
             <Stack.Screen name="SpecialMissionIntro" component={SpecialMissionIntroScreen} />
           </Stack.Navigator>

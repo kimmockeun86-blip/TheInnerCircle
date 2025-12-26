@@ -7,6 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "test:ui": "testsprite run ./__tests__/orbit_ui.test.js",
     "build": "cd server && npm install",
     "start:server": "node server/server.js"
   },
@@ -54,6 +55,7 @@
   },
   "private": true,
   "devDependencies": {
+    "@testsprite/testsprite-mcp": "^0.0.18",
     "@types/react": "~19.1.10",
     "babel-plugin-transform-remove-console": "^6.9.4",
     "typescript": "~5.9.2"

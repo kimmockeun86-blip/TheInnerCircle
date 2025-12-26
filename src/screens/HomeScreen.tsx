@@ -13,15 +13,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import notificationService from '../services/NotificationService';
 import LocationService from '../services/LocationService';
 import MatchingService from '../services/MatchingService';
+import { soundService } from '../services/SoundService';
 import HeaderSpline from '../components/HeaderSpline';
 import { WebView } from 'react-native-webview';
 import JournalModal from '../components/JournalModal';
 import AnalysisModal from '../components/AnalysisModal';
 import IntroModal from '../components/IntroModal';
+import { getSpecialDayMission } from '../services/MissionData';
 
 // Placeholder images
 const malePlaceholder = require('../../assets/male_placeholder.png');
 const femalePlaceholder = require('../../assets/female_placeholder.png');
+
+// Cosmic background
+const cosmicBackground = require('../../assets/cosmic_background.png');
 
 
 interface HomeScreenProps {
@@ -99,6 +104,14 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     const [partnerMeetingDecision, setPartnerMeetingDecision] = useState<'continue' | 'stop' | 'waiting' | null>(null);
     const [meetingResultModalVisible, setMeetingResultModalVisible] = useState(false);
     const [isMeetingDay, setIsMeetingDay] = useState(false);
+
+    // 🌟 아침/점심/저녁 맞춤 조언 상태
+    const [personalizedAdvice, setPersonalizedAdvice] = useState<{
+        advice: string;
+        focusPrompt: string;
+        timeOfDay: 'morning' | 'noon' | 'evening';
+        icon: string;
+    } | null>(null);
 
 
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
@@ -409,29 +422,22 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
         const now = new Date();
         const lastDate = new Date(lastCompletedDate);
+
+        // 자정 기준: 날짜가 다르면 새로운 날
         const isSameDay = now.getDate() === lastDate.getDate() &&
             now.getMonth() === lastDate.getMonth() &&
             now.getFullYear() === lastDate.getFullYear();
 
-        // Unlock at 9:00 AM
-        const unlockHour = 9;
-        const currentHour = now.getHours();
-
         if (isSameDay) {
+            // 같은 날 - 다음 날 자정에 해금
             const tomorrow = new Date(now);
             tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(unlockHour, 0, 0, 0);
+            tomorrow.setHours(0, 0, 0, 0);
             setNextMissionUnlockTime(tomorrow.toLocaleString());
-            return false; // Still same day, wait for tomorrow
+            return false; // Still same day, wait for tomorrow midnight
         }
 
-        if (currentHour < unlockHour) {
-            const todayUnlock = new Date(now);
-            todayUnlock.setHours(unlockHour, 0, 0, 0);
-            setNextMissionUnlockTime(todayUnlock.toLocaleString());
-            return false; // Wait until 9 AM today
-        }
-
+        // 날짜가 다르면 바로 해금 (자정이 지났으므로)
         setNextMissionUnlockTime(null);
         return true;
     };
@@ -443,29 +449,35 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     const storedDay = await AsyncStorage.getItem('dayCount');
                     let currentDayCount = storedDay ? parseInt(storedDay, 10) : 1;
 
-                    // Check if we can unlock (new day after 9 AM)
+                    // Check if we can unlock (new day after midnight)
                     const canUnlock = await checkDayProgression();
 
                     if (canUnlock) {
-                        // It's a new day! Increase day count
-                        const lastCompletedDate = await AsyncStorage.getItem('lastCompletedDate');
-                        if (lastCompletedDate) {
-                            // User completed mission yesterday, now it's new day
-                            currentDayCount = currentDayCount + 1;
-                            await AsyncStorage.setItem('dayCount', currentDayCount.toString());
-                            console.log(`[ORBIT] 🌅 새로운 날! Day ${currentDayCount} 시작`);
+                        // 중복 증가 방지: 오늘 이미 dayCount를 증가시켰는지 체크
+                        const lastDayIncrementDate = await AsyncStorage.getItem('lastDayIncrementDate');
+                        const today = new Date().toDateString();
 
-                            // Load next mission that was saved yesterday
-                            const savedNextMission = await AsyncStorage.getItem('nextMission');
-                            if (savedNextMission) {
-                                await AsyncStorage.setItem(`mission_day_${currentDayCount}`, savedNextMission);
-                                await AsyncStorage.removeItem('nextMission');
+                        if (lastDayIncrementDate !== today) {
+                            // It's a new day! Increase day count
+                            const lastCompletedDate = await AsyncStorage.getItem('lastCompletedDate');
+                            if (lastCompletedDate) {
+                                // User completed mission before, now it's new day
+                                currentDayCount = currentDayCount + 1;
+                                await AsyncStorage.setItem('dayCount', currentDayCount.toString());
+                                await AsyncStorage.setItem('lastDayIncrementDate', today); // 오늘 증가했음을 기록
+                                console.log(`[ORBIT] 🌅 새로운 날! Day ${currentDayCount} 시작`);
+
+                                // Load next mission that was saved yesterday
+                                const savedNextMission = await AsyncStorage.getItem('nextMission');
+                                if (savedNextMission) {
+                                    await AsyncStorage.setItem(`mission_day_${currentDayCount}`, savedNextMission);
+                                    await AsyncStorage.removeItem('nextMission');
+                                }
                             }
                         }
                     } else {
-                        // Still locked - schedule notification for 9 AM
-                        await notificationService.requestPermission();
-                        await notificationService.scheduleMissionNotification();
+                        // Still locked - notification already scheduled during onboarding
+                        // No need to call scheduleMissionNotification() again
                     }
 
                     setDayCount(currentDayCount);
@@ -480,12 +492,50 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     const storedStatus = await AsyncStorage.getItem('missionStatus');
                     setMissionStatus(storedStatus);
 
-                    const storedMission = await AsyncStorage.getItem(`mission_day_${currentDayCount}`);
-                    if (storedMission) {
-                        setCurrentMissionText(storedMission);
-                    } else {
-                        const defaultMission = currentDayCount <= 9 ? missions[currentDayCount - 1] : "당신의 영혼이 준비되었습니다.";
-                        setCurrentMissionText(defaultMission);
+                    // ============================================
+                    // 🎯 관리자가 부여한 미션 우선 체크
+                    // ============================================
+                    let adminMissionApplied = false;
+                    try {
+                        const adminApiUrl = Platform.OS === 'web' && (window as any).location?.hostname === 'localhost'
+                            ? 'http://localhost:3001'
+                            : 'https://orbit-adminfinalfight.onrender.com';
+                        const storedUserId = await AsyncStorage.getItem('userId');
+                        const storedName = await AsyncStorage.getItem('userName');
+                        const userId = storedUserId || storedName || '';
+
+                        if (userId) {
+                            const res = await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`);
+                            const data = await res.json();
+                            if (data.success && data.user?.assignedMission) {
+                                const adminMission = data.user.assignedMission;
+                                console.log(`[ORBIT Solo] 🎯 관리자 미션 발견: ${adminMission}`);
+                                setCurrentMissionText(adminMission);
+                                await AsyncStorage.setItem(`mission_day_${currentDayCount}`, adminMission);
+                                await AsyncStorage.setItem('hasAdminMission', 'true'); // 관리자 미션 플래그
+                                adminMissionApplied = true;
+                            }
+                        }
+                    } catch (adminErr) {
+                        console.log('[ORBIT Solo] 관리자 서버 연결 실패 (정상 - 로컬 미션 사용)');
+                    }
+
+                    // 관리자 미션이 없으면 일반 로직 수행
+                    if (!adminMissionApplied) {
+                        // 특별한 날 미션 체크 우선
+                        const specialDayMission = getSpecialDayMission();
+                        if (specialDayMission) {
+                            console.log(`[ORBIT] 🎉 특별한 날: ${specialDayMission.name}`);
+                            setCurrentMissionText(`🎉 ${specialDayMission.name} 특별 미션: ${specialDayMission.mission}`);
+                        } else {
+                            const storedMission = await AsyncStorage.getItem(`mission_day_${currentDayCount}`);
+                            if (storedMission) {
+                                setCurrentMissionText(storedMission);
+                            } else {
+                                const defaultMission = currentDayCount <= 9 ? missions[currentDayCount - 1] : "당신의 영혼이 준비되었습니다.";
+                                setCurrentMissionText(defaultMission);
+                            }
+                        }
                     }
 
                     const storedDay10Done = await AsyncStorage.getItem('day10Done');
@@ -585,100 +635,6 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     useEffect(() => {
         const initializeData = async () => {
             try {
-                // ============================================
-                // 🎯 관리자(OrbitAdmin) 데이터 동기화
-                // ============================================
-                try {
-                    const storedUserId = await AsyncStorage.getItem('userId');
-                    const storedName = await AsyncStorage.getItem('userName');
-                    const userId = storedUserId || storedName || '';
-
-                    if (userId) {
-                        // OrbitAdmin API URL (로컬 또는 프로덕션)
-                        const adminApiUrl = Platform.OS === 'web' && window.location.hostname === 'localhost'
-                            ? 'http://localhost:3001'
-                            : 'https://orbit-adminfinalfight.onrender.com';
-
-                        const res = await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`, {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        const data = await res.json();
-
-                        if (data.success && data.user) {
-                            const adminUser = data.user;
-
-                            // 먼저 proposedMatch 체크 (편지 쓰기 단계 우선)
-                            // 관리자가 매칭 후보를 제안한 경우 (편지 쓰기 단계로)
-                            if (adminUser.hasProposedMatch && adminUser.proposedMatch) {
-                                console.log('[ORBIT] 🎯 관리자 매칭 후보 발견:', adminUser.proposedMatch.name);
-                                const proposed = adminUser.proposedMatch;
-
-                                // 로컬에 매칭 후보 저장
-                                setMatchCandidate({
-                                    id: proposed.id,
-                                    name: proposed.name || '파트너',
-                                    age: proposed.age,
-                                    photo: proposed.photo,
-                                    bio: proposed.bio || '',
-                                    deficit: proposed.deficit,
-                                    distance: '관리자 매칭'
-                                });
-
-                                // Day10 특별 미션 상황처럼 설정
-                                await AsyncStorage.setItem('dayCount', '10');
-                                setDayCount(10);
-                                await AsyncStorage.setItem('day10Done', 'true');
-                                setDay10Done(true);
-
-                                // isCoupled는 false로 설정해야 커플 모드로 안 감
-                                await AsyncStorage.setItem('isCoupled', 'solo');
-
-                                console.log('[ORBIT] 🎯 관리자 매칭 후보가 설정됨 - 편지 쓰기 단계로 이동');
-                                // proposedMatch가 있으면 isCoupled 체크 건너뛰기
-                            }
-                            // proposedMatch가 없을 때만 isCoupled 체크
-                            else if (adminUser.isCoupled && adminUser.partnerId) {
-                                console.log('[ORBIT] 🎯 관리자 매칭 발견! 파트너:', adminUser.partnerId);
-                                await AsyncStorage.setItem('isCoupled', 'coupled');
-                                await AsyncStorage.setItem('matchedPartnerId', adminUser.partnerId);
-
-                                // 파트너 정보 가져오기
-                                try {
-                                    const partnerRes = await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(adminUser.partnerId)}`);
-                                    const partnerData = await partnerRes.json();
-                                    if (partnerData.success && partnerData.user) {
-                                        await AsyncStorage.setItem('matchedPartner', JSON.stringify({
-                                            id: adminUser.partnerId,
-                                            name: partnerData.user.name || '파트너',
-                                            age: partnerData.user.age,
-                                            photo: partnerData.user.photo
-                                        }));
-                                    }
-                                } catch (e) {
-                                    console.log('[ORBIT] 파트너 정보 가져오기 실패');
-                                }
-
-                                // 커플 모드로 이동
-                                navigation.replace('CouplesMission', {} as any);
-                                return;
-                            }
-
-                            // 관리자가 미션을 부여한 경우
-                            if (adminUser.assignedMission) {
-                                console.log('[ORBIT] 🎯 관리자 미션 발견:', adminUser.assignedMission);
-                                const storedDay = await AsyncStorage.getItem('dayCount');
-                                const currentDay = storedDay ? parseInt(storedDay, 10) : 1;
-                                await AsyncStorage.setItem(`mission_day_${currentDay}`, adminUser.assignedMission);
-                                setCurrentMissionText(adminUser.assignedMission);
-                                setAiAnalysis('관리자가 특별히 부여한 리추얼입니다.');
-                            }
-                        }
-                    }
-                } catch (adminErr) {
-                    console.log('[ORBIT] 관리자 서버 연결 실패 (정상 - 로컬 데이터 사용)');
-                }
-
                 // 로컬 커플 상태 확인
                 const isCoupled = await AsyncStorage.getItem('isCoupled');
                 if (isCoupled === 'coupled') {
@@ -757,6 +713,74 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 } catch (e) {
                     console.log('Profile analysis failed silently:', e);
                 }
+
+                // 🌟 12시/18시 맞춤 조언 알림 스케줄링
+                try {
+                    const storedDeficit = await AsyncStorage.getItem('userDeficit') || '성장';
+                    await notificationService.scheduleAdviceNotifications(storedDeficit);
+                    console.log('[ORBIT] 조언 알림 스케줄링 완료');
+                } catch (e) {
+                    console.log('조언 알림 스케줄링 실패 (무시):', e);
+                }
+
+                // 🌟 아침(7시~)/점심(12시~)/저녁(18시~) 맞춤 조언 API 호출하여 화면에 표시
+                try {
+                    const currentHour = new Date().getHours();
+                    // 7시~24시 사이에 조언 표시 (아침 7시부터 시작)
+                    if (currentHour >= 7) {
+                        // 시간대 결정: 7시~12시 아침, 12시~18시 점심, 18시~ 저녁
+                        let timeOfDay: 'morning' | 'noon' | 'evening';
+                        if (currentHour < 12) {
+                            timeOfDay = 'morning';
+                        } else if (currentHour < 18) {
+                            timeOfDay = 'noon';
+                        } else {
+                            timeOfDay = 'evening';
+                        }
+
+                        const storedDeficit = await AsyncStorage.getItem('userDeficit') || '성장';
+                        const storedName = await AsyncStorage.getItem('userName') || '구도자';
+                        const storedUserId = await AsyncStorage.getItem('userId');
+                        const storedLevel = await AsyncStorage.getItem('growthLevel');
+
+                        // 최근 수행기록 가져오기
+                        const journalHistoryStr = await AsyncStorage.getItem('journalHistory');
+                        let recentJournals: Array<{ day: number; content: string; mission?: string }> = [];
+                        if (journalHistoryStr) {
+                            try {
+                                const parsed = JSON.parse(journalHistoryStr);
+                                recentJournals = parsed.slice(0, 3).map((j: any) => ({
+                                    day: j.day,
+                                    content: j.content,
+                                    mission: j.mission
+                                }));
+                            } catch (e) { }
+                        }
+
+                        const adviceResponse = await api.getPersonalizedAdvice({
+                            userId: storedUserId || undefined,
+                            name: storedName,
+                            deficit: storedDeficit,
+                            currentMission: currentMissionText || '',
+                            recentJournals,
+                            timeOfDay,
+                            dayCount: currentDayCount,
+                            growthLevel: storedLevel ? parseInt(storedLevel, 10) : 1
+                        });
+
+                        if (adviceResponse.success) {
+                            setPersonalizedAdvice({
+                                advice: adviceResponse.advice,
+                                focusPrompt: adviceResponse.focusPrompt || '',
+                                timeOfDay: adviceResponse.timeOfDay as 'morning' | 'noon' | 'evening',
+                                icon: adviceResponse.icon
+                            });
+                            console.log('[ORBIT] 맞춤 조언 로드 완료:', adviceResponse.advice.substring(0, 50) + '...');
+                        }
+                    }
+                } catch (e) {
+                    console.log('맞춤 조언 로드 실패 (무시):', e);
+                }
             } catch (e) {
                 console.error('데이터 로드 실패:', e);
             }
@@ -764,7 +788,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
         initializeData();
     }, []);
 
-    // Countdown timer effect
+    // Countdown timer effect (자정 기준)
     useEffect(() => {
         if (!nextMissionUnlockTime) {
             setCountdown('');
@@ -775,13 +799,9 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             const now = new Date();
             const target = new Date(now);
 
-            // 오늘 오전 9시 설정
-            target.setHours(9, 0, 0, 0);
-
-            // 이미 오전 9시가 지났으면 내일 9시로 설정
-            if (now.getTime() >= target.getTime()) {
-                target.setDate(target.getDate() + 1);
-            }
+            // 다음 날 자정 설정
+            target.setDate(target.getDate() + 1);
+            target.setHours(0, 0, 0, 0);
 
             const diff = target.getTime() - now.getTime();
             if (diff <= 0) {
@@ -963,6 +983,25 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 setJournalHistory(updatedHistory);
                 await AsyncStorage.setItem('journalHistory', JSON.stringify(updatedHistory));
 
+                // Firebase에도 수행기록 저장 (비동기, 실패해도 앱 동작에 영향 없음)
+                try {
+                    const storedUserId = await AsyncStorage.getItem('userId');
+                    await MatchingService.saveJournalRecord({
+                        id: `solo_journal_${Date.now()}`,
+                        uid: storedUserId || '',
+                        type: 'solo',
+                        day: dayCount,
+                        date: new Date().toLocaleDateString(),
+                        content: journalInput,
+                        mission: currentMissionText,
+                        feedback: response.feedback,
+                        createdAt: new Date().toISOString()
+                    });
+                    console.log('[ORBIT Solo] ✅ Firebase 수행기록 저장 완료');
+                } catch (firebaseError) {
+                    console.log('[ORBIT Solo] Firebase 수행기록 저장 실패 (무시):', firebaseError);
+                }
+
                 // Store next mission if provided
                 if (response.nextMission || response.recommendedMission) {
                     const nextRitual = response.nextMission || response.recommendedMission;
@@ -1000,6 +1039,37 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 setMissionStatus(null);
                 await AsyncStorage.removeItem('missionStatus');
                 await AsyncStorage.setItem('lastCompletedDate', new Date().toISOString());
+
+                // ============================================
+                // 🎯 관리자 미션 완료 후 삭제 (다음엔 AI 미션 사용)
+                // ============================================
+                const hadAdminMission = await AsyncStorage.getItem('hasAdminMission');
+                if (hadAdminMission === 'true') {
+                    try {
+                        const adminApiUrl = Platform.OS === 'web' && (window as any).location?.hostname === 'localhost'
+                            ? 'http://localhost:3001'
+                            : 'https://orbit-adminfinalfight.onrender.com';
+                        const storedUserId = await AsyncStorage.getItem('userId');
+                        const storedName = await AsyncStorage.getItem('userName');
+                        const userId = storedUserId || storedName || '';
+
+                        if (userId) {
+                            // 서버에서 assignedMission 삭제
+                            await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ assignedMission: null })
+                            });
+                            console.log('[ORBIT Solo] ✅ 관리자 미션 완료 → 서버에서 삭제됨 (다음엔 AI 미션)');
+                        }
+                        // 로컬 플래그도 삭제
+                        await AsyncStorage.removeItem('hasAdminMission');
+                    } catch (adminErr) {
+                        console.log('[ORBIT Solo] 관리자 미션 삭제 실패 (무시):', adminErr);
+                        // 실패해도 로컬 플래그는 삭제
+                        await AsyncStorage.removeItem('hasAdminMission');
+                    }
+                }
 
                 // Set lock time for next 9 AM (오늘 9시 이전이면 오늘, 이후면 내일)
                 const now = new Date();
@@ -1052,6 +1122,13 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
     return (
         <View style={styles.container}>
+            {/* Cosmic Background Image */}
+            <Image
+                source={cosmicBackground}
+                style={styles.cosmicBackground}
+                resizeMode="cover"
+            />
+            {/* Spline Animation Overlay */}
             <View style={styles.visualizerBackground}>
                 <MysticVisualizer isActive={true} mode={visualizerMode} sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode" />
             </View>
@@ -1105,11 +1182,29 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
 
 
+                        {/* 12시/6시 맞춤 조언 카드 */}
+                        {personalizedAdvice && (
+                            <View style={styles.missionContainer}>
+                                <GlassCard variant="dark" style={[styles.signalCard, { borderColor: 'rgba(139, 92, 246, 0.3)', borderWidth: 1 }]}>
+                                    <Text style={[styles.signalLabel, { color: '#A78BFA' }]}>
+                                        ORBIT의 조언
+                                    </Text>
+                                    <Text style={styles.signalText}>
+                                        {personalizedAdvice.advice}
+                                    </Text>
+                                    {personalizedAdvice.focusPrompt && (
+                                        <Text style={[styles.signalText, { marginTop: 10, fontStyle: 'italic', color: 'rgba(167, 139, 250, 0.7)' }]}>
+                                            {personalizedAdvice.focusPrompt}
+                                        </Text>
+                                    )}
+                                </GlassCard>
+                            </View>
+                        )}
 
                         {/* ORBIT'S SIGNAL - AI Analysis */}
                         {aiAnalysis && (
                             <View style={styles.missionContainer}>
-                                <GlassCard style={styles.signalCard}>
+                                <GlassCard variant="dark" style={styles.signalCard}>
                                     <Text style={styles.signalLabel}>ORBIT'S SIGNAL</Text>
                                     <Text style={styles.signalText}>{aiAnalysis}</Text>
                                 </GlassCard>
@@ -1118,7 +1213,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                         {/* Today's Ritual */}
                         <View style={styles.missionContainer}>
-                            <GlassCard style={[styles.missionCard, nextMissionUnlockTime && styles.lockedCard]}>
+                            <GlassCard variant="light" style={[styles.missionCard, nextMissionUnlockTime && styles.lockedCard]}>
                                 <Text style={styles.missionTitle}>오늘의 리추얼</Text>
                                 {nextMissionUnlockTime ? (
                                     <View style={styles.lockedMissionContainer}>
@@ -1274,30 +1369,50 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                             {
                                                 text: "카메라로 촬영",
                                                 onPress: async () => {
-                                                    const result = await ImagePicker.launchCameraAsync({
-                                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                                                        allowsEditing: true,
-                                                        aspect: [1, 1],
-                                                        quality: 0.8,
-                                                    });
-                                                    if (!result.canceled) {
-                                                        setUserPhoto(result.assets[0].uri);
-                                                        await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+                                                    try {
+                                                        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                                                        if (status !== 'granted') {
+                                                            Alert.alert('권한 필요', '카메라 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
+                                                            return;
+                                                        }
+                                                        const result = await ImagePicker.launchCameraAsync({
+                                                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                            allowsEditing: true,
+                                                            aspect: [1, 1],
+                                                            quality: 0.8,
+                                                        });
+                                                        if (!result.canceled && result.assets && result.assets.length > 0) {
+                                                            setUserPhoto(result.assets[0].uri);
+                                                            await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('카메라 오류:', error);
+                                                        Alert.alert('오류', '카메라를 열 수 없습니다.');
                                                     }
                                                 }
                                             },
                                             {
                                                 text: "앨범에서 선택",
                                                 onPress: async () => {
-                                                    const result = await ImagePicker.launchImageLibraryAsync({
-                                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                                                        allowsEditing: true,
-                                                        aspect: [1, 1],
-                                                        quality: 0.8,
-                                                    });
-                                                    if (!result.canceled) {
-                                                        setUserPhoto(result.assets[0].uri);
-                                                        await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+                                                    try {
+                                                        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                                                        if (status !== 'granted') {
+                                                            Alert.alert('권한 필요', '사진 라이브러리 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
+                                                            return;
+                                                        }
+                                                        const result = await ImagePicker.launchImageLibraryAsync({
+                                                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                            allowsEditing: true,
+                                                            aspect: [1, 1],
+                                                            quality: 0.8,
+                                                        });
+                                                        if (!result.canceled && result.assets && result.assets.length > 0) {
+                                                            setUserPhoto(result.assets[0].uri);
+                                                            await AsyncStorage.setItem('userPhoto', result.assets[0].uri);
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('앨범 오류:', error);
+                                                        Alert.alert('오류', '앨범을 열 수 없습니다.');
                                                     }
                                                 }
                                             },
@@ -1316,7 +1431,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 {/* Match Candidate Modal - Special Mission */}
                 <Modal visible={matchCandidateModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalOverlay}>
-                        <GlassCard style={styles.matchCandidateModal}>
+                        <GlassCard variant="dark" style={styles.matchCandidateModal}>
                             <ScrollView
                                 showsVerticalScrollIndicator={false}
                                 contentContainerStyle={{ paddingBottom: 10 }}
@@ -1370,12 +1485,14 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                     title="나중에"
                                     variant="outline"
                                     onPress={() => setMatchCandidateModalVisible(false)}
-                                    style={{ flex: 1, marginRight: 10 }}
+                                    style={{ flex: 1, marginRight: 10, minHeight: 50, paddingVertical: 12 }}
+                                    textStyle={{ fontSize: 14 }}
                                 />
                                 <HolyButton
                                     title="편지 보내기"
                                     onPress={handleSendLetter}
-                                    style={{ flex: 1 }}
+                                    style={{ flex: 1, minHeight: 50, paddingVertical: 12 }}
+                                    textStyle={{ fontSize: 14 }}
                                 />
                             </View>
                         </GlassCard>
@@ -1642,14 +1759,25 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#000' },
+    container: { flex: 1, backgroundColor: COLORS.background },
     visualizerBackground: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 0,
+        zIndex: 1, // Above background image
+        opacity: 0.6, // Allow cosmic background to show through
+    },
+    cosmicBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0, // Behind spline
     },
     safeArea: { flex: 1, zIndex: 10 },
 
@@ -1927,8 +2055,7 @@ const styles = StyleSheet.create({
     // Signal Card (ORBIT's Analysis) - Same style as mission card
     signalCard: {
         marginBottom: 15,
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderColor: 'rgba(139, 92, 246, 0.4)', // Purple cosmic border
     },
     signalLabel: {
         color: '#FFFFFF',
@@ -1968,6 +2095,8 @@ const styles = StyleSheet.create({
         letterSpacing: 4,
         marginBottom: 15,
         fontFamily: 'Orbitron_400Regular',
+        minWidth: 250, // Fixed width to prevent layout shift
+        textAlign: 'center',
         ...(Platform.OS === 'web'
             ? { textShadow: '0 0 20px rgba(255, 255, 255, 0.5), 0 0 40px rgba(255, 255, 255, 0.2)' }
             : {
@@ -2140,9 +2269,24 @@ const styles = StyleSheet.create({
     matchCandidateDeficitText: { color: COLORS.gold, fontSize: 13 },
     matchCandidateBio: { color: '#ccc', fontSize: 14, marginTop: 10, textAlign: 'center' },
     matchModalInstruction: { color: '#888', fontSize: 13, textAlign: 'center', marginBottom: 15 },
-    letterInput: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 15, color: '#fff', height: 120, textAlignVertical: 'top', fontSize: 14 },
+    letterInput: {
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderRadius: 12,
+        padding: 15,
+        color: '#fff',
+        height: 120,
+        textAlignVertical: 'top',
+        fontSize: 14,
+        borderWidth: 1.5,
+        borderColor: 'rgba(139, 92, 246, 0.5)', // Purple border instead of yellow
+        outlineStyle: 'none', // Remove yellow focus outline on web
+    } as any,
     letterCharCount: { color: '#666', textAlign: 'right', marginTop: 5, marginBottom: 15, fontSize: 12 },
-    matchModalButtons: { flexDirection: 'row' },
+    matchModalButtons: {
+        flexDirection: 'row',
+        paddingHorizontal: 10,
+        marginTop: 10,
+    },
 
     // Matching Entry Button Styles
     matchingEntryButton: { marginTop: 20, borderRadius: 16, overflow: 'hidden' },

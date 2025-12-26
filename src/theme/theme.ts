@@ -3,28 +3,38 @@ import { Dimensions, Platform } from 'react-native';
 const { width, height } = Dimensions.get('window');
 
 export const COLORS = {
-    // Backgrounds
-    background: '#000000', // Pure Black
-    backgroundGradient: ['#000000', '#000000', '#000000'], // Solid black
+    // Backgrounds - Cosmic Theme
+    background: '#0A0A14', // Deep space black with hint of blue
+    backgroundGradient: ['#1A0A2E', '#0F1729', '#050510'], // Deep purple to midnight blue
 
-    // Accents
-    gold: '#FFFFFF', // White for primary accent
-    goldDim: 'rgba(255, 255, 255, 0.6)',
-    goldFaint: 'rgba(255, 255, 255, 0.15)',
+    // Primary Accents - Cosmic Purple/Blue
+    primary: '#8B5CF6', // Vibrant purple
+    primaryDim: 'rgba(139, 92, 246, 0.6)',
+    primaryFaint: 'rgba(139, 92, 246, 0.15)',
+
+    // Secondary Accents - Aurora
+    secondary: '#06B6D4', // Cyan
+    aurora: '#A855F7', // Bright purple
+    starGlow: '#E0E7FF', // Soft white-blue for stars
+
+    // Legacy support (gold -> purple)
+    gold: '#A78BFA', // Light purple (replaces gold)
+    goldDim: 'rgba(167, 139, 250, 0.6)',
+    goldFaint: 'rgba(167, 139, 250, 0.15)',
 
     // Text
-    textMain: '#FFFFFF',
-    textDim: 'rgba(255, 255, 255, 0.7)',
-    textDark: '#050005',
+    textMain: '#F8FAFC',
+    textDim: 'rgba(248, 250, 252, 0.7)',
+    textDark: '#0A0A14',
 
     // Status
-    error: '#FF453A',
-    success: '#32D74B',
+    error: '#F43F5E', // Rose red
+    success: '#10B981', // Emerald green
 
-    // Glassmorphism
-    glass: 'rgba(255, 255, 255, 0.05)',
-    glassBorder: 'rgba(200, 100, 255, 0.3)', // Purple border
-    glassOverlay: 'rgba(0, 0, 0, 0.7)',
+    // Glassmorphism - Cosmic style
+    glass: 'rgba(139, 92, 246, 0.08)', // Purple tinted glass
+    glassBorder: 'rgba(139, 92, 246, 0.25)', // Purple border
+    glassOverlay: 'rgba(10, 10, 20, 0.8)',
 };
 
 export const SPACING = {

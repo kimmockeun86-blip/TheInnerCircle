@@ -137,29 +137,29 @@ class NotificationService {
         }
     }
 
-    // 🌅 오전 9시 미션 해금 알림
+    // 🌅 자정 미션 해금 알림 (9시에서 자정으로 변경)
     async scheduleMissionNotification(): Promise<void> {
+        // 중복 방지를 위해 미션 알림만 취소 (identifier 사용)
+        // 조언 알림은 유지
+
         const now = new Date();
-        const next9AM = new Date();
-        next9AM.setHours(9, 0, 0, 0);
+        const nextMidnight = new Date();
+        nextMidnight.setDate(nextMidnight.getDate() + 1);
+        nextMidnight.setHours(0, 0, 0, 0);
 
-        if (now.getHours() >= 9) {
-            next9AM.setDate(next9AM.getDate() + 1);
-        }
-
-        await AsyncStorage.setItem('scheduledNotification', next9AM.toISOString());
+        await AsyncStorage.setItem('scheduledNotification', nextMidnight.toISOString());
 
         if (Platform.OS === 'web') {
-            const msUntil9AM = next9AM.getTime() - now.getTime();
+            const msUntilMidnight = nextMidnight.getTime() - now.getTime();
             setTimeout(() => {
                 this.showNotification({
                     title: '🌅 새로운 미션이 공개되었습니다!',
                     body: '오르빗이 오늘의 리추얼을 준비했습니다. 지금 확인하세요.',
                 });
-            }, msUntil9AM);
-            console.log(`[Notification] 웹 알림 예약: ${next9AM.toLocaleString()}`);
+            }, msUntilMidnight);
+            console.log(`[Notification] 웹 알림 예약: ${nextMidnight.toLocaleString()}`);
         } else {
-            // 모바일 스케줄 알림
+            // 모바일 스케줄 알림 (자정에 알림)
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title: '🌅 새로운 미션이 공개되었습니다!',
@@ -168,11 +168,11 @@ class NotificationService {
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.DAILY,
-                    hour: 9,
+                    hour: 0,
                     minute: 0,
                 },
             });
-            console.log(`[Notification] 모바일 알림 예약: 매일 오전 9시`);
+            console.log(`[Notification] 모바일 알림 예약: 매일 자정`);
         }
     }
 
@@ -212,6 +212,142 @@ class NotificationService {
         }
     }
 
+    // 🌟 맞춤 조언 알림 (정오 12시, 저녁 6시)
+    // 사용자의 deficit 기반 맞춤 조언
+    getAdviceByDeficit(deficit: string, timeOfDay: 'noon' | 'evening'): string {
+        const adviceMap: Record<string, { noon: string; evening: string }> = {
+            '외로움': {
+                noon: '점심시간, 누군가에게 먼저 인사해보세요. 작은 연결이 큰 위로가 됩니다.',
+                evening: '오늘 하루 수고했어요. 당신은 혼자가 아닙니다.'
+            },
+            '불안': {
+                noon: '깊은 호흡을 3번 해보세요. 지금 이 순간에 집중하면 불안은 사라집니다.',
+                evening: '오늘 불안했던 순간도 잘 버텼네요. 내일은 더 나아질 거예요.'
+            },
+            '자존감': {
+                noon: '거울을 보며 자신에게 "잘하고 있어"라고 말해보세요.',
+                evening: '오늘 당신이 해낸 작은 것들을 기억하세요. 당신은 충분합니다.'
+            },
+            '무기력': {
+                noon: '5분만 몸을 움직여보세요. 작은 에너지가 큰 변화를 만듭니다.',
+                evening: '오늘 행동하지 못한 것보다 시도한 것을 기억하세요.'
+            },
+            '스트레스': {
+                noon: '잠깐 창밖을 바라보세요. 자연은 마음을 회복시킵니다.',
+                evening: '긴장을 풀어보세요. 내일의 도전은 내일 걱정해도 됩니다.'
+            },
+            '우울': {
+                noon: '햇빛을 5분만 쬐어보세요. 빛은 마음을 밝게 합니다.',
+                evening: '오늘도 하루를 살아낸 당신, 대단해요.'
+            },
+            '성장': {
+                noon: '오늘 배울 수 있는 하나를 찾아보세요.',
+                evening: '오늘 성장한 점을 기록해두세요. 작은 변화가 모여 큰 성장이 됩니다.'
+            },
+        };
+
+        const defaultAdvice = {
+            noon: '잠시 멈추고 깊은 숨을 쉬어보세요. 지금 이 순간이 가장 중요합니다.',
+            evening: '오늘도 고생했습니다. 편안한 밤 되세요.'
+        };
+
+        return adviceMap[deficit]?.[timeOfDay] || defaultAdvice[timeOfDay];
+    }
+
+    // 🌟 현재 시간에 맞는 조언 가져오기 (홈 화면 표시용)
+    getCurrentAdvice(deficit: string): { advice: string; timeOfDay: 'noon' | 'evening' | null; icon: string } | null {
+        const now = new Date();
+        const hour = now.getHours();
+
+        // 12시~18시: 점심 조언 표시
+        if (hour >= 12 && hour < 18) {
+            return {
+                advice: this.getAdviceByDeficit(deficit, 'noon'),
+                timeOfDay: 'noon',
+                icon: '🌞'
+            };
+        }
+        // 18시~24시: 저녁 조언 표시
+        else if (hour >= 18 && hour < 24) {
+            return {
+                advice: this.getAdviceByDeficit(deficit, 'evening'),
+                timeOfDay: 'evening',
+                icon: '🌙'
+            };
+        }
+        // 0시~12시: 조언 표시 안함 (또는 전날 저녁 조언)
+        return null;
+    }
+
+    async scheduleAdviceNotifications(deficit: string = '성장'): Promise<void> {
+        const now = new Date();
+
+        // 정오 12시 알림
+        const noon = new Date();
+        noon.setHours(12, 0, 0, 0);
+        if (now.getHours() >= 12) {
+            noon.setDate(noon.getDate() + 1);
+        }
+
+        // 저녁 6시 알림
+        const evening = new Date();
+        evening.setHours(18, 0, 0, 0);
+        if (now.getHours() >= 18) {
+            evening.setDate(evening.getDate() + 1);
+        }
+
+        if (Platform.OS === 'web') {
+            // 웹 - setTimeout 사용
+            const msUntilNoon = noon.getTime() - now.getTime();
+            const msUntilEvening = evening.getTime() - now.getTime();
+
+            setTimeout(() => {
+                this.showNotification({
+                    title: '🌞 ORBIT 점심 조언',
+                    body: this.getAdviceByDeficit(deficit, 'noon'),
+                });
+            }, msUntilNoon);
+
+            setTimeout(() => {
+                this.showNotification({
+                    title: '🌙 ORBIT 저녁 조언',
+                    body: this.getAdviceByDeficit(deficit, 'evening'),
+                });
+            }, msUntilEvening);
+
+            console.log(`[Notification] 웹 조언 알림 예약: 정오 ${noon.toLocaleString()}, 저녁 ${evening.toLocaleString()}`);
+        } else {
+            // 모바일 - 매일 반복 알림
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: '🌞 ORBIT 점심 조언',
+                    body: this.getAdviceByDeficit(deficit, 'noon'),
+                    sound: true,
+                },
+                trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                    hour: 12,
+                    minute: 0,
+                },
+            });
+
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: '🌙 ORBIT 저녁 조언',
+                    body: this.getAdviceByDeficit(deficit, 'evening'),
+                    sound: true,
+                },
+                trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                    hour: 18,
+                    minute: 0,
+                },
+            });
+
+            console.log(`[Notification] 모바일 조언 알림 예약: 매일 정오 12시 & 저녁 6시`);
+        }
+    }
+
     // 💌 매칭/편지 수신 알림
     async showMatchNotification(partnerName: string): Promise<void> {
         await this.showNotification({
@@ -237,23 +373,20 @@ class NotificationService {
         }
     }
 
-    // Check if it's time to show unlock animation
+    // Check if it's time to show unlock animation (자정 기준)
     isUnlockTime(): boolean {
-        const now = new Date();
-        return now.getHours() >= 9;
+        // 자정 기준이므로 항상 true (미션 완료 여부는 별도 체크)
+        return true;
     }
 
-    // Get time until next unlock
+    // Get time until next unlock (자정 기준)
     getTimeUntilUnlock(): { hours: number; minutes: number; seconds: number } {
         const now = new Date();
-        const next9AM = new Date();
-        next9AM.setHours(9, 0, 0, 0);
+        const nextMidnight = new Date();
+        nextMidnight.setDate(nextMidnight.getDate() + 1);
+        nextMidnight.setHours(0, 0, 0, 0);
 
-        if (now.getHours() >= 9) {
-            next9AM.setDate(next9AM.getDate() + 1);
-        }
-
-        const diff = next9AM.getTime() - now.getTime();
+        const diff = nextMidnight.getTime() - now.getTime();
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);

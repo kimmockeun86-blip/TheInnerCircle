@@ -29,6 +29,8 @@ import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import StorageService from '../services/StorageService';
 import { CommonActions } from '@react-navigation/native';
 import notificationService from '../services/NotificationService';
+import { api } from '../services/api';
+import PermissionService from '../services/PermissionService';
 
 interface OnboardingScreenProps {
     navigation: any;
@@ -49,6 +51,33 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     const textInputRef = useRef<TextInput>(null);
     const [displayedText, setDisplayedText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [permissionsRequested, setPermissionsRequested] = useState(false);
+
+    // 온보딩 시작 시 모든 권한 한번에 요청
+    useEffect(() => {
+        const requestPermissions = async () => {
+            const alreadyRequested = await PermissionService.hasRequestedPermissions();
+            if (!alreadyRequested && !permissionsRequested) {
+                console.log('[Onboarding] 모든 권한 요청 시작...');
+                const status = await PermissionService.requestAllPermissions();
+                setPermissionsRequested(true);
+
+                // 거부된 권한 확인
+                const deniedPermissions: string[] = [];
+                if (!status.location) deniedPermissions.push('location');
+                if (!status.notification) deniedPermissions.push('notification');
+                if (!status.camera) deniedPermissions.push('camera');
+
+                // 일부 권한 거부 시 안내 (비차단적)
+                if (deniedPermissions.length > 0 && deniedPermissions.length < 4) {
+                    // PermissionService.showPermissionDeniedAlert(deniedPermissions);
+                    console.log('[Onboarding] 일부 권한 거부됨:', deniedPermissions);
+                }
+                console.log('[Onboarding] 권한 요청 완료:', status);
+            }
+        };
+        requestPermissions();
+    }, []);
 
     // Get current scripts based on phase
     const getCurrentScripts = () => {
@@ -188,6 +217,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
 
     const completeOnboarding = async () => {
         try {
+            console.log('[Onboarding] 🔍 answers 전체:', JSON.stringify(answers, null, 2));
             const keys = Object.keys(answers);
             for (const key of keys) {
                 await AsyncStorage.setItem(key, answers[key]);
@@ -246,8 +276,15 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     job: answers['userJob'] || '미입력',
                     location: userLocation,
                     dayCount: 1,
+                    growthLevel: 1,
+                    growthPhase: '각성',
                     isMatchingActive: phase !== 'couple',
-                    createdAt: Timestamp.now()
+                    createdAt: Timestamp.now(),
+                    // 오르빗인터뷰에서 수집한 추가 정보
+                    idealType: answers['userIdealType'] || '',
+                    bio: answers['userComplex'] || '',  // 자기소개로 활용
+                    mbti: answers['userMBTI'] || '',
+                    hobbies: answers['userHobbies'] || ''
                 };
 
                 // Add photoURL if available
@@ -260,6 +297,36 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     .catch(e => console.error('[Onboarding] Firestore 저장 실패:', e));
             } catch (e) {
                 console.error('[Onboarding] Firestore 준비 실패:', e);
+            }
+
+            // ============================================
+            // 🎯 AI 프로필 분석 (온보딩 완료 시점에 수행)
+            // ============================================
+            try {
+                console.log('[Onboarding] AI 프로필 분석 시작...');
+                const fullProfile = {
+                    name: answers['userName'] || '구도자',
+                    gender: answers['userGender'] || '알 수 없음',
+                    age: answers['userAge'] || '알 수 없음',
+                    location: answers['userLocation'] || '',
+                    idealType: answers['userIdealType'] || '',
+                    hobbies: answers['userHobbies'] || '',
+                    job: answers['userJob'] || '',
+                    growth: answers['userGrowth'] || '',
+                    complex: answers['userComplex'] || '',
+                    deficit: answers['userDeficit'] || '성장'
+                };
+
+                const analysisResult = await api.analyzeProfile(fullProfile);
+                if (analysisResult.success) {
+                    await AsyncStorage.setItem('aiAnalysis', analysisResult.analysis || '');
+                    if (analysisResult.matchRecommendation) {
+                        await AsyncStorage.setItem('matchRecommendation', analysisResult.matchRecommendation);
+                    }
+                    console.log('[Onboarding] AI 분석 완료:', analysisResult.analysis?.substring(0, 50) + '...');
+                }
+            } catch (e) {
+                console.log('[Onboarding] AI 분석 실패 (무시):', e);
             }
 
             // 네비게이션 함수 정의 (에러 안전)
@@ -460,6 +527,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
 
     const handleFastFill = async () => {
         try {
+            // 고유 userId 생성
+            const uniqueId = `user_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+            await AsyncStorage.setItem('userId', uniqueId);
+
             await AsyncStorage.setItem('userName', '민수');
             await AsyncStorage.setItem('userGender', '남성');
             await AsyncStorage.setItem('userAge', '29');
@@ -484,6 +555,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
         <TouchableWithoutFeedback onPress={handleScreenTap}>
             <View style={styles.container}>
                 <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+                {/* Cosmic Background Image */}
+                <Image
+                    source={require('../../assets/cosmic_background.png')}
+                    style={styles.cosmicBackground}
+                    resizeMode="cover"
+                />
                 <View style={styles.visualizerBackground}>
                     <MysticVisualizer isActive={true} mode={currentScript.type === 'statement' ? 'speaking' : 'listening'} key={visualizerKey} sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode" />
                 </View>
@@ -538,13 +615,24 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: COLORS.background,
     },
+    cosmicBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+    },
     visualizerBackground: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 0,
+        zIndex: 1,
+        opacity: 0.6, // Allow cosmic background to show through
     },
     safeArea: {
         flex: 1,

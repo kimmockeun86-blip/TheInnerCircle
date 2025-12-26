@@ -579,11 +579,26 @@ ${historyContext || '(첫 번째 기록입니다)'}
            - 레벨이 높을수록 더 권위적이고 확신에 찬 어조
 
         【리추얼 생성 가이드 (중요!)】
+        
+        📌 **사용자 맞춤 미션 생성 규칙 (핵심!)**
+        사용자의 수행기록(history)과 오늘의 기록(currentJournal)에서 고민, 걱정, 원하는 것을 분석하라:
+        
+        - 일기에 "살이 쪘다", "다이어트" 언급 → "오늘은 야식을 참아라" 또는 "30분 산책하라"
+        - "불안하다", "걱정된다" 언급 → "5분간 깊은 호흡을 하라"
+        - "인간관계가 힘들다" 언급 → "오늘 한 사람에게 먼저 인사하라"
+        - "자신감이 없다" 언급 → "거울 앞에서 칭찬 3개를 말하라"
+        - "집중이 안 된다" 언급 → "5분간 한 가지에만 집중하라"
+        - "피곤하다", "지쳤다" 언급 → "10분 일찍 잠자리에 들어라"
+        
+        ⚠️ 단, 직접적으로 "당신이 살쪘으니까..." 같은 표현은 금지!
+        은근하게 그 고민을 해결하는 방향의 리추얼을 제안하라.
+        
+        📌 **기본 규칙**
         - **반드시 구체적인 행동**이어야 함 (추상적 표현 금지: "존재를 증명하라" 같은 것 금지)
         - **동사로 시작**해야 함 (예: "5분간 명상하라", "감사 일기를 써라")
         - 미션 유형: ${currentGrowth.missionType}
         - 참고 예시 (이 중 하나를 변형해서 사용): ${currentGrowth.examples}
-        - 길이: 5~15자, 짧고 강렬한 명령형
+        - 길이: 5~20자, 짧고 강렬한 명령형
         - 키워드(결핍): ${actualDeficit} 와 연관된 미션 우선
         - 금지어: '영원', '존재', '증명', '우주', '본질'
 
@@ -742,6 +757,154 @@ ${historyContext || '(첫 번째 기록입니다)'}
 });
 
 // ============================================
+// 2.5. PERSONALIZED ADVICE (12시/6시 맞춤 조언)
+// 미션, 수행기록, 키워드 기반으로 AI가 동적 생성
+// ============================================
+app.post('/api/advice/personalized', async (req, res) => {
+    try {
+        const {
+            userId,
+            name = '구도자',
+            deficit = '성장',
+            currentMission = '',
+            recentJournals = [],
+            timeOfDay = 'noon', // 'noon' or 'evening'
+            dayCount = 1,
+            growthLevel = 1
+        } = req.body;
+
+        console.log(`[ORBIT Advice] User: ${name}, Time: ${timeOfDay}, Day: ${dayCount}`);
+
+        // 최근 수행기록 요약 생성
+        let journalContext = '';
+        if (recentJournals && recentJournals.length > 0) {
+            journalContext = recentJournals.slice(0, 3).map((entry, idx) => {
+                return `[Day ${entry.day}] 리추얼: "${entry.mission || '기록 없음'}" / 수행 내용: "${(entry.content || '').substring(0, 100)}..."`;
+            }).join('\n');
+        }
+
+        let timeContext;
+        if (timeOfDay === 'morning') {
+            timeContext = '아침 시간입니다. 사용자가 하루를 시작하며 새로운 에너지를 채우는 순간입니다.';
+        } else if (timeOfDay === 'noon') {
+            timeContext = '점심 시간입니다. 사용자가 하루 중간에 잠시 휴식을 취하거나 리추얼을 떠올리는 순간입니다.';
+        } else {
+            timeContext = '저녁 시간입니다. 사용자가 하루를 마무리하며 성찰하는 순간입니다.';
+        }
+
+        const prompt = `
+        ${ORBIT_SYSTEM_PROMPT}
+
+        【상황】
+        ${timeContext}
+        
+        사용자 "${name}"님에게 맞춤 조언을 전달합니다.
+        - 키워드(결핍): ${deficit}
+        - 현재 Day: ${dayCount}일차
+        - 성장 레벨: Lv.${growthLevel}
+        - 오늘의 리추얼: "${currentMission || '아직 미션이 없습니다'}"
+        
+        【최근 수행 기록】
+        ${journalContext || '(아직 수행 기록이 없습니다)'}
+
+        【📌 핵심 개선사항: 단순한 인사 금지! 깊이 있는 분석 필수】
+        
+        ⚠️ 절대 이런 식으로 쓰지 마라 (너무 단순함):
+        - "좋은 아침이에요! 오늘도 화이팅하세요."
+        - "아침이에요. 리추얼 화이팅!"
+        - "점심 드셨나요? 오늘도 좋은 하루 보내세요."
+        
+        ✅ 이렇게 써라 (분석적이고 개인화됨):
+        - "${name}님, 최근 '${deficit}'에 대한 기록을 보니 조금씩 변화가 느껴집니다. 오늘 아침, 그 변화를 의식해보세요. 어제의 당신과 오늘의 당신은 분명 다릅니다."
+        - "Lv.${growthLevel}에 도달하신 ${name}님, 아침 햇살처럼 새로운 시각이 필요한 시점입니다. 오늘의 리추얼 '${currentMission}'을 수행하기 전, 잠시 자신에게 물어보세요 - 왜 이것을 해야 하는가?"
+        - "${name}님의 여정 ${dayCount}일차. 아침은 어제의 끝이자 오늘의 시작입니다. 당신의 키워드 '${deficit}'가 오늘 어떻게 발현될지 지켜보겠습니다."
+        
+        【시간대별 깊이 있는 조언 생성 규칙】
+        
+        📌 **아침 시간 (morning)** - 에너지, 각성, 새로운 시작:
+        - 반드시 사용자의 "성장 레벨(Lv.${growthLevel})"이나 "여정 일수(${dayCount}일차)"를 언급
+        - 키워드 '${deficit}'를 오늘의 맥락에서 해석
+        - 오늘의 리추얼을 미리 소개하되, 단순 나열이 아닌 "왜"를 설명
+        - 예시 구조: [성찰적 인사] + [키워드/레벨 기반 분석] + [오늘의 리추얼 연결]
+        
+        📌 **점심 시간 (noon)** - 중간 점검, 리마인더, 에너지 충전:
+        - 오전을 보낸 사용자의 에너지 상태를 추론
+        - 리추얼 진행 상황에 대한 부드러운 리마인더
+        - 수행기록이 있다면 그 내용을 바탕으로 구체적 제안
+        - 예시 구조: [에너지 체크 인사] + [리추얼 상태 추론] + [실천 가능한 제안]
+        
+        📌 **저녁 시간 (evening)** - 성찰, 마무리, 내일 준비:
+        - 하루를 마무리하며 돌아보는 성찰적 질문
+        - 리추얼 완료 여부에 따른 맞춤 피드백
+        - 내일로 이어지는 여정 암시
+        - 예시 구조: [성찰 유도 인사] + [오늘의 의미 해석] + [내일 연결]
+        
+        【개인화 필수 체크리스트】
+        ☑ 사용자 이름(${name}) 사용
+        ☑ 키워드/결핍(${deficit}) 자연스럽게 연결
+        ☑ 성장 레벨(Lv.${growthLevel}) 또는 여정 일수(${dayCount}일) 언급
+        ☑ 오늘의 리추얼(${currentMission}) 맥락적 언급
+        ☑ 최근 수행기록이 있다면 그 패턴 분석 포함
+        
+        【금지 사항】
+        ❌ 단순 인사만 하고 끝내기
+        ❌ 이모티콘 사용
+        ❌ "화이팅", "힘내세요" 같은 뻔한 응원
+        ❌ 레벨 숫자 직접 표시 (Lv.3이라고 말하지 말고 "세 번째 단계의 여정" 등으로 표현)
+        
+        【출력 형식】 (반드시 JSON)
+        {
+            "advice": "3-4문장의 깊이 있는 맞춤 조언 (위 규칙 준수)",
+            "focusPrompt": "사용자가 깊이 생각하게 만드는 질문 또는 제안 (1문장, 없으면 빈 문자열)"
+        }
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        let jsonResponse;
+        try {
+            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            jsonResponse = JSON.parse(cleanText);
+        } catch (e) {
+            console.error('[ORBIT Advice] JSON Parse Error:', e);
+            jsonResponse = {
+                advice: timeOfDay === 'noon'
+                    ? `${name}님, 점심 시간이에요. 잠시 멈추고 오늘의 리추얼을 떠올려보세요. 작은 성찰이 큰 변화를 만듭니다.`
+                    : `${name}님, 오늘 하루 수고하셨어요. 리추얼을 수행하셨다면, 기록을 남겨보세요. 오르빗이 함께하고 있습니다.`,
+                focusPrompt: ''
+            };
+        }
+
+        console.log('[ORBIT Advice] Generated:', jsonResponse.advice);
+
+        res.json({
+            success: true,
+            advice: jsonResponse.advice,
+            focusPrompt: jsonResponse.focusPrompt || '',
+            timeOfDay: timeOfDay,
+            icon: timeOfDay === 'noon' ? '🌞' : '🌙'
+        });
+
+    } catch (error) {
+        console.error('[ORBIT Advice] Error:', error.message);
+
+        // Fallback advice
+        const { name = '구도자', timeOfDay = 'noon', deficit = '성장' } = req.body;
+        res.json({
+            success: true,
+            advice: timeOfDay === 'noon'
+                ? `${name}님, 점심 시간입니다. 잠시 숨을 고르고 오늘의 리추얼을 떠올려보세요.`
+                : `${name}님, 오늘 하루 수고했어요. 오르빗에 기록을 남기면 내일이 더 명확해집니다.`,
+            focusPrompt: '오늘의 리추얼은 어떻게 되어가고 있나요?',
+            timeOfDay: timeOfDay,
+            icon: timeOfDay === 'noon' ? '🌞' : '🌙'
+        });
+    }
+});
+
+// ============================================
 // 3. SECRET MISSION (Day 10 매칭)
 // ============================================
 app.post('/api/mission/secret', async (req, res) => {
@@ -821,7 +984,7 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
             4: {
                 phase: "몰입기",
                 missionType: "강도 높은 스킨십이나 깊은 비밀을 공유하는 미션",
-                examples: "당신의 인연의 목덜미에 입을 맞춰라, 과거의 상처를 고백하라, 귓가에 사랑한다고 속삭여라",
+                examples: "당신의 인연의 손을 꼭 잡고 눈을 마주쳐라, 과거의 상처를 고백하라, 진심으로 사랑한다고 말해라",
                 aiTone: "설계자",
                 aiStyle: "두 분의 여정은 제가 설계한 대로 흘러가고 있습니다."
             },
@@ -999,7 +1162,7 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
             1: ["당신의 인연의 눈을 5초간 바라봐라", "당신의 인연의 장점을 하나 말해줘라", "먼저 연락을 건네라", "당신의 인연에게 질문을 던져라"],
             2: ["당신의 인연의 손을 잡아라", "당신의 인연의 어깨에 기대라", "아무에게도 말 못한 비밀을 하나 털어놔라", "당신의 인연을 웃게 만들어라"],
             3: ["당신의 인연을 꼭 안아줘라", "지금 느끼는 감정을 솔직히 말해라", "당신의 인연의 눈을 3초간 응시하라", "말없이 곁에 있어라"],
-            4: ["당신의 인연의 목덜미에 입을 맞춰라", "뒤에서 당신의 인연을 껴안아라", "귓가에 사랑한다고 속삭여라", "과거의 상처를 고백하라"],
+            4: ["당신의 인연의 손을 꼭 잡고 눈을 마주쳐라", "당신의 인연을 진심으로 안아줘라", "진심으로 사랑한다고 말해라", "과거의 상처를 고백하라"],
             5: ["당신의 인연의 소원을 하나 들어줘라", "미래를 약속하라", "당신의 약점을 보여줘라", "당신의 인연을 향한 신뢰를 맹세하라"],
             6: ["숨겨왔던 모든 비밀을 털어놓아라", "당신의 인연 없이는 불안하다고 인정하라", "하루 일과를 전부 공유하라", "당신의 인연의 가족 이야기를 들어라"],
             7: ["평생을 약속하라", "완전한 신뢰를 바쳐라", "모든 것을 당신의 인연에게 맡겨라", "이것이 운명임을 받아들여라"]

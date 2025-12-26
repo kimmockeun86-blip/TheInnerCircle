@@ -2,6 +2,44 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ============================================
+// SPECIAL DAY MISSIONS (특별한 날 미션)
+// ============================================
+
+export interface SpecialDayMission {
+    date: string; // MM-DD 형식
+    name: string;
+    mission: string;
+    feedback: string;
+}
+
+export const SPECIAL_DAY_MISSIONS: SpecialDayMission[] = [
+    // 어버이날
+    { date: '05-08', name: '어버이날', mission: '부모님께 감사의 전화를 걸거나 편지를 써서 마음을 전하라.', feedback: '부모님의 사랑은 우주보다 깊습니다. 오늘 당신이 전한 마음이 그들에게 큰 선물이 되었을 것입니다.' },
+    // 크리스마스
+    { date: '12-25', name: '크리스마스', mission: '소중한 사람에게 진심 어린 감사와 사랑을 담은 메시지를 보내라.', feedback: '사랑을 나눌 때 비로소 우리는 풍요로워집니다. 따뜻한 마음을 전한 당신은 이미 충분합니다.' },
+    // 설날
+    { date: '01-01', name: '새해 첫날', mission: '올해 이루고 싶은 목표 3가지를 적고, 가장 중요한 가치를 정하라.', feedback: '새로운 시작의 에너지가 당신을 감싸고 있습니다. 당신의 의도가 우주에 새겨졌습니다.' },
+    // 발렌타인 데이
+    { date: '02-14', name: '발렌타인 데이', mission: '사랑하는 사람(친구, 가족, 연인 누구든)에게 따뜻한 마음을 표현하라.', feedback: '사랑은 표현할 때 빛납니다. 오늘 당신이 건넨 마음은 영원히 기억될 것입니다.' },
+    // 화이트 데이
+    { date: '03-14', name: '화이트 데이', mission: '받았던 사랑에 보답하는 작은 행동을 실천하라.', feedback: '사랑을 되돌려주는 것, 그것이 진정한 연결의 시작입니다.' },
+    // 추석 (음력이라 양력 날짜는 매년 다르므로 대표 날짜 사용)
+    { date: '09-17', name: '추석', mission: '가족에게 연락하고 함께했던 좋은 기억 하나를 떠올려 기록하라.', feedback: '가족의 유대는 시간과 공간을 초월합니다. 뿌리를 기억하는 것이 성장의 시작입니다.' },
+    // 빼빼로 데이
+    { date: '11-11', name: '빼빼로 데이', mission: '누군가에게 작은 간식이나 선물과 함께 응원의 메시지를 전하라.', feedback: '작은 정성이 큰 행복을 만듭니다. 당신의 따뜻함이 누군가의 하루를 밝혔습니다.' },
+];
+
+// 오늘이 특별한 날인지 확인하고 해당 미션 반환
+export function getSpecialDayMission(): SpecialDayMission | null {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${month}-${day}`;
+
+    return SPECIAL_DAY_MISSIONS.find(m => m.date === todayStr) || null;
+}
+
+// ============================================
 // SOLO MODE MISSIONS
 // ============================================
 

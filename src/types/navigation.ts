@@ -23,8 +23,6 @@ export type RootStackParamList = {
     Matching: undefined;
     CouplesMission: undefined;
     Settings: undefined;
-    Admin: undefined;
-    UserList: undefined;
     SpecialMissionIntro: undefined;
 };
 

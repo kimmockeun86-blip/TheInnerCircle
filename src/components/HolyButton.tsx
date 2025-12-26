@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, StyleProp, Platform } from 'react-native';
 import { COLORS, FONTS, LAYOUT, SPACING } from '../theme/theme';
+import { soundService } from '../services/SoundService';
 
 interface HolyButtonProps {
     title: string;
@@ -10,6 +11,7 @@ interface HolyButtonProps {
     style?: StyleProp<ViewStyle>;
     textStyle?: StyleProp<TextStyle>;
     disabled?: boolean;
+    noSound?: boolean; // 사운드 비활성화 옵션
 }
 
 const HolyButton: React.FC<HolyButtonProps> = ({
@@ -19,8 +21,21 @@ const HolyButton: React.FC<HolyButtonProps> = ({
     isLoading = false,
     style,
     textStyle,
-    disabled = false
+    disabled = false,
+    noSound = false
 }) => {
+
+    const handlePress = async () => {
+        // 사운드 재생 (noSound가 아니고 disabled가 아닐 때)
+        if (!noSound && !disabled && !isLoading) {
+            if (variant === 'ghost') {
+                soundService.playSoftClick();
+            } else {
+                soundService.playClick();
+            }
+        }
+        onPress();
+    };
 
     const getButtonStyle = () => {
         switch (variant) {
@@ -60,14 +75,14 @@ const HolyButton: React.FC<HolyButtonProps> = ({
                 disabled && styles.disabled,
                 style
             ]}
-            onPress={onPress}
+            onPress={handlePress}
             disabled={disabled || isLoading}
             activeOpacity={0.8}
         >
             {isLoading ? (
                 <ActivityIndicator color={variant === 'primary' ? COLORS.textDark : COLORS.gold} />
             ) : (
-                <Text style={[styles.textBase, getTextStyle(), textStyle]}>{title}</Text>
+                <Text style={[styles.textBase, getTextStyle(), textStyle]} numberOfLines={1} adjustsFontSizeToFit>{title}</Text>
             )}
         </TouchableOpacity>
     );
@@ -95,25 +110,25 @@ const styles = StyleSheet.create({
     primary: {
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderColor: 'rgba(255, 255, 255, 0.6)',
+        borderColor: 'rgba(139, 92, 246, 0.7)',
         ...(Platform.OS === 'web'
-            ? { boxShadow: '0 0 15px rgba(255, 255, 255, 0.4)' }
+            ? { boxShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }
             : {
-                shadowColor: '#FFFFFF',
+                shadowColor: '#8B5CF6',
                 shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.4,
+                shadowOpacity: 0.5,
                 shadowRadius: 15,
             }
         ),
         elevation: 8,
     } as any,
     textPrimary: {
-        color: '#FFFFFF',
+        color: '#A78BFA',
         fontWeight: 'bold' as any,
         ...(Platform.OS === 'web'
-            ? { textShadow: '0 0 8px rgba(255, 255, 255, 0.5)' }
+            ? { textShadow: '0 0 8px rgba(139, 92, 246, 0.6)' }
             : {
-                textShadowColor: 'rgba(255, 255, 255, 0.5)',
+                textShadowColor: 'rgba(139, 92, 246, 0.6)',
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: 8,
             }
@@ -121,9 +136,9 @@ const styles = StyleSheet.create({
     } as any,
 
     secondary: {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'rgba(139, 92, 246, 0.15)',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderColor: 'rgba(139, 92, 246, 0.3)',
     },
     textSecondary: {
         color: COLORS.textMain,
@@ -132,11 +147,11 @@ const styles = StyleSheet.create({
     outline: {
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderColor: 'rgba(255, 255, 255, 0.7)',
+        borderColor: 'rgba(167, 139, 250, 0.7)',
         ...(Platform.OS === 'web'
-            ? { boxShadow: '0 0 12px rgba(255, 255, 255, 0.5)' }
+            ? { boxShadow: '0 0 12px rgba(139, 92, 246, 0.5)' }
             : {
-                shadowColor: '#FFFFFF',
+                shadowColor: '#8B5CF6',
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0.5,
                 shadowRadius: 12,
@@ -145,11 +160,11 @@ const styles = StyleSheet.create({
         elevation: 6,
     } as any,
     textOutline: {
-        color: '#FFFFFF',
+        color: '#A78BFA',
         ...(Platform.OS === 'web'
-            ? { textShadow: '0 0 8px rgba(255, 255, 255, 0.6)' }
+            ? { textShadow: '0 0 8px rgba(139, 92, 246, 0.6)' }
             : {
-                textShadowColor: 'rgba(255, 255, 255, 0.6)',
+                textShadowColor: 'rgba(139, 92, 246, 0.6)',
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: 8,
             }

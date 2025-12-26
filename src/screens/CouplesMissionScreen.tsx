@@ -59,6 +59,13 @@ const CouplesMissionScreen = () => {
     const [nextMissionUnlockTime, setNextMissionUnlockTime] = useState<string | null>(null);
     const [countdown, setCountdown] = useState('00:00:00');
 
+    // 아침/점심/저녁 맞춤 조언 상태 (커플 모드)
+    const [personalizedAdvice, setPersonalizedAdvice] = useState<{
+        advice: string;
+        focusPrompt: string;
+        timeOfDay: 'morning' | 'noon' | 'evening';
+    } | null>(null);
+
 
     // Visualizer Mode
     const visualizerMode = isLoading ? 'thinking' : (analysisModalVisible ? 'speaking' : 'listening');
@@ -91,7 +98,7 @@ const CouplesMissionScreen = () => {
                 // 아직 다음 9시가 안 왔으면 대기
                 if (now < next9AM) {
                     setNextMissionUnlockTime(next9AM.toLocaleString());
-                    await notificationService.scheduleMissionNotification();
+                    // Notification already scheduled during onboarding
                     canUnlock = false;
                 } else {
                     setNextMissionUnlockTime(null);
@@ -155,6 +162,7 @@ const CouplesMissionScreen = () => {
                         console.log(`[ORBIT Couple] 🎯 관리자 미션 발견: ${adminMission}`);
                         setCurrentMissionText(adminMission);
                         await AsyncStorage.setItem(`couple_mission_day_${currentDay}`, adminMission);
+                        await AsyncStorage.setItem('hasCoupleAdminMission', 'true'); // 관리자 미션 플래그
                         setAiAnalysis('관리자가 특별히 부여한 리추얼입니다.');
 
                         // 미션 적용 후 서버에서 삭제 (선택사항)
@@ -211,6 +219,54 @@ const CouplesMissionScreen = () => {
             }
         } catch (e) {
             console.error('Failed to load couple data:', e);
+        }
+
+        // 7시~24시에 맞춤 조언 로드 (커플 모드 - 아침/점심/저녁)
+        try {
+            const currentHour = new Date().getHours();
+            if (currentHour >= 7 && currentHour < 24) {
+                // 시간대 결정: 7시~12시 아침, 12시~18시 점심, 18시~ 저녁
+                let timeOfDay: 'morning' | 'noon' | 'evening';
+                if (currentHour < 12) {
+                    timeOfDay = 'morning';
+                } else if (currentHour < 18) {
+                    timeOfDay = 'noon';
+                } else {
+                    timeOfDay = 'evening';
+                }
+
+                const userDeficit = await AsyncStorage.getItem('userDeficit') || '';
+                const userName = await AsyncStorage.getItem('userName') || '';
+                const userId = await AsyncStorage.getItem('currentUserId') || '';
+                const growthLevel = parseInt(await AsyncStorage.getItem('relationshipLevel') || '1', 10);
+                const currentMission = await AsyncStorage.getItem('couple_mission_day_' + (await AsyncStorage.getItem('coupleDayCount') || '1')) || currentMissionText;
+                const historyString = await AsyncStorage.getItem('coupleMissionHistory') || '[]';
+                const historyArr = JSON.parse(historyString);
+                const recentJournals = historyArr.slice(-3).map((j: any) => j.reflection || j.content || '');
+
+                console.log('[CouplesMissionScreen] 맞춤 조언 API 호출...');
+                const adviceResponse = await api.getPersonalizedAdvice({
+                    userId,
+                    name: userName,
+                    deficit: userDeficit,
+                    currentMission,
+                    recentJournals,
+                    timeOfDay,
+                    dayCount: parseInt(await AsyncStorage.getItem('coupleDayCount') || '1', 10),
+                    growthLevel
+                });
+
+                if (adviceResponse && adviceResponse.advice) {
+                    setPersonalizedAdvice({
+                        advice: adviceResponse.advice,
+                        focusPrompt: adviceResponse.focusPrompt || '',
+                        timeOfDay: adviceResponse.timeOfDay as 'morning' | 'noon' | 'evening' || timeOfDay
+                    });
+                    console.log('[CouplesMissionScreen] 맞춤 조언 로드 완료');
+                }
+            }
+        } catch (adviceError) {
+            console.log('[CouplesMissionScreen] 맞춤 조언 로드 실패 (무시):', adviceError);
         }
     };
 
@@ -523,6 +579,36 @@ const CouplesMissionScreen = () => {
                 // Mark today as completed (Day will increase on next 9 AM unlock)
                 await AsyncStorage.setItem('coupleLastCompletedDate', new Date().toISOString());
 
+                // ============================================
+                // 🎯 관리자 미션 완료 후 삭제 (다음엔 AI 미션 사용)
+                // ============================================
+                const hadAdminMission = await AsyncStorage.getItem('hasCoupleAdminMission');
+                if (hadAdminMission === 'true') {
+                    try {
+                        const adminApiUrl = Platform.OS === 'web' && (window as any).location?.hostname === 'localhost'
+                            ? 'http://localhost:3001'
+                            : 'https://orbit-adminfinalfight.onrender.com';
+                        const storedUserId = await AsyncStorage.getItem('userId');
+                        const storedName = await AsyncStorage.getItem('userName');
+                        const userId = storedUserId || storedName || '';
+
+                        if (userId) {
+                            // 서버에서 assignedMission 삭제
+                            await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ assignedMission: null })
+                            });
+                            console.log('[ORBIT Couple] ✅ 관리자 미션 완료 → 서버에서 삭제됨 (다음엔 AI 미션)');
+                        }
+                        // 로컬 플래그도 삭제
+                        await AsyncStorage.removeItem('hasCoupleAdminMission');
+                    } catch (adminErr) {
+                        console.log('[ORBIT Couple] 관리자 미션 삭제 실패 (무시):', adminErr);
+                        await AsyncStorage.removeItem('hasCoupleAdminMission');
+                    }
+                }
+
                 // "바로 돌아오는 오전 9시" 설정
                 const now = new Date();
                 const next9AM = new Date(now);
@@ -599,6 +685,30 @@ const CouplesMissionScreen = () => {
                                 <GlassCard style={styles.analysisCard}>
                                     <Text style={styles.analysisLabel}>ORBIT'S SIGNAL</Text>
                                     <Text style={styles.analysisText}>{aiAnalysis}</Text>
+                                </GlassCard>
+                            </View>
+                        )}
+
+                        {/* 아침/점심/저녁 맞춤 조언 카드 */}
+                        {personalizedAdvice && (
+                            <View style={styles.missionContainer}>
+                                <GlassCard style={[styles.analysisCard, {
+                                    borderLeftWidth: 3,
+                                    borderLeftColor: '#9D50BB',
+                                    backgroundColor: 'rgba(100, 50, 150, 0.2)'
+                                }]}>
+                                    <Text style={[styles.analysisLabel, { color: '#BA68C8' }]}>
+                                        {personalizedAdvice.timeOfDay === 'morning' ? '아침 조언' :
+                                            personalizedAdvice.timeOfDay === 'noon' ? '점심 조언' : '저녁 조언'}
+                                    </Text>
+                                    <Text style={[styles.analysisText, { color: 'rgba(255,255,255,0.9)' }]}>
+                                        {personalizedAdvice.advice}
+                                    </Text>
+                                    {personalizedAdvice.focusPrompt ? (
+                                        <Text style={{ color: '#CE93D8', fontSize: 13, marginTop: 8, fontStyle: 'italic' }}>
+                                            {personalizedAdvice.focusPrompt}
+                                        </Text>
+                                    ) : null}
                                 </GlassCard>
                             </View>
                         )}

@@ -72,7 +72,7 @@ export interface CoupleMasteryMission { id: number; category: CoupleMasteryCateg
 export const COUPLE_MASTERY: CoupleMasteryMission[] = [
     { id: 1, category: 'Touch', content: '인연의 손바닥에 하트를 그려주라.' },
     { id: 2, category: 'Touch', content: '인연의 어깨를 5분간 마사지해주라.' },
-    { id: 3, category: 'Touch', content: '인연의 이마에 입맞춤을 하라.' },
+    { id: 3, category: 'Touch', content: '인연의 이마를 가볍게 쓰다듬어라.' },
     { id: 4, category: 'Touch', content: '인연과 손을 잡고 1분간 눈을 감아라.' },
     { id: 5, category: 'Touch', content: '인연을 뒤에서 안고 30초간 가만히 있어라.' },
     { id: 6, category: 'Touch', content: '인연의 뺨을 양손으로 감싸고 바라보라.' },
