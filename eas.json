@@ -28,8 +28,7 @@
                 "autoIncrement": true
             },
             "env": {
-                "APP_ENV": "production",
-                "GEMINI_API_KEY": "AIzaSyDzDbtYcnGfX3aFGlOeEwBg3ZMTYacIBWk"
+                "APP_ENV": "production"
             }
         }
     },

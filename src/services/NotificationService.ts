@@ -280,6 +280,25 @@ class NotificationService {
     }
 
     async scheduleAdviceNotifications(deficit: string = '성장'): Promise<void> {
+        // 중복 스케줄 방지: 이미 스케줄된 경우 스킵
+        const alreadyScheduled = await AsyncStorage.getItem('adviceNotificationsScheduled');
+        if (alreadyScheduled === 'true') {
+            console.log('[Notification] 조언 알림 이미 스케줄됨 - 스킵');
+            return;
+        }
+
+        // 기존 조언 알림 취소 (모바일)
+        if (Platform.OS !== 'web') {
+            const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+            for (const notif of scheduled) {
+                // 조언 알림만 취소 (제목으로 구분)
+                if (notif.content.title?.includes('점심 조언') ||
+                    notif.content.title?.includes('저녁 조언')) {
+                    await Notifications.cancelScheduledNotificationAsync(notif.identifier);
+                }
+            }
+        }
+
         const now = new Date();
 
         // 정오 12시 알림
@@ -317,7 +336,7 @@ class NotificationService {
 
             console.log(`[Notification] 웹 조언 알림 예약: 정오 ${noon.toLocaleString()}, 저녁 ${evening.toLocaleString()}`);
         } else {
-            // 모바일 - 매일 반복 알림
+            // 모바일 - 매일 반복 알림 (각각 1개씩만)
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title: '🌞 ORBIT 점심 조언',
@@ -346,6 +365,9 @@ class NotificationService {
 
             console.log(`[Notification] 모바일 조언 알림 예약: 매일 정오 12시 & 저녁 6시`);
         }
+
+        // 스케줄 완료 플래그 저장
+        await AsyncStorage.setItem('adviceNotificationsScheduled', 'true');
     }
 
     // 💌 매칭/편지 수신 알림
