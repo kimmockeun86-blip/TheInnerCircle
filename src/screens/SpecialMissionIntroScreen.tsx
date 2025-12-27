@@ -12,6 +12,7 @@ import {
     Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme/theme';
 import MysticVisualizer from '../components/MysticVisualizer';
 import HolyButton from '../components/HolyButton';
@@ -136,11 +137,10 @@ const SpecialMissionIntroScreen: React.FC = () => {
         <TouchableWithoutFeedback onPress={handleScreenTap}>
             <View style={styles.container}>
                 <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-                {/* Cosmic Background Image */}
-                <Image
-                    source={require('../../assets/cosmic_background.png')}
-                    style={styles.cosmicBackground}
-                    resizeMode="cover"
+                {/* Background Gradient */}
+                <LinearGradient
+                    colors={['#0f0a1e', '#1a0a2e', '#0f0a1e']}
+                    style={StyleSheet.absoluteFillObject}
                 />
                 <View style={styles.visualizerBackground}>
                     <MysticVisualizer

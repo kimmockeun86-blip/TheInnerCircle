@@ -1,9 +1,7 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp, ImageBackground, Platform } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, LAYOUT, SPACING } from '../theme/theme';
-
-// Cosmic card background image
-const cosmicCardBg = require('../../assets/cosmic_card_bg_1766534124763.png');
 
 interface GlassCardProps {
     children: React.ReactNode;
@@ -12,26 +10,27 @@ interface GlassCardProps {
 }
 
 const GlassCard: React.FC<GlassCardProps> = ({ children, style, variant = 'cosmic' }) => {
-    // Use cosmic image background by default
+    // Use cosmic gradient background by default
     if (variant === 'cosmic') {
         return (
-            <ImageBackground
-                source={cosmicCardBg}
-                style={[styles.card, style]}
-                imageStyle={styles.cardImage}
-                resizeMode="cover"
-            >
+            <View style={[styles.card, style]}>
+                <LinearGradient
+                    colors={['rgba(26, 10, 46, 0.9)', 'rgba(15, 10, 30, 0.95)']}
+                    style={StyleSheet.absoluteFillObject}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                />
                 <View style={styles.overlay}>
                     {children}
                 </View>
-            </ImageBackground>
+            </View>
         );
     }
 
     // Fallback for other variants
     let backgroundColor = COLORS.glass;
-    if (variant === 'dark') backgroundColor = 'rgba(15, 10, 30, 0.6)'; // Darker cosmic purple
-    if (variant === 'light') backgroundColor = 'rgba(15, 10, 30, 0.4)'; // Slight cosmic purple
+    if (variant === 'dark') backgroundColor = 'rgba(15, 10, 30, 0.6)';
+    if (variant === 'light') backgroundColor = 'rgba(15, 10, 30, 0.4)';
 
     return (
         <View style={[styles.card, { backgroundColor }, style]}>
@@ -58,18 +57,9 @@ const styles = StyleSheet.create({
         ),
         elevation: 10,
     } as any,
-    cardImage: {
-        borderRadius: LAYOUT.borderRadius.m,
-        opacity: 0.8,
-    },
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(26, 10, 46, 0.4)', // More transparent for background visibility
-        borderRadius: LAYOUT.borderRadius.m - 2,
         padding: SPACING.m,
-        margin: -SPACING.l,
-        paddingVertical: SPACING.l,
-        paddingHorizontal: SPACING.l,
     },
 });
 

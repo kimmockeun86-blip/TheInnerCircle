@@ -15,7 +15,7 @@
     "ios": {
       "bundleIdentifier": "com.theinnercircle.app",
       "supportsTablet": false,
-      "buildNumber": "14",
+      "buildNumber": "16",
       "infoPlist": {
         "NSCameraUsageDescription": "리추얼 기록 사진 촬영에 사용됩니다.",
         "NSPhotoLibraryUsageDescription": "리추얼 기록에 사진을 첨부하기 위해 사용됩니다.",
@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.theinnercircle.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000020"

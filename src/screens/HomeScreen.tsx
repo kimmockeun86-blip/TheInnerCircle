@@ -25,9 +25,6 @@ import { getSpecialDayMission } from '../services/MissionData';
 const malePlaceholder = require('../../assets/male_placeholder.png');
 const femalePlaceholder = require('../../assets/female_placeholder.png');
 
-// Cosmic background
-const cosmicBackground = require('../../assets/cosmic_background.png');
-
 
 interface HomeScreenProps {
     route: HomeScreenRouteProp;
@@ -1122,11 +1119,10 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
     return (
         <View style={styles.container}>
-            {/* Cosmic Background Image */}
-            <Image
-                source={cosmicBackground}
-                style={styles.cosmicBackground}
-                resizeMode="cover"
+            {/* Background Gradient */}
+            <LinearGradient
+                colors={['#0f0a1e', '#1a0a2e', '#0f0a1e']}
+                style={StyleSheet.absoluteFillObject}
             />
             {/* Spline Animation Overlay */}
             <View style={styles.visualizerBackground}>
