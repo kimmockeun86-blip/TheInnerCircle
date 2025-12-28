@@ -1970,7 +1970,7 @@ app.post('/api/fcm/match-notification', async (req, res) => {
 // ============================================
 // Q. PERSONALIZED ADVICE (아침/점심/저녁 맞춤 조언)
 // ============================================
-app.post('/advice/personalized', async (req, res) => {
+app.post('/api/advice/personalized', async (req, res) => {
     try {
         const { name, deficit, currentMission, recentJournals, timeOfDay, dayCount, growthLevel } = req.body;
         console.log(`[Advice] Generating ${timeOfDay} advice for: ${name}, Day ${dayCount}`);
