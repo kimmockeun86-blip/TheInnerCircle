@@ -556,8 +556,12 @@ app.post('/api/analysis/journal', upload.single('image'), async (req, res) => {
         }
 
         // ===== 10일 단위 심화 시스템 (Growth Level) =====
-        const growthLevel = Math.min(Math.ceil(actualDay / 10), 6);
-        console.log(`[ORBIT Solo] Growth Level: ${growthLevel} (Day ${actualDay})`);
+        // 클라이언트에서 전달받은 growthLevel 우선 사용 (DevPanel 테스트용)
+        // 없으면 Day 기반으로 자동 계산
+        const clientGrowthLevel = req.body.growthLevel ? parseInt(req.body.growthLevel) : null;
+        const calculatedGrowthLevel = Math.min(Math.ceil(actualDay / 10), 6);
+        const growthLevel = clientGrowthLevel || calculatedGrowthLevel;
+        console.log(`[ORBIT Solo] Growth Level: ${growthLevel} (Day ${actualDay}, Client: ${clientGrowthLevel || 'auto'})`);
 
         // Level-based guidance system
         const levelGuidance = {
@@ -687,6 +691,14 @@ ${historyContext || '(첫 번째 기록입니다)'}
         
         진행 보류 시: 같은 레벨의 **다른 미션**을 생성하라
         진행 허용 시: 다음 레벨에 맞는 미션을 제안하라
+
+        【⚠️ 레벨 언급 절대 금지 (중요!)】
+        AI 응답(signal)에서 다음 표현을 절대 사용하지 마라:
+        - "Lv.1", "Lv.2", "레벨 1", "레벨1" 등 레벨 숫자 언급
+        - "X일차", "여정 X일째" 등 날짜/진행 상황 직접 언급
+        - "성장 단계", "현재 단계" 등 진행 관련 메타 표현
+        
+        대신 자연스럽게 피드백을 제공하라. 사용자는 레벨을 인지해서는 안 된다.
 
         【출력 형식】 (반드시 JSON)
         {
@@ -1142,9 +1154,9 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
             【AI 페르소나 지침】
             당신은 이제 "${guidance.aiTone}" 모드입니다.
             화법 스타일: "${guidance.aiStyle}"
-            - Lv 1~2: 관찰하고 조언하는 느낌
-            - Lv 3~4: 확신에 찬 리드, 단호한 지시
-            - Lv 5~7: 절대적 신뢰를 요구하는 신탁 같은 말투
+            - 초기: 관찰하고 조언하는 느낌
+            - 중기: 확신에 찬 리드, 단호한 지시
+            - 후기: 절대적 신뢰를 요구하는 신탁 같은 말투
 
             【🌟 개인화 메시지 (종종 사용)】
             가끔 (항상은 아님) 시그널에 다음과 같은 메시지를 포함하라:
@@ -1952,6 +1964,108 @@ app.post('/api/fcm/match-notification', async (req, res) => {
     } catch (error) {
         console.error('[FCM] Match notification error:', error.message);
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// Q. PERSONALIZED ADVICE (아침/점심/저녁 맞춤 조언)
+// ============================================
+app.post('/advice/personalized', async (req, res) => {
+    try {
+        const { name, deficit, currentMission, recentJournals, timeOfDay, dayCount, growthLevel } = req.body;
+        console.log(`[Advice] Generating ${timeOfDay} advice for: ${name}, Day ${dayCount}`);
+
+        let timeGreeting = '';
+        let icon = '';
+        if (timeOfDay === 'morning') {
+            timeGreeting = '좋은 아침이에요';
+            icon = '🌅';
+        } else if (timeOfDay === 'noon') {
+            timeGreeting = '점심 시간이에요';
+            icon = '🌞';
+        } else {
+            timeGreeting = '하루를 마무리할 시간이에요';
+            icon = '🌙';
+        }
+
+        // Build context from recent journals
+        let journalContext = '';
+        if (recentJournals && recentJournals.length > 0) {
+            journalContext = recentJournals.slice(-3).map(j =>
+                `Day ${j.day}: ${j.content?.substring(0, 100) || '(기록 없음)'}`
+            ).join('\n');
+        }
+
+        const prompt = `
+        ${ORBIT_SYSTEM_PROMPT}
+
+        【시간대별 맞춤 조언 생성】
+        사용자 이름: ${name}
+        현재 시간대: ${timeOfDay === 'morning' ? '아침' : timeOfDay === 'noon' ? '점심' : '저녁'}
+        현재 Day: ${dayCount}
+        성장 레벨: ${growthLevel || 1}
+        키워드: ${deficit || '자기 성장'}
+        현재 리추얼: ${currentMission || '(없음)'}
+        
+        【최근 기록】
+        ${journalContext || '(최근 기록 없음)'}
+
+        【지시사항】
+        1. ${timeOfDay === 'morning' ? '하루를 시작하는 따뜻한 인사와 오늘의 리추얼을 떠올리게 하는 조언' :
+                timeOfDay === 'noon' ? '점심 시간에 잠시 멈추고 리추얼을 떠올리게 하는 조언' :
+                    '하루를 마무리하며 성찰하고 기록을 남기도록 유도하는 조언'}을 작성하세요.
+        2. 사용자의 키워드(${deficit})와 연결지어 개인화된 메시지를 전달하세요.
+        3. 최근 기록이 있다면 그 내용을 참고하여 연속성 있는 조언을 하세요.
+        4. 2-3문장으로 간결하게 작성하세요.
+        5. 마지막에 사용자가 스스로 생각해볼 수 있는 질문을 하나 추가하세요.
+
+        응답 형식 (JSON):
+        {
+            "advice": "맞춤 조언 내용 (2-3문장)",
+            "focusPrompt": "사용자가 생각해볼 질문"
+        }
+        `;
+
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text();
+        const parsed = extractJSON(responseText);
+
+        console.log(`[Advice] Generated ${timeOfDay} advice for ${name}`);
+
+        res.json({
+            success: true,
+            advice: parsed.advice || `${timeGreeting}, ${name}님! 오늘의 리추얼을 떠올려보세요.`,
+            focusPrompt: parsed.focusPrompt || '오늘의 리추얼은 어떻게 되어가고 있나요?',
+            timeOfDay: timeOfDay,
+            icon: icon
+        });
+
+    } catch (error) {
+        console.error('[Advice] Error:', error.message);
+
+        // Fallback advice
+        let fallbackAdvice = '';
+        let fallbackIcon = '';
+        const { name, timeOfDay } = req.body;
+
+        if (timeOfDay === 'morning') {
+            fallbackAdvice = `좋은 아침이에요, ${name || ''}님! 오늘도 새로운 하루가 시작되었어요. 오늘의 리추얼을 떠올리며 시작해보세요.`;
+            fallbackIcon = '🌅';
+        } else if (timeOfDay === 'noon') {
+            fallbackAdvice = `${name || ''}님, 점심 시간이에요. 잠시 멈추고 오늘의 리추얼을 떠올려보세요.`;
+            fallbackIcon = '🌞';
+        } else {
+            fallbackAdvice = `${name || ''}님, 하루를 차분히 마무리할 시간이에요. 오늘 하루, 당신의 인연에게 안부를 물어보셨나요?`;
+            fallbackIcon = '🌙';
+        }
+
+        res.json({
+            success: true,
+            advice: fallbackAdvice,
+            focusPrompt: '오늘의 리추얼은 어떻게 되어가고 있나요?',
+            timeOfDay: timeOfDay,
+            icon: fallbackIcon
+        });
     }
 });
 
