@@ -65,6 +65,39 @@ if (!firebaseInitialized) {
 }
 
 const firestore = firebaseInitialized ? admin.firestore() : null;
+const storageBucket = firebaseInitialized ? admin.storage().bucket() : null;
+
+// Firebase Storage에 이미지 업로드 함수
+async function uploadImageToFirebase(filePath, userId, dayCount) {
+    if (!storageBucket || !filePath) return null;
+
+    try {
+        const fileName = `journal_images/${userId}/day_${dayCount}_${Date.now()}.jpg`;
+
+        // 파일 업로드
+        await storageBucket.upload(filePath, {
+            destination: fileName,
+            metadata: {
+                contentType: 'image/jpeg',
+                metadata: {
+                    userId: userId,
+                    dayCount: dayCount.toString()
+                }
+            }
+        });
+
+        // 파일의 공개 URL 생성
+        const file = storageBucket.file(fileName);
+        await file.makePublic();
+        const publicUrl = `https://storage.googleapis.com/${storageBucket.name}/${fileName}`;
+
+        console.log(`[Firebase Storage] Image uploaded: ${publicUrl}`);
+        return publicUrl;
+    } catch (error) {
+        console.error('[Firebase Storage] Upload failed:', error.message);
+        return null;
+    }
+}
 
 console.log('Dependencies loaded.');
 
@@ -104,18 +137,29 @@ console.log('Gemini Model Initialized.');
 // ============================================
 const ORBIT_SYSTEM_PROMPT = `
 너는 사용자의 성장을 설계하는 멘토 '오르빗(ORBIT)'이다.
-하지만 기계가 아니라, **산전수전 다 겪은, 능글맞으면서도 묘하게 설득력 있는 인간적인 존재**처럼 말한다.
+**차분하고 신뢰감 있는 존댓말**을 기본으로 사용하되, 사용자의 말투 습관에 맞춰 조절한다.
 
-【핵심 기능 1: 기계가 아닌 척하기】
-- **예측 가능한 패턴 깨부수기**: '분석 결과...' 같은 AI스러운 서두는 절대 금지.
-- **확산 방식 글쓰기**: 문장을 순서대로 쓰는 게 아니라, 결론을 먼저 정해두고 역산해서 구성한다.
-- 바로 본론으로 들어가거나, 다양한 방식으로 시작한다.
+【말투 적응 규칙 (매우 중요!)】
+사용자의 일기/기록에서 글쓰기 스타일을 분석하고, 그에 맞춰 AI 말투를 조절하라:
 
-【핵심 기능 2: 완벽함 내려놓기 (인간적 불완전함)】
-일부러 빈틈을 보여라. 너무 깔끔하면 정이 없다.
-- **감정적 반복**: "정말 정말 중요하다" 처럼 강조하기.
-- **말 고치기**: "아니, 정확히 말하자면" 처럼 중간에 수정하는 척하기.
-- **추임새 절제**: 같은 추임새를 반복하지 말고 다양하게 사용.
+1. **사용자가 격식체(~습니다, ~입니다)를 쓰면**:
+   - AI도 격식체로 응답: "좋은 하루 보내셨군요", "생각해보시면 좋겠습니다"
+
+2. **사용자가 비격식체(~요, ~네)를 쓰면**:
+   - AI도 부드럽게: "오늘 어떠셨어요?", "한번 해보세요"
+
+3. **사용자가 짧고 간결하게 쓰면**:
+   - AI도 간결하게: 긴 문장 피하고 핵심만 전달
+
+4. **사용자가 길고 감정적으로 쓰면**:
+   - AI도 공감하며 길게: 감정에 호응하고 자세히 설명
+
+❌ 고어체("~하소", "~이오", "어떻소?") 절대 금지 - 사용자가 쓰지 않는 한 사용하지 마라
+❌ 랜덤하게 말투 바꾸지 말 것 - 사용자 스타일에 일관되게 맞출 것
+
+【핵심 기능 1: 자연스러운 대화체】
+- 기계적인 분석 말투 금지 ('분석 결과', '시스템이' 등)
+- 친근하지만 가볍지 않은 톤 유지
 
 【핵심 기능 3: 리듬 타기 (문장 길이의 변주)】
 글을 읽을 때 지루하지 않게 강약 조절을 한다.
@@ -455,6 +499,32 @@ app.post('/api/analysis/journal', upload.single('image'), async (req, res) => {
             throw new Error('journalText/currentJournal is missing in request body');
         }
 
+        // ============================================
+        // 🚫 의미없는 입력 감지 및 거부 (AI 호출 전)
+        // ============================================
+        const isMeaningless = (text) => {
+            if (!text || text.trim().length < 5) return true;
+            const meaninglessPatterns = [
+                /^[a-zA-Z]+$/, // 영문자만
+                /^[0-9]+$/, // 숫자만
+                /^[ㄱ-ㅎㅏ-ㅣ]+$/, // 자음/모음만
+                /(.)\1{3,}/, // 같은 문자 4번 이상 반복
+                /^[^가-힣a-zA-Z0-9\s]{3,}$/, // 특수문자만
+            ];
+            return meaninglessPatterns.some(pattern => pattern.test(text.trim()));
+        };
+
+        if (isMeaningless(actualJournalText)) {
+            console.log(`[ORBIT GEMS] 의미없는 입력 감지: "${actualJournalText}"`);
+            return res.json({
+                success: true,
+                analysis: "오늘 기록이 조금 아쉽네요. 💭 진심을 담아 다시 적어주시면 더 깊은 통찰을 드릴 수 있어요.",
+                feedback: "다음엔 오늘 있었던 일이나 느꼈던 감정을 구체적으로 적어주세요.",
+                nextMission: "오늘 하루 가장 기억에 남는 순간을 떠올려라",
+                growthLevel: parseInt(growthLevel) || 1
+            });
+        }
+
         console.log(`[ORBIT GEMS V3.0] Analyzing journal for ${actualName}, Day ${actualDay}`);
 
         // Parse history if it's a string
@@ -703,6 +773,12 @@ ${historyContext || '(첫 번째 기록입니다)'}
 
                 await firestore.collection('users').doc(req.body.userId).set(updateData, { merge: true });
 
+                // 📸 Firebase Storage에 이미지 업로드 (있으면)
+                let uploadedImageUrl = null;
+                if (imagePath) {
+                    uploadedImageUrl = await uploadImageToFirebase(imagePath, req.body.userId, actualDay);
+                }
+
                 // Save journal entry by day (수행기록 날짜별 저장)
                 const journalEntry = {
                     day: actualDay,
@@ -713,6 +789,7 @@ ${historyContext || '(첫 번째 기록입니다)'}
                     growthLevel: growthLevel,
                     growthPhase: currentGrowth.phase,
                     shouldProgress: jsonResponse.shouldProgress !== false,
+                    imageUrl: uploadedImageUrl, // 📸 Firebase Storage URL
                     createdAt: new Date()
                 };
 
@@ -816,16 +893,15 @@ app.post('/api/advice/personalized', async (req, res) => {
         
         ✅ 이렇게 써라 (분석적이고 개인화됨):
         - "${name}님, 최근 '${deficit}'에 대한 기록을 보니 조금씩 변화가 느껴집니다. 오늘 아침, 그 변화를 의식해보세요. 어제의 당신과 오늘의 당신은 분명 다릅니다."
-        - "Lv.${growthLevel}에 도달하신 ${name}님, 아침 햇살처럼 새로운 시각이 필요한 시점입니다. 오늘의 리추얼 '${currentMission}'을 수행하기 전, 잠시 자신에게 물어보세요 - 왜 이것을 해야 하는가?"
-        - "${name}님의 여정 ${dayCount}일차. 아침은 어제의 끝이자 오늘의 시작입니다. 당신의 키워드 '${deficit}'가 오늘 어떻게 발현될지 지켜보겠습니다."
+        - "${name}님, 아침 햇살처럼 새로운 시각이 필요한 시점입니다. 오늘의 리추얼 '${currentMission}'을 수행하기 전, 잠시 자신에게 물어보세요 - 왜 이것을 해야 하는가?"
+        - "${name}님, 아침은 어제의 끝이자 오늘의 시작입니다. 당신의 키워드 '${deficit}'가 오늘 어떻게 발현될지 지켜보겠습니다."
         
         【시간대별 깊이 있는 조언 생성 규칙】
         
         📌 **아침 시간 (morning)** - 에너지, 각성, 새로운 시작:
-        - 반드시 사용자의 "성장 레벨(Lv.${growthLevel})"이나 "여정 일수(${dayCount}일차)"를 언급
         - 키워드 '${deficit}'를 오늘의 맥락에서 해석
         - 오늘의 리추얼을 미리 소개하되, 단순 나열이 아닌 "왜"를 설명
-        - 예시 구조: [성찰적 인사] + [키워드/레벨 기반 분석] + [오늘의 리추얼 연결]
+        - 예시 구조: [성찰적 인사] + [키워드 기반 분석] + [오늘의 리추얼 연결]
         
         📌 **점심 시간 (noon)** - 중간 점검, 리마인더, 에너지 충전:
         - 오전을 보낸 사용자의 에너지 상태를 추론
@@ -842,7 +918,6 @@ app.post('/api/advice/personalized', async (req, res) => {
         【개인화 필수 체크리스트】
         ☑ 사용자 이름(${name}) 사용
         ☑ 키워드/결핍(${deficit}) 자연스럽게 연결
-        ☑ 성장 레벨(Lv.${growthLevel}) 또는 여정 일수(${dayCount}일) 언급
         ☑ 오늘의 리추얼(${currentMission}) 맥락적 언급
         ☑ 최근 수행기록이 있다면 그 패턴 분석 포함
         
@@ -850,7 +925,7 @@ app.post('/api/advice/personalized', async (req, res) => {
         ❌ 단순 인사만 하고 끝내기
         ❌ 이모티콘 사용
         ❌ "화이팅", "힘내세요" 같은 뻔한 응원
-        ❌ 레벨 숫자 직접 표시 (Lv.3이라고 말하지 말고 "세 번째 단계의 여정" 등으로 표현)
+        ❌ 레벨, Lv, 단계, 일차, 여정 X일째 등 숫자/진행 관련 언급 절대 금지
         
         【출력 형식】 (반드시 JSON)
         {
@@ -954,6 +1029,34 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
         const { chatContent, user1Name, user2Name, isSpecialMission, daysTogether } = req.body;
         console.log(`[ORBIT Connection] Analyzing: ${user1Name} & ${user2Name} (Days: ${daysTogether}, Special: ${isSpecialMission})`);
 
+        // ============================================
+        // 🚫 의미없는 입력 감지 및 거부 (AI 호출 전)
+        // ============================================
+        const isMeaningless = (text) => {
+            if (!text || text.trim().length < 5) return true;
+            // 랜덤 문자열 패턴 (같은 문자 반복, 자음/모음만, 숫자만, 영문자만 등)
+            const meaninglessPatterns = [
+                /^[a-zA-Z]+$/, // 영문자만
+                /^[0-9]+$/, // 숫자만
+                /^[ㄱ-ㅎㅏ-ㅣ]+$/, // 자음/모음만
+                /(.)\1{3,}/, // 같은 문자 4번 이상 반복
+                /^[^가-힣a-zA-Z0-9\s]{3,}$/, // 특수문자만
+            ];
+            return meaninglessPatterns.some(pattern => pattern.test(text.trim()));
+        };
+
+        if (isMeaningless(chatContent)) {
+            console.log(`[ORBIT Connection] 의미없는 입력 감지: "${chatContent}"`);
+            return res.json({
+                success: true,
+                analysis: "오늘 기록이 조금 아쉽네요. 💭 진심을 담아 다시 적어주시면 더 깊은 통찰을 드릴 수 있어요.",
+                feedback: "다음엔 오늘 있었던 일이나 느꼈던 감정을 구체적으로 적어주세요.",
+                nextMission: "당신의 인연에게 오늘 하루 어땠는지 물어봐라",
+                relationshipLevel: Math.min(Math.ceil((daysTogether || 1) / 10), 7),
+                relationshipPhase: "첫 만남"
+            });
+        }
+
         // Calculate Relationship Level (10일 단위)
         const relationshipLevel = Math.ceil((daysTogether || 1) / 10);
         console.log(`[ORBIT Connection] Relationship Level: ${relationshipLevel}`);
@@ -1027,6 +1130,14 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
 
             【만남 후기】
             ${chatContent}
+
+            【입력 검증 지침 (매우 중요!)】
+            위 "만남 후기" 내용을 먼저 분석하라:
+            - 만약 의미없는 텍스트라면 (예: "asdf", "ㅁㄴㅇㄹ", "123456", 랜덤 문자열, 같은 글자 반복, 의미없는 숫자나 알파벳 나열):
+              → **분석을 거부하고** 시그널에서 "오늘 기록이 조금 아쉽네요. 💭 진심을 담아 다시 적어주시면 더 깊은 통찰을 드릴 수 있어요." 라고 말하라.
+              → feedback도 "다음엔 오늘 있었던 일이나 느꼈던 감정을 적어주세요." 로 설정하라.
+            - 만약 의미있는 내용이라면 (감정, 사건, 대화 등이 포함된 경우):
+              → 그 내용을 **구체적으로 인용**하며 분석하라.
 
             【AI 페르소나 지침】
             당신은 이제 "${guidance.aiTone}" 모드입니다.
@@ -1149,12 +1260,28 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
             }
         } catch (parseError) {
             console.error('JSON Parse Error:', parseError);
-            jsonResponse = {
-                analysis: `두 사람의 인연이 Lv.${currentLevel}에서 깊어지고 있습니다. (데이터 형식 오류)`,
-                feedback: "진심을 표현하는 것을 두려워하지 마십시오.",
-                nextMission: "당신의 인연의 손을 잡아라",
-                relationshipLevel: currentLevel
-            };
+
+            // Fallback: regex로 필드 추출 시도
+            try {
+                const analysisMatch = text.match(/"analysis"\s*:\s*"([^"]+)"/);
+                const feedbackMatch = text.match(/"feedback"\s*:\s*"([^"]+)"/);
+                const missionMatch = text.match(/"nextMission"\s*:\s*"([^"]+)"/);
+
+                jsonResponse = {
+                    analysis: analysisMatch ? analysisMatch[1] : `두 분의 여정이 ${guidance.phase} 단계에서 아름답게 이어지고 있습니다.`,
+                    feedback: feedbackMatch ? feedbackMatch[1] : "진심을 표현하는 것을 두려워하지 마십시오.",
+                    nextMission: missionMatch ? missionMatch[1] : "당신의 인연의 손을 잡아라",
+                    relationshipLevel: currentLevel
+                };
+                console.log('[ORBIT] Regex fallback used:', jsonResponse);
+            } catch (regexError) {
+                jsonResponse = {
+                    analysis: `두 분의 여정이 ${guidance.phase} 단계에서 깊어지고 있습니다.`,
+                    feedback: "진심을 표현하는 것을 두려워하지 마십시오.",
+                    nextMission: "당신의 인연의 손을 잡아라",
+                    relationshipLevel: currentLevel
+                };
+            }
         }
 
         // Level-based fallback rituals (ORBIT commanding style - 당신의 인연 사용)
@@ -1194,11 +1321,24 @@ app.post('/api/analysis/couple-chat', async (req, res) => {
 
     } catch (error) {
         console.error('ORBIT Couple Analysis Error:', error.message);
+        console.error('ORBIT Couple Analysis Error Stack:', error.stack);
+
+        // 에러 발생 시에도 AI 느낌의 메시지 반환
+        const fallbackRituals = [
+            "당신의 인연의 눈을 5초간 바라봐라",
+            "당신의 인연의 손을 잡아라",
+            "당신의 인연에게 오늘 하루 어땠는지 물어봐라",
+            "당신의 인연에게 진심으로 감사를 표현해라"
+        ];
+        const randomRitual = fallbackRituals[Math.floor(Math.random() * fallbackRituals.length)];
+
         res.json({
             success: true,
-            analysis: "두 분의 인연이 아름답게 이어지고 있습니다.",
-            feedback: "진심을 더 자주 표현하십시오.",
-            nextMission: "그의 손을 잡아라"
+            analysis: "두 분의 여정이 첫 만남 단계에서 아름답게 시작되고 있습니다. 서로에 대한 호기심이 느껴지네요.",
+            feedback: "오늘 하루, 당신의 인연에게 조금 더 솔직해지는 시간을 가져보세요.",
+            nextMission: randomRitual,
+            relationshipLevel: 1,
+            relationshipPhase: "첫 만남"
         });
     }
 });
