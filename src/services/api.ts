@@ -4,18 +4,32 @@ import Constants from 'expo-constants';
 import logger from '../utils/logger';
 
 // API URL을 Expo Constants에서 읽기 (app.config.js에서 환경별로 설정)
-// 폴백: 직접 프로덕션 URL 사용
-const BASE_URL = Constants.expoConfig?.extra?.apiUrl
-    || 'https://theinnercircle-9xye.onrender.com/api';
+// 개발 환경: 로컬 서버 (에뮬레이터는 10.0.2.2 사용)
+// 프로덕션: render.com
+const getBaseUrl = () => {
+    if (__DEV__) {
+        // 개발 모드
+        if (Platform.OS === 'android') {
+            return 'http://10.0.2.2:3000/api'; // Android 에뮬레이터에서 localhost 접근
+        } else if (Platform.OS === 'web') {
+            return 'http://localhost:3000/api';
+        } else {
+            return 'http://localhost:3000/api'; // iOS
+        }
+    }
+    return Constants.expoConfig?.extra?.apiUrl || 'https://theinnercircle-9xye.onrender.com/api';
+};
+
+const BASE_URL = getBaseUrl();
 
 // 현재 환경 로깅
-const appEnv = Constants.expoConfig?.extra?.appEnv || 'production';
+const appEnv = __DEV__ ? 'development' : 'production';
 logger.log(`[API] Environment: ${appEnv}`);
 logger.log('[API] Initialized with BASE_URL:', BASE_URL, 'Platform:', Platform.OS);
 
 const client = axios.create({
     baseURL: BASE_URL,
-    timeout: 30000,
+    timeout: 60000, // 60 seconds (Render cold start can take 30-50sec)
     headers: {
         'Content-Type': 'application/json',
     },

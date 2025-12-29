@@ -17,10 +17,10 @@ export const COLORS = {
     aurora: '#A855F7', // Bright purple
     starGlow: '#E0E7FF', // Soft white-blue for stars
 
-    // Legacy support (gold -> purple)
-    gold: '#A78BFA', // Light purple (replaces gold)
-    goldDim: 'rgba(167, 139, 250, 0.6)',
-    goldFaint: 'rgba(167, 139, 250, 0.15)',
+    // Legacy support (gold -> white)
+    gold: '#FFFFFF', // White (replaces purple/gold)
+    goldDim: 'rgba(255, 255, 255, 0.6)',
+    goldFaint: 'rgba(255, 255, 255, 0.15)',
 
     // Text
     textMain: '#F8FAFC',
@@ -31,9 +31,9 @@ export const COLORS = {
     error: '#F43F5E', // Rose red
     success: '#10B981', // Emerald green
 
-    // Glassmorphism - Cosmic style
-    glass: 'rgba(139, 92, 246, 0.08)', // Purple tinted glass
-    glassBorder: 'rgba(139, 92, 246, 0.25)', // Purple border
+    // Glassmorphism - White glow style
+    glass: 'rgba(255, 255, 255, 0.05)', // White tinted glass
+    glassBorder: 'rgba(255, 255, 255, 0.2)', // White border
     glassOverlay: 'rgba(10, 10, 20, 0.8)',
 };
 
@@ -62,11 +62,11 @@ export const LAYOUT = {
 };
 
 export const FONTS = {
-    // Use system fonts for now, but style them elegantly
-    serif: Platform.select({ ios: 'Times New Roman', android: 'serif' }),
+    // Use system fonts - undefined means system default
+    serif: undefined, // Was: Times New Roman - now use system default
     sans: Platform.select({ ios: 'System', android: 'sans-serif' }),
     // Add aliases for direct usage
-    get title() { return this.serif; },
+    get title() { return undefined; }, // Was: serif - now use system default
     get body() { return this.sans; },
 
     size: {

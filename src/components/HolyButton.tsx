@@ -28,10 +28,14 @@ const HolyButton: React.FC<HolyButtonProps> = ({
     const handlePress = async () => {
         // 사운드 재생 (noSound가 아니고 disabled가 아닐 때)
         if (!noSound && !disabled && !isLoading) {
-            if (variant === 'ghost') {
-                soundService.playSoftClick();
-            } else {
-                soundService.playClick();
+            try {
+                if (variant === 'ghost') {
+                    soundService.playSoftClick();
+                } else {
+                    soundService.playClick();
+                }
+            } catch (e) {
+                // 사운드 에러 무시
             }
         }
         onPress();
@@ -110,25 +114,25 @@ const styles = StyleSheet.create({
     primary: {
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderColor: 'rgba(139, 92, 246, 0.7)',
+        borderColor: 'rgba(255, 255, 255, 0.5)',
         ...(Platform.OS === 'web'
-            ? { boxShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }
+            ? { boxShadow: '0 0 15px rgba(255, 255, 255, 0.3)' }
             : {
-                shadowColor: '#8B5CF6',
+                shadowColor: '#FFFFFF',
                 shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.5,
+                shadowOpacity: 0.3,
                 shadowRadius: 15,
             }
         ),
         elevation: 8,
     } as any,
     textPrimary: {
-        color: '#A78BFA',
+        color: '#FFFFFF',
         fontWeight: 'bold' as any,
         ...(Platform.OS === 'web'
-            ? { textShadow: '0 0 8px rgba(139, 92, 246, 0.6)' }
+            ? { textShadow: '0 0 8px rgba(255, 255, 255, 0.6)' }
             : {
-                textShadowColor: 'rgba(139, 92, 246, 0.6)',
+                textShadowColor: 'rgba(255, 255, 255, 0.6)',
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: 8,
             }
@@ -136,9 +140,9 @@ const styles = StyleSheet.create({
     } as any,
 
     secondary: {
-        backgroundColor: 'rgba(139, 92, 246, 0.15)',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
-        borderColor: 'rgba(139, 92, 246, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     textSecondary: {
         color: COLORS.textMain,
@@ -147,24 +151,24 @@ const styles = StyleSheet.create({
     outline: {
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderColor: 'rgba(167, 139, 250, 0.7)',
+        borderColor: 'rgba(255, 255, 255, 0.5)',
         ...(Platform.OS === 'web'
-            ? { boxShadow: '0 0 12px rgba(139, 92, 246, 0.5)' }
+            ? { boxShadow: '0 0 12px rgba(255, 255, 255, 0.3)' }
             : {
-                shadowColor: '#8B5CF6',
+                shadowColor: '#FFFFFF',
                 shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.5,
+                shadowOpacity: 0.3,
                 shadowRadius: 12,
             }
         ),
         elevation: 6,
     } as any,
     textOutline: {
-        color: '#A78BFA',
+        color: '#FFFFFF',
         ...(Platform.OS === 'web'
-            ? { textShadow: '0 0 8px rgba(139, 92, 246, 0.6)' }
+            ? { textShadow: '0 0 8px rgba(255, 255, 255, 0.6)' }
             : {
-                textShadowColor: 'rgba(139, 92, 246, 0.6)',
+                textShadowColor: 'rgba(255, 255, 255, 0.6)',
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: 8,
             }

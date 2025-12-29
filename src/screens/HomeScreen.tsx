@@ -25,6 +25,8 @@ import { getSpecialDayMission } from '../services/MissionData';
 const malePlaceholder = require('../../assets/male_placeholder.png');
 const femalePlaceholder = require('../../assets/female_placeholder.png');
 
+// Cosmic background (나노바나나 제작)
+const cosmicBackground = require('../../assets/cosmic_background.png');
 
 interface HomeScreenProps {
     route: HomeScreenRouteProp;
@@ -46,7 +48,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     const route = useRoute<HomeScreenRouteProp>();
     const { width: SCREEN_WIDTH } = useWindowDimensions();
 
-    const [name, setName] = useState(route.params?.name || '구도자');
+    const [name, setName] = useState(route.params?.name || '');
     const [deficit, setDeficit] = useState(route.params?.deficit || '성장');
 
     const [dayCount, setDayCount] = useState(1);
@@ -414,27 +416,37 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     };
 
     const checkDayProgression = async () => {
+        // DevPanel에서 타이머 비활성화 시 항상 unlock
+        const timerDisabled = await AsyncStorage.getItem('devTimerDisabled');
+        if (timerDisabled === 'true') {
+            setNextMissionUnlockTime(null);
+            return true;
+        }
+
         const lastCompletedDate = await AsyncStorage.getItem('lastCompletedDate');
-        if (!lastCompletedDate) return true;
+        if (!lastCompletedDate) return true; // 첫 수행이면 바로 가능
 
         const now = new Date();
         const lastDate = new Date(lastCompletedDate);
 
-        // 자정 기준: 날짜가 다르면 새로운 날
-        const isSameDay = now.getDate() === lastDate.getDate() &&
-            now.getMonth() === lastDate.getMonth() &&
-            now.getFullYear() === lastDate.getFullYear();
+        // 다음 해금 시간 계산 (오늘 9시 또는 내일 9시)
+        // 오늘 9시 이전에 수행 완료하면 → 오늘 9시 해금
+        // 오늘 9시 이후에 수행 완료하면 → 내일 9시 해금
+        const nextUnlock = new Date(now);
+        nextUnlock.setHours(9, 0, 0, 0);
 
-        if (isSameDay) {
-            // 같은 날 - 다음 날 자정에 해금
-            const tomorrow = new Date(now);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(0, 0, 0, 0);
-            setNextMissionUnlockTime(tomorrow.toLocaleString());
-            return false; // Still same day, wait for tomorrow midnight
+        // 현재 시간이 오늘 9시 이후면 내일 9시로 설정
+        if (now.getTime() >= nextUnlock.getTime()) {
+            nextUnlock.setDate(nextUnlock.getDate() + 1);
         }
 
-        // 날짜가 다르면 바로 해금 (자정이 지났으므로)
+        if (now < nextUnlock) {
+            // 아직 해금 시간이 안 됨 - timestamp로 저장 (RN 호환)
+            setNextMissionUnlockTime(nextUnlock.getTime().toString());
+            return false;
+        }
+
+        // 해금 시간 지남 - 바로 해금
         setNextMissionUnlockTime(null);
         return true;
     };
@@ -488,6 +500,13 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                     const storedStatus = await AsyncStorage.getItem('missionStatus');
                     setMissionStatus(storedStatus);
+
+                    // 🎯 AI 분석 결과 로드 (온보딩 시 저장됨)
+                    const storedAiAnalysis = await AsyncStorage.getItem('aiAnalysis');
+                    if (storedAiAnalysis) {
+                        setAiAnalysis(storedAiAnalysis);
+                        console.log('[ORBIT] AI 분석 결과 로드됨:', storedAiAnalysis.substring(0, 50) + '...');
+                    }
 
                     // ============================================
                     // 🎯 관리자가 부여한 미션 우선 체크
@@ -736,7 +755,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         }
 
                         const storedDeficit = await AsyncStorage.getItem('userDeficit') || '성장';
-                        const storedName = await AsyncStorage.getItem('userName') || '구도자';
+                        const storedName = await AsyncStorage.getItem('userName') || '';
                         const storedUserId = await AsyncStorage.getItem('userId');
                         const storedLevel = await AsyncStorage.getItem('growthLevel');
 
@@ -785,7 +804,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
         initializeData();
     }, []);
 
-    // Countdown timer effect (자정 기준)
+    // Countdown timer effect (오전 9시 기준)
     useEffect(() => {
         if (!nextMissionUnlockTime) {
             setCountdown('');
@@ -794,15 +813,17 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
         const calculateCountdown = () => {
             const now = new Date();
-            const target = new Date(now);
+            // timestamp 숫자로 저장되어 있음
+            const targetTime = parseInt(nextMissionUnlockTime, 10);
+            if (isNaN(targetTime)) {
+                setCountdown('');
+                return;
+            }
 
-            // 다음 날 자정 설정
-            target.setDate(target.getDate() + 1);
-            target.setHours(0, 0, 0, 0);
-
-            const diff = target.getTime() - now.getTime();
+            const diff = targetTime - now.getTime();
             if (diff <= 0) {
                 setCountdown('00:00:00');
+                setNextMissionUnlockTime(null); // 잠금 해제
                 return;
             }
 
@@ -947,9 +968,10 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             formData.append('deficit', deficit);
 
             if (selectedImage) {
-                const filename = selectedImage.split('/').pop();
-                const match = /(\\.\\w+)$/.exec(filename || '');
-                const type = match ? `image/${match[1]}` : `image`;
+                const filename = selectedImage.split('/').pop() || 'photo.jpg';
+                const match = /\.(\w+)$/.exec(filename);
+                const ext = match ? match[1].toLowerCase() : 'jpg';
+                const type = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
                 formData.append('image', { uri: selectedImage, name: filename, type } as any);
             }
 
@@ -966,19 +988,28 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 setCurrentAnalysis({ result: response.result, feedback: response.feedback });
 
                 // Create new entry with feedback and nextMission from server
+                // ⚠️ imageUri는 저장하지 않음 - LocalStorage 용량 초과 방지
+                // 이미지는 Firebase Storage에만 저장됨 (서버에서 처리)
                 const newEntry: JournalEntry = {
                     day: dayCount,
                     content: journalInput,
                     date: new Date().toLocaleDateString(),
-                    imageUri: selectedImage || undefined,
+                    imageUri: undefined, // 로컬에 이미지 저장 안함 (Firebase에만 저장)
                     mission: currentMissionText,
                     feedback: response.feedback,
                     signal: response.feedback
                 };
 
-                const updatedHistory = [newEntry, ...journalHistory];
-                setJournalHistory(updatedHistory);
-                await AsyncStorage.setItem('journalHistory', JSON.stringify(updatedHistory));
+
+                // 📌 용량 최적화: 최대 10개만 유지하고 이미지 데이터 제거
+                const cleanedHistory = [newEntry, ...journalHistory]
+                    .slice(0, 10)
+                    .map(entry => ({
+                        ...entry,
+                        imageUri: undefined // 로컬에 이미지 저장 안함
+                    }));
+                setJournalHistory(cleanedHistory);
+                await AsyncStorage.setItem('journalHistory', JSON.stringify(cleanedHistory));
 
                 // Firebase에도 수행기록 저장 (비동기, 실패해도 앱 동작에 영향 없음)
                 try {
@@ -1087,9 +1118,11 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     recentJournal: journalInput,
                     previousAnalysis: aiAnalysis
                 };
-                api.analyzeProfile(fullProfile).then(reAnalysis => {
+                api.analyzeProfile(fullProfile).then(async (reAnalysis) => {
                     if (reAnalysis.success) {
                         setAiAnalysis(reAnalysis.analysis);
+                        // AI 분석 결과 저장 (앱 재시작 시에도 유지)
+                        await AsyncStorage.setItem('aiAnalysis', reAnalysis.analysis || '');
                     }
                 });
 
@@ -1123,6 +1156,12 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             <LinearGradient
                 colors={['#0f0a1e', '#1a0a2e', '#0f0a1e']}
                 style={StyleSheet.absoluteFillObject}
+            />
+            {/* Cosmic Background Image (나노바나나 제작) */}
+            <Image
+                source={cosmicBackground}
+                style={styles.cosmicBackground}
+                resizeMode="cover"
             />
             {/* Spline Animation Overlay */}
             <View style={styles.visualizerBackground}>
@@ -1181,7 +1220,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         {/* 12시/6시 맞춤 조언 카드 */}
                         {personalizedAdvice && (
                             <View style={styles.missionContainer}>
-                                <GlassCard variant="dark" style={[styles.signalCard, { borderColor: 'rgba(139, 92, 246, 0.3)', borderWidth: 1 }]}>
+                                <GlassCard style={styles.signalCard}>
                                     <Text style={[styles.signalLabel, { color: '#A78BFA' }]}>
                                         ORBIT의 조언
                                     </Text>
@@ -1189,7 +1228,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                         {personalizedAdvice.advice}
                                     </Text>
                                     {personalizedAdvice.focusPrompt && (
-                                        <Text style={[styles.signalText, { marginTop: 10, fontStyle: 'italic', color: 'rgba(167, 139, 250, 0.7)' }]}>
+                                        <Text style={[styles.signalText, { marginTop: 10, fontStyle: 'italic', color: 'rgba(255, 255, 255, 0.6)' }]}>
                                             {personalizedAdvice.focusPrompt}
                                         </Text>
                                     )}
@@ -1200,7 +1239,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         {/* ORBIT'S SIGNAL - AI Analysis */}
                         {aiAnalysis && (
                             <View style={styles.missionContainer}>
-                                <GlassCard variant="dark" style={styles.signalCard}>
+                                <GlassCard style={styles.signalCard}>
                                     <Text style={styles.signalLabel}>ORBIT'S SIGNAL</Text>
                                     <Text style={styles.signalText}>{aiAnalysis}</Text>
                                 </GlassCard>
@@ -1209,7 +1248,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                         {/* Today's Ritual */}
                         <View style={styles.missionContainer}>
-                            <GlassCard variant="light" style={[styles.missionCard, nextMissionUnlockTime && styles.lockedCard]}>
+                            <GlassCard style={[styles.missionCard, nextMissionUnlockTime && styles.lockedCard]}>
                                 <Text style={styles.missionTitle}>오늘의 리추얼</Text>
                                 {nextMissionUnlockTime ? (
                                     <View style={styles.lockedMissionContainer}>
@@ -1766,13 +1805,7 @@ const styles = StyleSheet.create({
         opacity: 0.6, // Allow cosmic background to show through
     },
     cosmicBackground: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: '100%',
-        height: '100%',
+        ...StyleSheet.absoluteFillObject,
         zIndex: 0, // Behind spline
     },
     safeArea: { flex: 1, zIndex: 10 },
@@ -2051,7 +2084,7 @@ const styles = StyleSheet.create({
     // Signal Card (ORBIT's Analysis) - Same style as mission card
     signalCard: {
         marginBottom: 15,
-        borderColor: 'rgba(139, 92, 246, 0.4)', // Purple cosmic border
+        borderColor: 'rgba(255, 255, 255, 0.3)', // White cosmic border
     },
     signalLabel: {
         color: '#FFFFFF',
@@ -2237,7 +2270,20 @@ const styles = StyleSheet.create({
     greetingText: { color: '#fff', fontSize: 18, marginBottom: 10, opacity: 0.8 },
     missionContainer: { width: '100%', marginBottom: 20 },
     missionCard: { padding: 20, alignItems: 'center' },
-    missionTitle: { color: COLORS.gold, fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
+    missionTitle: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        ...(Platform.OS === 'web'
+            ? { textShadow: '0 0 10px rgba(255, 255, 255, 0.5)' }
+            : {
+                textShadowColor: 'rgba(255, 255, 255, 0.5)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 10,
+            }
+        ),
+    } as any,
 
     missionText: { color: '#fff', fontSize: 18, textAlign: 'center', lineHeight: 28 },
     historyLink: { color: '#888', fontSize: 14, textDecorationLine: 'underline' },

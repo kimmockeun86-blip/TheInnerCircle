@@ -14,9 +14,11 @@ import notificationService from '../services/NotificationService';
 import MatchingService from '../services/MatchingService';
 import HeaderSpline from '../components/HeaderSpline';
 import { WebView } from 'react-native-webview';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Couple placeholder image - 솔로모드와 유사한 스타일
 const couplePlaceholder = require('../../assets/couple_placeholder.png');
+const cosmicBackground = require('../../assets/cosmic_background.png');
 
 
 interface MissionHistoryEntry {
@@ -636,7 +638,18 @@ const CouplesMissionScreen = () => {
 
     return (
         <View style={styles.container}>
-            {/* Background - Same as HomeScreen */}
+            {/* Background Gradient - Same as HomeScreen */}
+            <LinearGradient
+                colors={['#0f0a1e', '#1a0a2e', '#0f0a1e']}
+                style={StyleSheet.absoluteFillObject}
+            />
+            {/* Cosmic Background Image - Same as HomeScreen */}
+            <Image
+                source={cosmicBackground}
+                style={styles.cosmicBackground}
+                resizeMode="cover"
+            />
+            {/* Spline Visualizer */}
             <View style={styles.visualizerBackground}>
                 <MysticVisualizer isActive={true} mode={visualizerMode} sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode" />
             </View>
@@ -692,20 +705,16 @@ const CouplesMissionScreen = () => {
                         {/* 아침/점심/저녁 맞춤 조언 카드 */}
                         {personalizedAdvice && (
                             <View style={styles.missionContainer}>
-                                <GlassCard style={[styles.analysisCard, {
-                                    borderLeftWidth: 3,
-                                    borderLeftColor: '#9D50BB',
-                                    backgroundColor: 'rgba(100, 50, 150, 0.2)'
-                                }]}>
-                                    <Text style={[styles.analysisLabel, { color: '#BA68C8' }]}>
+                                <GlassCard style={styles.analysisCard}>
+                                    <Text style={styles.analysisLabel}>
                                         {personalizedAdvice.timeOfDay === 'morning' ? '아침 조언' :
                                             personalizedAdvice.timeOfDay === 'noon' ? '점심 조언' : '저녁 조언'}
                                     </Text>
-                                    <Text style={[styles.analysisText, { color: 'rgba(255,255,255,0.9)' }]}>
+                                    <Text style={styles.analysisText}>
                                         {personalizedAdvice.advice}
                                     </Text>
                                     {personalizedAdvice.focusPrompt ? (
-                                        <Text style={{ color: '#CE93D8', fontSize: 13, marginTop: 8, fontStyle: 'italic' }}>
+                                        <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 8, fontStyle: 'italic' }}>
                                             {personalizedAdvice.focusPrompt}
                                         </Text>
                                     ) : null}
@@ -874,7 +883,12 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 0,
+        zIndex: 1, // Above background image
+        opacity: 0.6, // Allow cosmic background to show through
+    },
+    cosmicBackground: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 0, // Behind spline
     },
     safeArea: { flex: 1, zIndex: 10 },
 

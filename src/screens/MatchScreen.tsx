@@ -233,7 +233,7 @@ const MatchScreen = () => {
                         <GlassCard style={styles.profileCard}>
                             <View style={styles.profileHeader}>
                                 <Image
-                                    source={matchData?.gender === 'female' ? require('../../assets/user1.png') : require('../../assets/user2.png')}
+                                    source={matchData?.gender === 'female' ? require('../../assets/female_placeholder.png') : require('../../assets/male_placeholder.png')}
                                     style={[styles.profileImage, { opacity: phase === 'reveal' ? 0.7 : 1 }]}
                                     blurRadius={phase === 'reveal' ? 5 : 0}
                                 />

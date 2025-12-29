@@ -14,7 +14,8 @@ import {
     Platform,
     TouchableWithoutFeedback,
     Keyboard,
-    Image
+    Image,
+    ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -53,6 +54,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     const [displayedText, setDisplayedText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [permissionsRequested, setPermissionsRequested] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false); // AI 분석 중 로딩
 
     // 온보딩 시작 시 모든 권한 한번에 요청
     useEffect(() => {
@@ -138,6 +140,15 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
         }).start();
     };
 
+    const handleBack = () => {
+        if (currentScriptIndex > 0) {
+            setCurrentScriptIndex(prev => prev - 1);
+            setInputText('');
+            setSelectedImage(null);
+            setVisualizerKey(prev => prev + 1);
+        }
+    };
+
     const handleNext = async (explicitValue?: string) => {
         if (timerRef.current) clearTimeout(timerRef.current);
         if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
@@ -148,6 +159,23 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             Alert.alert('알림', '답변을 입력해주세요.');
             return;
         }
+
+        // 🚫 userDeficit (결핍 키워드) 의미없는 입력 검증
+        if (currentScript.id === 'userDeficit') {
+            const text = inputText.trim();
+            const isMeaningless =
+                /^[0-9]+$/.test(text) || // 숫자만
+                /^[a-zA-Z]+$/.test(text) && text.length < 3 || // 너무 짧은 영문
+                /^[ㄱ-ㅎㅏ-ㅣ]+$/.test(text) || // 자음/모음만
+                /(.)\1{3,}/.test(text) || // 같은 문자 4번 이상 반복
+                text.length < 2; // 너무 짧음
+
+            if (isMeaningless) {
+                Alert.alert('알림', '의미있는 키워드를 입력해주세요.\n예: 고독, 성취감, 안정, 사랑...');
+                return;
+            }
+        }
+
         // Validation for image input
         if (currentScript.inputType === 'image' && !selectedImage) {
             // Image is optional, just proceed
@@ -217,6 +245,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     };
 
     const completeOnboarding = async () => {
+        setIsAnalyzing(true); // 바로 로딩 표시
         try {
             console.log('[Onboarding] 🔍 answers 전체:', JSON.stringify(answers, null, 2));
             const keys = Object.keys(answers);
@@ -250,18 +279,16 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                 console.log('[Onboarding] 알림 설정 실패 (무시):', e);
             }
 
-            // Upload profile photo to Firebase Storage (non-blocking)
+            // Upload profile photo to Firebase Storage (완전 비동기 - 기다리지 않음)
             // Note: selectedImage might be cleared after handleNext, so use answers['userPhoto'] instead
             const userPhotoUri = answers['userPhoto'] || selectedImage;
             let photoURL = null;
             if (userPhotoUri) {
-                try {
-                    console.log('[Onboarding] 프로필 사진 업로드 시작:', userPhotoUri);
-                    photoURL = await StorageService.uploadProfilePhoto(uniqueId, userPhotoUri);
-                    console.log('[Onboarding] 프로필 사진 업로드 완료:', photoURL);
-                } catch (e) {
-                    console.error('[Onboarding] 프로필 사진 업로드 실패:', e);
-                }
+                // 사진 업로드는 백그라운드에서 실행 (await 없음 - 기다리지 않음)
+                console.log('[Onboarding] 프로필 사진 업로드 시작 (비동기):', userPhotoUri);
+                StorageService.uploadProfilePhoto(uniqueId, userPhotoUri)
+                    .then((url) => console.log('[Onboarding] 프로필 사진 업로드 완료:', url))
+                    .catch((e) => console.log('[Onboarding] 프로필 사진 업로드 실패 (무시):', e));
             } else {
                 console.log('[Onboarding] 프로필 사진 없음 (userPhoto:', answers['userPhoto'], ', selectedImage:', selectedImage, ')');
             }
@@ -270,7 +297,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             try {
                 const userProfile: any = {
                     uid: uniqueId,
-                    name: answers['userName'] || '구도자',
+                    name: answers['userName'] || '',
                     age: parseInt(answers['userAge']) || 25,
                     gender: answers['userGender'] || '미입력',
                     deficit: answers['userDeficit'] || '성장',
@@ -306,7 +333,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             try {
                 console.log('[Onboarding] AI 프로필 분석 시작...');
                 const fullProfile = {
-                    name: answers['userName'] || '구도자',
+                    name: answers['userName'] || '',
                     gender: answers['userGender'] || '알 수 없음',
                     age: answers['userAge'] || '알 수 없음',
                     location: answers['userLocation'] || '',
@@ -323,6 +350,11 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                     await AsyncStorage.setItem('aiAnalysis', analysisResult.analysis || '');
                     if (analysisResult.matchRecommendation) {
                         await AsyncStorage.setItem('matchRecommendation', analysisResult.matchRecommendation);
+                    }
+                    // AI 생성 미션 저장 (Day 1 미션)
+                    if (analysisResult.recommendedMission) {
+                        await AsyncStorage.setItem('mission_day_1', analysisResult.recommendedMission);
+                        console.log('[Onboarding] AI 미션 저장:', analysisResult.recommendedMission);
                     }
                     console.log('[Onboarding] AI 분석 완료:', analysisResult.analysis?.substring(0, 50) + '...');
                 }
@@ -365,11 +397,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             };
 
             // Bright Flash Effect (웹에서는 애니메이션 콜백 문제 회피)
+            setIsAnalyzing(false); // 로딩 종료
             if (Platform.OS === 'web') {
                 // 웹: 애니메이션 없이 바로 네비게이션
                 navigateToNextScreen();
             } else {
-                // 네이티브: 애니메이션 후 네비게이션
+                // 네이티브: 애니메이션 시작 + 확실한 네비게이션 보장
                 Animated.sequence([
                     Animated.timing(flashAnim, {
                         toValue: 1,
@@ -381,9 +414,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                         duration: 1000,
                         useNativeDriver: true,
                     })
-                ]).start(() => {
+                ]).start();
+
+                // 애니메이션 콜백 대신 setTimeout으로 확실하게 네비게이션
+                setTimeout(() => {
                     navigateToNextScreen();
-                });
+                }, 1500);
             }
 
         } catch (error) {
@@ -556,16 +592,26 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
         <TouchableWithoutFeedback onPress={handleScreenTap}>
             <View style={styles.container}>
                 <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-                {/* Background Gradient */}
-                <LinearGradient
-                    colors={['#0f0a1e', '#1a0a2e', '#0f0a1e']}
-                    style={StyleSheet.absoluteFillObject}
+                {/* Cosmic Background Image (나노바나나 제작) */}
+                <Image
+                    source={require('../../assets/cosmic_background.png')}
+                    style={styles.cosmicBackground}
+                    resizeMode="cover"
                 />
                 <View style={styles.visualizerBackground}>
-                    <MysticVisualizer isActive={true} mode={currentScript.type === 'statement' ? 'speaking' : 'listening'} key={visualizerKey} sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode" />
+                    <MysticVisualizer isActive={true} mode={currentScript.type === 'statement' ? 'speaking' : 'listening'} sceneUrl="https://prod.spline.design/gjz7s8UmZl4fmUa7/scene.splinecode" />
                 </View>
 
                 <SafeAreaView style={styles.safeArea}>
+                    {/* 뒤로가기 버튼 (첫 화면이 아닐 때만 표시) */}
+                    {currentScriptIndex > 0 && (
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={handleBack}
+                        >
+                            <Text style={styles.backButtonText}>← 이전</Text>
+                        </TouchableOpacity>
+                    )}
 
                     <KeyboardAvoidingView
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -605,6 +651,15 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
                         { pointerEvents: 'none' }
                     ]}
                 />
+
+                {/* AI 분석 로딩 오버레이 */}
+                {isAnalyzing && (
+                    <View style={styles.analyzingOverlay}>
+                        <ActivityIndicator size="large" color="#A78BFA" />
+                        <Text style={styles.analyzingText}>당신의 내면을 분석하고 있습니다...</Text>
+                        <Text style={styles.analyzingSubtext}>잠시만 기다려주세요</Text>
+                    </View>
+                )}
             </View>
         </TouchableWithoutFeedback>
     );
@@ -745,6 +800,38 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.6)',
         fontSize: 12,
         marginLeft: 10,
+        fontWeight: '500',
+    },
+    analyzingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 200,
+    },
+    analyzingText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: '600',
+        marginTop: 20,
+        textAlign: 'center',
+    },
+    analyzingSubtext: {
+        color: 'rgba(255, 255, 255, 0.6)',
+        fontSize: 14,
+        marginTop: 10,
+        textAlign: 'center',
+    },
+    backButton: {
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        padding: 10,
+        zIndex: 10,
+    },
+    backButtonText: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 16,
         fontWeight: '500',
     },
 });

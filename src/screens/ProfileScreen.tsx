@@ -60,7 +60,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             const idealType = await AsyncStorage.getItem('userIdealType');
 
             setCurrentUser({
-                name: name || '구도자',
+                name: name || '',
                 dayCount: day || '1',
                 deficit: deficit || '미설정',
                 gender: gender || '알 수 없음',

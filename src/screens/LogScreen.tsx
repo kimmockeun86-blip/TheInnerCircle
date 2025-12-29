@@ -8,9 +8,11 @@ interface HistoryEntry {
     day: number;
     date: string;
     mission: string;
-    reflection: string;
+    content?: string; // 사용자가 쓴 글
+    reflection?: string; // 구버전 호환
     analysis: string;
     feedback?: string;
+    signal?: string;
     imageUri?: string;
 }
 
@@ -33,34 +35,40 @@ const LogScreen = () => {
         }
     };
 
-    const renderHistoryItem = ({ item }: { item: HistoryEntry }) => (
-        <GlassCard style={styles.historyCard}>
-            <View style={styles.historyHeader}>
-                <Text style={styles.dayText}>Day {item.day}</Text>
-                <Text style={styles.dateText}>{item.date}</Text>
-            </View>
+    const renderHistoryItem = ({ item }: { item: HistoryEntry }) => {
+        // content 또는 reflection에서 사용자 기록 가져오기
+        const userContent = item.content || item.reflection || '';
+        // signal 또는 feedback에서 AI 피드백 가져오기
+        const aiFeedback = item.signal || item.feedback || item.analysis || '';
 
-            <Text style={styles.missionText}>미션: {item.mission}</Text>
+        return (
+            <GlassCard style={styles.historyCard}>
+                <View style={styles.historyHeader}>
+                    <Text style={styles.dayText}>Day {item.day}</Text>
+                    <Text style={styles.dateText}>{item.date}</Text>
+                </View>
 
-            {item.imageUri && (
-                <Image source={{ uri: item.imageUri }} style={styles.historyImage} />
-            )}
+                <Text style={styles.missionText}>미션: {item.mission}</Text>
 
-            <Text style={styles.reflectionText}>"{item.reflection}"</Text>
-
-            <View style={styles.analysisSection}>
-                <Text style={styles.analysisTitleText}>오르빗의 시그널</Text>
-                <Text style={styles.analysisText}>{item.analysis}</Text>
-
-                {item.feedback && (
-                    <>
-                        <Text style={[styles.analysisTitleText, { marginTop: 10 }]}>피드백</Text>
-                        <Text style={styles.feedbackText}>{item.feedback}</Text>
-                    </>
+                {item.imageUri && (
+                    <Image source={{ uri: item.imageUri }} style={styles.historyImage} />
                 )}
-            </View>
-        </GlassCard>
-    );
+
+                {/* 사용자가 작성한 내용 */}
+                {userContent ? (
+                    <View style={styles.userContentSection}>
+                        <Text style={styles.analysisTitleText}>나의 기록</Text>
+                        <Text style={styles.reflectionText}>"{userContent}"</Text>
+                    </View>
+                ) : null}
+
+                <View style={styles.analysisSection}>
+                    <Text style={styles.analysisTitleText}>오르빗의 시그널</Text>
+                    <Text style={styles.analysisText}>{aiFeedback}</Text>
+                </View>
+            </GlassCard>
+        );
+    };
 
     return (
         <View style={styles.container}>

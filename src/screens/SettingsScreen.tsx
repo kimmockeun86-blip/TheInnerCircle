@@ -44,7 +44,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
     const mockUsers: UserData[] = [
         {
-            name: currentUser?.name || '구도자',
+            name: currentUser?.name || '',
             dayCount: currentUser?.dayCount || '1',
             deficit: currentUser?.deficit || '미설정',
             gender: currentUser?.gender || '남성',
@@ -146,7 +146,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             const idealType = await AsyncStorage.getItem('userIdealType');
 
             setCurrentUser({
-                name: name || '구도자',
+                name: name || '',
                 dayCount: day || '1',
                 deficit: deficit || '미설정',
                 gender: gender || '알 수 없음',
@@ -205,7 +205,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                     <GlassCard style={styles.profileSection}>
                         <View style={styles.profileHeader}>
                             <View style={styles.avatarPlaceholder}>
-                                <Text style={styles.avatarText}>{currentUser?.name?.charAt(0) || '?'}</Text>
+                                {currentUser?.photo ? (
+                                    <Image source={{ uri: currentUser.photo }} style={styles.avatarImage} />
+                                ) : (
+                                    <Text style={styles.avatarText}>{currentUser?.name?.charAt(0) || '?'}</Text>
+                                )}
                             </View>
                             <View style={styles.profileInfo}>
                                 <Text style={styles.profileName}>{currentUser?.name}</Text>
@@ -222,8 +226,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                             <Switch
                                 value={notificationsEnabled}
                                 onValueChange={setNotificationsEnabled}
-                                trackColor={{ false: "#767577", true: COLORS.goldDim }}
-                                thumbColor={notificationsEnabled ? COLORS.gold : "#f4f3f4"}
+                                trackColor={{ false: "#3a3a3a", true: "#4CAF50" }}
+                                thumbColor={notificationsEnabled ? "#FFFFFF" : "#888888"}
                             />
                         </View>
                         <View style={styles.divider} />
@@ -232,8 +236,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                             <Switch
                                 value={soundEnabled}
                                 onValueChange={setSoundEnabled}
-                                trackColor={{ false: "#767577", true: COLORS.goldDim }}
-                                thumbColor={soundEnabled ? COLORS.gold : "#f4f3f4"}
+                                trackColor={{ false: "#3a3a3a", true: "#4CAF50" }}
+                                thumbColor={soundEnabled ? "#FFFFFF" : "#888888"}
                             />
                         </View>
                     </GlassCard>
@@ -245,8 +249,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                             title="모든 데이터 초기화"
                             onPress={handleReset}
                             variant="outline"
-                            textStyle={{ color: COLORS.error }}
-                            style={{ borderColor: COLORS.error, marginTop: 10 }}
+                            textStyle={{ color: COLORS.error, textShadowOpacity: 0 }}
+                            style={{ borderColor: COLORS.error, marginTop: 10, shadowOpacity: 0, elevation: 0 }}
                         />
                         <Text style={styles.warningText}>
                             * 초기화 시 복구할 수 없으며, 온보딩부터 다시 시작합니다.
@@ -357,8 +361,9 @@ const styles = StyleSheet.create({
 
     profileSection: { marginBottom: 25, padding: 20 },
     profileHeader: { flexDirection: 'row', alignItems: 'center' },
-    avatarPlaceholder: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255, 215, 0, 0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.gold },
+    avatarPlaceholder: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255, 215, 0, 0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.gold, overflow: 'hidden' },
     avatarText: { color: COLORS.gold, fontSize: 24, fontWeight: 'bold' },
+    avatarImage: { width: 60, height: 60, borderRadius: 30 },
     profileInfo: { marginLeft: 20 },
     profileName: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 5 },
     profileDetail: { color: '#aaa', fontSize: 14 },

@@ -3,6 +3,7 @@
   "extends": "expo/tsconfig.base",
   "exclude": [
     "node_modules",
-    "server"
+    "server",
+    "_archived"
   ]
 }

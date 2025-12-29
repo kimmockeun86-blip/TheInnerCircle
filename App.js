@@ -24,10 +24,11 @@ import ConnectionsScreen from './src/screens/ConnectionsScreen';
 import CouplesMissionScreen from './src/screens/CouplesMissionScreen';
 import CoupleTabNavigator from './src/navigation/CoupleTabNavigator';
 import SettingsScreen from './src/screens/SettingsScreen';
-import MatchingScreen from './src/screens/MatchingScreen';
+// MatchingScreen moved to _archived
 import SpecialMissionIntroScreen from './src/screens/SpecialMissionIntroScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import DevPanel from './src/components/DevPanel';
 
 const Stack = createStackNavigator();
 
@@ -214,41 +215,22 @@ export default function App() {
     };
   }, [currentUserId]);
 
-  // 앱 준비 완료 시 스플래시 화면 숨김 (최소 2.5초 유지)
+  // 앱 준비 완료 확인 (스플래시 대기 제거)
   const [appIsReady, setAppIsReady] = useState(false);
-  const [splashMinTimePassed, setSplashMinTimePassed] = useState(false);
-
-  useEffect(() => {
-    // 최소 2.5초 대기
-    const timer = setTimeout(() => {
-      setSplashMinTimePassed(true);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     if (fontsLoaded && initialRoute) {
       setAppIsReady(true);
+      // 스플래시 최소 2초 표시 후 숨김
+      const splashTimeout = setTimeout(() => {
+        SplashScreen.hideAsync().catch(() => { });
+      }, 2000);
+      return () => clearTimeout(splashTimeout);
     }
   }, [fontsLoaded, initialRoute]);
 
-  // 스플래시 숨김 처리 - 앱 준비 및 최소 시간 경과 시 자동 숨김
-  useEffect(() => {
-    if (appIsReady && splashMinTimePassed) {
-      const hideSplash = async () => {
-        try {
-          await SplashScreen.hideAsync();
-          console.log('[App] 스플래시 화면 숨김 완료');
-        } catch (e) {
-          console.log('[App] 스플래시 숨김 에러 (무시):', e);
-        }
-      };
-      hideSplash();
-    }
-  }, [appIsReady, splashMinTimePassed]);
-
   // 앱 준비 완료 전 로딩 화면 표시
-  if (!appIsReady || !splashMinTimePassed) {
+  if (!appIsReady) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000020' }}>
         <ActivityIndicator size="large" color="#FFFFFF" />
@@ -283,7 +265,7 @@ export default function App() {
                 }
               },
               Settings: 'settings',
-              Matching: 'matching',
+
               SpecialMissionIntro: 'special-mission-intro',
             }
           }
@@ -301,9 +283,11 @@ export default function App() {
             <Stack.Screen name="Match" component={MatchScreen} />
             <Stack.Screen name="CouplesMission" component={CoupleTabNavigator} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="Matching" component={MatchingScreen} />
+
             <Stack.Screen name="SpecialMissionIntro" component={SpecialMissionIntroScreen} />
+            <Stack.Screen name="Connections" component={ConnectionsScreen} />
           </Stack.Navigator>
+          <DevPanel />
         </NavigationContainer>
       </SafeAreaProvider>
     </ErrorBoundary>

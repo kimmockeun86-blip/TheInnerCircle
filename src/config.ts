@@ -6,7 +6,7 @@ import logger from './utils/logger';
 // - 'local': 로컬 서버와 앱을 같은 네트워크에서 테스트할 때 (에뮬레이터/웹)
 // - 'tunnel': 물리 디바이스 테스트용, Ngrok/Localtunnel 사용 시
 // - 'production': Render/Vercel 등 배포된 서버 사용 시 ✅ 배포 환경에서는 이것 사용!
-const MODE: 'local' | 'tunnel' | 'production' = 'production';
+const MODE: 'local' | 'tunnel' | 'production' = 'local';
 
 // 2. 각 모드별 주소 설정
 const CONFIG = {

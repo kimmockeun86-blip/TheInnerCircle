@@ -65,7 +65,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                                     <Ionicons
                                         name={isFocused ? config.iconFocused : config.icon}
                                         size={22}
-                                        color={isFocused ? '#A78BFA' : 'rgba(167, 139, 250, 0.5)'}
+                                        color={isFocused ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)'}
                                     />
                                     <Text style={[styles.label, isFocused && styles.focusedLabel]}>
                                         {config.label}
@@ -94,11 +94,11 @@ const styles = StyleSheet.create({
         boxShadow: '0px 10px 15px rgba(0, 0, 0, 0.5)',
         elevation: 10,
         borderWidth: 1,
-        borderColor: 'rgba(139, 92, 246, 0.4)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     blurContainer: {
         flex: 1,
-        backgroundColor: 'rgba(26, 10, 46, 0.95)', // Cosmic purple background
+        backgroundColor: 'rgba(0, 0, 0, 0.95)', // Black background
         borderRadius: 25,
     },
     tabBar: {
@@ -122,17 +122,20 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     focusedIconContainer: {
-        backgroundColor: 'rgba(139, 92, 246, 0.2)',
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
     },
     label: {
-        color: 'rgba(167, 139, 250, 0.6)',
+        color: 'rgba(255, 255, 255, 0.5)',
         fontSize: 10,
         marginTop: 4,
         letterSpacing: 0.5,
         fontWeight: '500',
     },
     focusedLabel: {
-        color: '#A78BFA',
+        color: '#FFFFFF',
+        textShadowColor: 'rgba(255, 255, 255, 0.5)',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 10,
     },
 });
 

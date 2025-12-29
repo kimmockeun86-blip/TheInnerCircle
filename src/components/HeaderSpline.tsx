@@ -1,4 +1,4 @@
-// HeaderSpline - ORBIT 로고 뒤 작은 Spline 애니메이션
+// HeaderSpline - ORBIT 로고 뒤 Spline 애니메이션
 import React, { useState } from 'react';
 import { View, StyleSheet, Platform, ActivityIndicator, Text } from 'react-native';
 import { SPLINE_URLS, SPLINE_CONFIG } from '../config/splineConfig';
@@ -52,15 +52,9 @@ const HeaderSpline: React.FC<HeaderSplineProps> = ({
         </html>
     `;
 
-    // 에러 시 대체 UI
+    // 에러 시 대체 UI (빈 뷰)
     if (hasError) {
-        return (
-            <View style={[styles.container, { width, height }]}>
-                <View style={styles.fallback}>
-                    <Text style={styles.fallbackText}>✨</Text>
-                </View>
-            </View>
-        );
+        return <View style={[styles.container, { width, height }]} />;
     }
 
     if (Platform.OS === 'web') {
@@ -87,7 +81,7 @@ const HeaderSpline: React.FC<HeaderSplineProps> = ({
         );
     }
 
-    // Native
+    // Native - WebView로 Spline 로드 (실제 빌드에서 작동)
     return (
         <View style={[styles.container, { width, height }]}>
             {isLoading && (
@@ -105,6 +99,7 @@ const HeaderSpline: React.FC<HeaderSplineProps> = ({
                 showsHorizontalScrollIndicator={false}
                 showsVerticalScrollIndicator={false}
                 bounces={false}
+                allowsInlineMediaPlayback={true}
                 onLoad={() => setIsLoading(false)}
                 onError={() => {
                     setHasError(true);
@@ -133,13 +128,6 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         backgroundColor: 'transparent',
-    },
-    fallback: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    fallbackText: {
-        fontSize: 24,
     },
 });
 
