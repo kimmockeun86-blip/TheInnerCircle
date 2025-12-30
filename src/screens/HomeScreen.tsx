@@ -1222,7 +1222,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                             <View style={styles.missionContainer}>
                                 <GlassCard style={styles.signalCard}>
                                     <Text style={[styles.signalLabel, { color: '#A78BFA' }]}>
-                                        ORBIT의 조언
+                                        {new Date().getHours() < 12 ? '☀️ 아침의 신호' : new Date().getHours() < 18 ? '🌤️ 오후의 신호' : '🌙 저녁의 신호'}
                                     </Text>
                                     <Text style={styles.signalText}>
                                         {personalizedAdvice.advice}
@@ -1240,7 +1240,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         {aiAnalysis && (
                             <View style={styles.missionContainer}>
                                 <GlassCard style={styles.signalCard}>
-                                    <Text style={styles.signalLabel}>ORBIT의 조언</Text>
+                                    <Text style={styles.signalLabel}>💫 ORBIT의 분석</Text>
                                     <Text style={styles.signalText}>{aiAnalysis}</Text>
                                 </GlassCard>
                             </View>
