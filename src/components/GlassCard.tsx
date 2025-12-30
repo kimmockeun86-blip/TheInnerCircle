@@ -9,12 +9,12 @@ interface GlassCardProps {
 }
 
 const GlassCard: React.FC<GlassCardProps> = ({ children, style, variant = 'cosmic' }) => {
-    // 70% 불투명 검정 배경
-    let backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    // 20% 불투명 검정 배경 (통일된 스타일)
+    let backgroundColor = 'rgba(0, 0, 0, 0.2)';
 
-    if (variant === 'dark') backgroundColor = 'rgba(0, 0, 0, 0.8)';
-    if (variant === 'light') backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    if (variant === 'default') backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    if (variant === 'dark') backgroundColor = 'rgba(0, 0, 0, 0.3)';
+    if (variant === 'light') backgroundColor = 'rgba(0, 0, 0, 0.15)';
+    if (variant === 'default') backgroundColor = 'rgba(0, 0, 0, 0.2)';
 
     return (
         <View style={[styles.card, { backgroundColor }, style]}>

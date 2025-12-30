@@ -19,7 +19,7 @@ export type RootStackParamList = {
             deficit: string;
         };
     };
-    Match: { deficit?: string; reviewMode?: boolean };
+    // Match: { deficit?: string; reviewMode?: boolean }; // Legacy - removed
     Matching: undefined;
     CouplesMission: undefined;
     Settings: undefined;
@@ -32,8 +32,9 @@ export type HomeScreenRouteProp = RouteProp<RootStackParamList, 'Home'>;
 
 export type OnboardingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Onboarding'>;
 
-export type MatchScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Match'>;
-export type MatchScreenRouteProp = RouteProp<RootStackParamList, 'Match'>;
+// Legacy - Match types removed
+// export type MatchScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Match'>;
+// export type MatchScreenRouteProp = RouteProp<RootStackParamList, 'Match'>;
 
 export type CouplesMissionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CouplesMission'>;
 

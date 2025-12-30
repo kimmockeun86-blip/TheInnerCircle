@@ -106,6 +106,7 @@ export const api = {
                     age: 28,
                     job: '플로리스트',
                     deficit: '안정',
+                    idealType: '따뜻하고 진실된 사람',
                     gender: profile.gender === '남성' ? '여성' : '남성'
                 },
                 reason: "운명의 붉은 실은 보이지 않는 곳에서도 이어져 있습니다. (오프라인 매칭)"

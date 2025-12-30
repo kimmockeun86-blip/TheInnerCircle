@@ -19,7 +19,7 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LogScreen from './src/screens/LogScreen';
-import MatchScreen from './src/screens/MatchScreen';
+// MatchScreen moved to _archived (legacy - no longer used)
 import ConnectionsScreen from './src/screens/ConnectionsScreen';
 import CouplesMissionScreen from './src/screens/CouplesMissionScreen';
 import CoupleTabNavigator from './src/navigation/CoupleTabNavigator';
@@ -256,7 +256,7 @@ export default function App() {
                   Profile: 'profile',
                 }
               },
-              Match: 'match',
+              // Match: 'match', // Legacy - removed
               CouplesMission: {
                 screens: {
                   Home: 'couples-mission/Home',
@@ -280,7 +280,7 @@ export default function App() {
           >
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             <Stack.Screen name="MainTabs" component={TabNavigator} />
-            <Stack.Screen name="Match" component={MatchScreen} />
+            {/* MatchScreen removed - legacy code moved to _archived */}
             <Stack.Screen name="CouplesMission" component={CoupleTabNavigator} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
 

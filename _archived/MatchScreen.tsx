@@ -92,16 +92,14 @@ const MatchScreen = () => {
             if (response.success && response.match) {
                 setMatchData(response.match);
             } else {
-                // Fallback Mock Data
+                // Fallback Mock Data - 개인정보 보호 정책에 따라 이상형만 표시
                 setMatchData({
-                    name: '서연',
-                    age: 28,
+                    name: '비밀의 상대',
+                    age: '??',
                     gender: 'female',
-                    location: '서울시 마포구',
+                    location: '비공개',
                     mbti: 'INFJ',
-                    deficit: '외로움',
-                    complex: '완벽주의',
-                    bio: '조용한 카페에서 책 읽는 것을 좋아해요. 서로의 침묵도 편안한 관계를 꿈꿉니다.',
+                    idealType: '서로의 침묵도 편안한 관계를 꿈꾸는 사람',
                     mission: '서로의 눈을 1분간 바라보며 아무 말도 하지 않기',
                     place: '합정동 앤트러사이트',
                     placeUrl: 'https://place.map.kakao.com/26379943'
@@ -238,20 +236,18 @@ const MatchScreen = () => {
                                     blurRadius={phase === 'reveal' ? 5 : 0}
                                 />
                                 <View style={styles.profileInfo}>
-                                    <Text style={styles.name}>{matchData?.name} ({matchData?.age})</Text>
-                                    <Text style={styles.detail}>{matchData?.location} · {matchData?.mbti}</Text>
+                                    <Text style={styles.name}>비밀의 상대</Text>
+                                    <Text style={styles.detail}>{matchData?.mbti || 'MBTI 비공개'}</Text>
                                 </View>
                             </View>
 
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>결핍과 콤플렉스</Text>
-                                <Text style={styles.sectionText}>"{matchData?.deficit}" 속에서 "{matchData?.complex}"를 마주하며 성장중</Text>
-                            </View>
-
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>자기소개</Text>
-                                <Text style={styles.sectionText}>{matchData?.bio}</Text>
-                            </View>
+                            {/* 이상형만 공개 - 개인정보 보호 정책 */}
+                            {matchData?.idealType && (
+                                <View style={styles.section}>
+                                    <Text style={styles.sectionTitle}>이상형</Text>
+                                    <Text style={styles.sectionText}>{matchData.idealType}</Text>
+                                </View>
+                            )}
                         </GlassCard>
                     </Animated.View>
 
@@ -365,7 +361,7 @@ const MatchScreen = () => {
                             />
 
                             <HolyButton
-                                title="🧘 홀로 집중"
+                                title="🧘 나에게 집중"
                                 onPress={() => handleDecision('solo')}
                                 variant="ghost"
                                 style={{ marginTop: 10 }}

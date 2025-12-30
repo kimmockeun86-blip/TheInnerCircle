@@ -696,7 +696,7 @@ const CouplesMissionScreen = () => {
                         {aiAnalysis && (
                             <View style={styles.missionContainer}>
                                 <GlassCard style={styles.analysisCard}>
-                                    <Text style={styles.analysisLabel}>ORBIT'S SIGNAL</Text>
+                                    <Text style={styles.analysisLabel}>ORBIT의 조언</Text>
                                     <Text style={styles.analysisText}>{aiAnalysis}</Text>
                                 </GlassCard>
                             </View>
@@ -707,8 +707,7 @@ const CouplesMissionScreen = () => {
                             <View style={styles.missionContainer}>
                                 <GlassCard style={styles.analysisCard}>
                                     <Text style={styles.analysisLabel}>
-                                        {personalizedAdvice.timeOfDay === 'morning' ? '아침 조언' :
-                                            personalizedAdvice.timeOfDay === 'noon' ? '점심 조언' : '저녁 조언'}
+                                        ORBIT의 조언
                                     </Text>
                                     <Text style={styles.analysisText}>
                                         {personalizedAdvice.advice}
@@ -1043,7 +1042,7 @@ const styles = StyleSheet.create({
     // Locked Mission Styles
     lockedCard: {
         borderColor: 'rgba(255, 255, 255, 0.2)',
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
     },
     lockedMissionContainer: {
         alignItems: 'center',
@@ -1089,11 +1088,11 @@ const styles = StyleSheet.create({
     // Analysis Card
     analysisCard: {
         padding: 20,
-        backgroundColor: 'rgba(200, 100, 255, 0.05)',
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
         borderColor: 'rgba(200, 100, 255, 0.3)',
     },
     analysisLabel: {
-        color: COLORS.gold,
+        color: '#A78BFA',
         fontSize: 12,
         fontWeight: 'bold',
         letterSpacing: 2,

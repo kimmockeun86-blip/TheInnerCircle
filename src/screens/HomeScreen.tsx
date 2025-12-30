@@ -1240,7 +1240,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                         {aiAnalysis && (
                             <View style={styles.missionContainer}>
                                 <GlassCard style={styles.signalCard}>
-                                    <Text style={styles.signalLabel}>ORBIT'S SIGNAL</Text>
+                                    <Text style={styles.signalLabel}>ORBIT의 조언</Text>
                                     <Text style={styles.signalText}>{aiAnalysis}</Text>
                                 </GlassCard>
                             </View>
@@ -2087,15 +2087,15 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255, 255, 255, 0.3)', // White cosmic border
     },
     signalLabel: {
-        color: '#FFFFFF',
+        color: '#A78BFA',
         fontSize: 12,
         fontWeight: 'bold',
         letterSpacing: 2,
         marginBottom: 10,
         ...(Platform.OS === 'web'
-            ? { textShadow: '0 0 10px rgba(255, 255, 255, 0.5)' }
+            ? { textShadow: '0 0 10px rgba(167, 139, 250, 0.5)' }
             : {
-                textShadowColor: 'rgba(255, 255, 255, 0.5)',
+                textShadowColor: 'rgba(167, 139, 250, 0.5)',
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: 10,
             }
@@ -2111,7 +2111,7 @@ const styles = StyleSheet.create({
     // Locked Mission Styles
     lockedCard: {
         borderColor: 'rgba(255, 255, 255, 0.2)',
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
     },
     lockedMissionContainer: {
         alignItems: 'center',
@@ -2208,7 +2208,7 @@ const styles = StyleSheet.create({
         borderRadius: 30,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.25)',
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
