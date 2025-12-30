@@ -20,6 +20,8 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
 
+const cosmicBackground = require('../../assets/cosmic_background.png');
+
 type SpecialMissionIntroScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 // 오르빗 안내 스크립트
@@ -137,10 +139,15 @@ const SpecialMissionIntroScreen: React.FC = () => {
         <TouchableWithoutFeedback onPress={handleScreenTap}>
             <View style={styles.container}>
                 <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-                {/* Background Gradient */}
                 <LinearGradient
                     colors={['#0f0a1e', '#1a0a2e', '#0f0a1e']}
                     style={StyleSheet.absoluteFillObject}
+                />
+                {/* Cosmic Background Image (나노바나나 제작) */}
+                <Image
+                    source={cosmicBackground}
+                    style={styles.cosmicBackground}
+                    resizeMode="cover"
                 />
                 <View style={styles.visualizerBackground}>
                     <MysticVisualizer

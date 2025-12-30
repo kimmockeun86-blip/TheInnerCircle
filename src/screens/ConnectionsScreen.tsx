@@ -10,6 +10,9 @@ import HolyButton from '../components/HolyButton';
 import { COLORS, FONTS } from '../theme/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const cosmicBackground = require('../../assets/cosmic_background.png');
 
 interface MissionHistoryEntry {
     day: number;
@@ -377,6 +380,17 @@ const ConnectionsScreen = () => {
 
     return (
         <View style={styles.container}>
+            {/* Background Gradient */}
+            <LinearGradient
+                colors={['#0f0a1e', '#1a0a2e', '#0f0a1e']}
+                style={StyleSheet.absoluteFillObject}
+            />
+            {/* Cosmic Background Image (나노바나나 제작) */}
+            <Image
+                source={cosmicBackground}
+                style={styles.cosmicBackground}
+                resizeMode="cover"
+            />
             <View style={styles.visualizerBackground}>
                 <MysticVisualizer
                     isActive={true}
@@ -580,13 +594,24 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: COLORS.background,
     },
+    cosmicBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+    },
     visualizerBackground: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 0,
+        zIndex: 1,
+        opacity: 0.6, // Allow cosmic background to show through
     },
     safeArea: {
         flex: 1,

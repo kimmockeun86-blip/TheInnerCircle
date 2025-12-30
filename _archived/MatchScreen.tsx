@@ -10,6 +10,8 @@ import { api } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
 
+const cosmicBackground = require('../../assets/cosmic_background.png');
+
 type MatchPhase = 'searching' | 'reveal' | 'proposal' | 'mission' | 'post_meeting' | 'decision';
 
 const MatchScreen = () => {
@@ -187,6 +189,12 @@ const MatchScreen = () => {
     if (phase === 'searching') {
         return (
             <GradientBackground colors={COLORS.backgroundGradient as any} style={styles.container}>
+                {/* Cosmic Background Image (나노바나나 제작) */}
+                <Image
+                    source={cosmicBackground}
+                    style={styles.cosmicBackground}
+                    resizeMode="cover"
+                />
                 <SafeAreaView style={styles.safeArea}>
                     <View style={styles.searchingContainer}>
                         <View style={styles.visualizerContainer}>
@@ -452,6 +460,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: COLORS.background,
+    },
+    cosmicBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
     },
     loadingText: {
         color: COLORS.gold,
