@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "25356654664",
+        "project_id": "orbit-920a0",
+        "storage_bucket": "orbit-920a0.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:25356654664:android:b6207d9d203a44a6",
+                "android_client_info": {
+                    "package_name": "com.theinnercircle.app"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyDg6wzVcr1NtHblsgLhn7BbBit1GDnsqfw"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}
