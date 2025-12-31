@@ -287,7 +287,7 @@ export default function App() {
             <Stack.Screen name="SpecialMissionIntro" component={SpecialMissionIntroScreen} />
             <Stack.Screen name="Connections" component={ConnectionsScreen} />
           </Stack.Navigator>
-          <DevPanel />
+          {__DEV__ && <DevPanel />}
         </NavigationContainer>
       </SafeAreaProvider>
     </ErrorBoundary>
