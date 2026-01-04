@@ -429,6 +429,22 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
         const now = new Date();
         const lastDate = new Date(lastCompletedDate);
 
+        // 🔧 오늘 이미 기록했는지 확인 (같은 날짜인지 체크)
+        const isSameDay =
+            lastDate.getFullYear() === now.getFullYear() &&
+            lastDate.getMonth() === now.getMonth() &&
+            lastDate.getDate() === now.getDate();
+
+        if (isSameDay) {
+            // 오늘 이미 기록함 → 내일 9시까지 잠금
+            const nextUnlock = new Date(now);
+            nextUnlock.setDate(nextUnlock.getDate() + 1);
+            nextUnlock.setHours(9, 0, 0, 0);
+            setNextMissionUnlockTime(nextUnlock.getTime().toString());
+            console.log('[ORBIT] 오늘 이미 기록함 → 내일 9시 해금');
+            return false;
+        }
+
         // 다음 해금 시간 계산 (오늘 9시 또는 내일 9시)
         // 오늘 9시 이전에 수행 완료하면 → 오늘 9시 해금
         // 오늘 9시 이후에 수행 완료하면 → 내일 9시 해금
@@ -438,6 +454,16 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
         // 현재 시간이 오늘 9시 이후면 내일 9시로 설정
         if (now.getTime() >= nextUnlock.getTime()) {
             nextUnlock.setDate(nextUnlock.getDate() + 1);
+        }
+
+        // lastDate가 오늘 9시 이전이고, 현재가 9시 이후면 → 해금
+        const todayNineAM = new Date(now);
+        todayNineAM.setHours(9, 0, 0, 0);
+
+        if (lastDate < todayNineAM && now >= todayNineAM) {
+            // 어제(또는 이전) 기록 & 오늘 9시가 지남 → 바로 해금
+            setNextMissionUnlockTime(null);
+            return true;
         }
 
         if (now < nextUnlock) {
@@ -1106,7 +1132,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 if (now.getTime() >= target.getTime()) {
                     target.setDate(target.getDate() + 1);
                 }
-                setNextMissionUnlockTime(target.toLocaleString());
+                setNextMissionUnlockTime(target.getTime().toString());
 
                 setJournalModalVisible(false);
                 setJournalInput('');
@@ -1136,14 +1162,90 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 }
 
             } else {
-                Alert.alert('오류', '분석 실패: ' + (response.message || '알 수 없는 오류'));
+                // AI 분석 실패해도 수행기록은 저장
+                console.log('[ORBIT Solo] AI 분석 실패, 로컬 기록만 저장');
+
+                // 로컬 수행기록 저장 (AI 피드백 없이)
+                const newEntry: JournalEntry = {
+                    day: dayCount,
+                    content: journalInput,
+                    date: new Date().toLocaleDateString(),
+                    imageUri: undefined,
+                    mission: currentMissionText,
+                    feedback: '(AI 분석 실패)',
+                    signal: ''
+                };
+
+                const cleanedHistory = [newEntry, ...journalHistory]
+                    .slice(0, 10)
+                    .map(entry => ({
+                        ...entry,
+                        imageUri: undefined
+                    }));
+                setJournalHistory(cleanedHistory);
+                await AsyncStorage.setItem('journalHistory', JSON.stringify(cleanedHistory));
+
+                // 타이머 설정 (AI 실패해도 하루 1회 제한 유지)
+                await AsyncStorage.setItem('lastCompletedDate', new Date().toISOString());
+
+                const now = new Date();
+                const target = new Date(now);
+                target.setHours(9, 0, 0, 0);
+                if (now.getTime() >= target.getTime()) {
+                    target.setDate(target.getDate() + 1);
+                }
+                setNextMissionUnlockTime(target.getTime().toString());
+
+                setJournalModalVisible(false);
+                setJournalInput('');
+                setSelectedImage(null);
+
+                Alert.alert('기록 완료', '수행기록이 저장되었습니다.\nAI 분석은 서버 문제로 실패했습니다.\n다음 미션은 내일 아침 9시에 열립니다.');
             }
         } catch (e: any) {
             console.error('Analysis Error:', e);
+
+            // 에러 발생 시에도 수행기록은 저장
+            console.log('[ORBIT Solo] 에러 발생, 로컬 기록만 저장');
+
+            const newEntry: JournalEntry = {
+                day: dayCount,
+                content: journalInput,
+                date: new Date().toLocaleDateString(),
+                imageUri: undefined,
+                mission: currentMissionText,
+                feedback: '(연결 오류)',
+                signal: ''
+            };
+
+            const cleanedHistory = [newEntry, ...journalHistory]
+                .slice(0, 10)
+                .map(entry => ({
+                    ...entry,
+                    imageUri: undefined
+                }));
+            setJournalHistory(cleanedHistory);
+            await AsyncStorage.setItem('journalHistory', JSON.stringify(cleanedHistory));
+
+            // 타이머 설정 (에러나도 하루 1회 제한 유지)
+            await AsyncStorage.setItem('lastCompletedDate', new Date().toISOString());
+
+            const now = new Date();
+            const target = new Date(now);
+            target.setHours(9, 0, 0, 0);
+            if (now.getTime() >= target.getTime()) {
+                target.setDate(target.getDate() + 1);
+            }
+            setNextMissionUnlockTime(target.getTime().toString());
+
+            setJournalModalVisible(false);
+            setJournalInput('');
+            setSelectedImage(null);
+
             if (e.message === 'TIMEOUT') {
-                Alert.alert('오류', '서버 응답 시간이 초과되었습니다. (45초)\n서버 상태를 확인해주세요.');
+                Alert.alert('기록 완료', '수행기록이 저장되었습니다.\n서버 응답 시간 초과로 AI 분석은 실패했습니다.\n다음 미션은 내일 아침 9시에 열립니다.');
             } else {
-                Alert.alert('오류', '네트워크 오류가 발생했습니다.\n' + (e.message || ''));
+                Alert.alert('기록 완료', '수행기록이 저장되었습니다.\n네트워크 오류로 AI 분석은 실패했습니다.\n다음 미션은 내일 아침 9시에 열립니다.');
             }
         } finally {
             setIsAnalyzing(false);

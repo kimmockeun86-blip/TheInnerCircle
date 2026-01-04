@@ -255,9 +255,15 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
             await AsyncStorage.setItem('hasOnboarded', 'true');
             await AsyncStorage.setItem('dayCount', '1');
 
-            // Generate unique user ID
-            const uniqueId = `user_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-            await AsyncStorage.setItem('userId', uniqueId);
+            // Generate unique user ID (기존 ID가 있으면 재사용)
+            let uniqueId = await AsyncStorage.getItem('userId');
+            if (!uniqueId) {
+                uniqueId = `user_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+                await AsyncStorage.setItem('userId', uniqueId);
+                console.log('[Onboarding] 새 userId 생성:', uniqueId);
+            } else {
+                console.log('[Onboarding] 기존 userId 재사용:', uniqueId);
+            }
 
             // Get GPS location for matching (non-blocking)
             let userLocation = null;

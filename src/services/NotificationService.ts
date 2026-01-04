@@ -137,29 +137,33 @@ class NotificationService {
         }
     }
 
-    // 🌅 자정 미션 해금 알림 (9시에서 자정으로 변경)
+    // 🌅 아침 미션 알림 (자정에서 아침 9시로 변경 - 사용자 수면 방해 방지)
     async scheduleMissionNotification(): Promise<void> {
         // 중복 방지를 위해 미션 알림만 취소 (identifier 사용)
         // 조언 알림은 유지
 
         const now = new Date();
-        const nextMidnight = new Date();
-        nextMidnight.setDate(nextMidnight.getDate() + 1);
-        nextMidnight.setHours(0, 0, 0, 0);
+        const next9AM = new Date();
+        next9AM.setHours(9, 0, 0, 0);
 
-        await AsyncStorage.setItem('scheduledNotification', nextMidnight.toISOString());
+        // 현재 시간이 9시 이후면 다음 날로
+        if (now.getHours() >= 9) {
+            next9AM.setDate(next9AM.getDate() + 1);
+        }
+
+        await AsyncStorage.setItem('scheduledNotification', next9AM.toISOString());
 
         if (Platform.OS === 'web') {
-            const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+            const msUntil9AM = next9AM.getTime() - now.getTime();
             setTimeout(() => {
                 this.showNotification({
                     title: '🌅 새로운 미션이 공개되었습니다!',
                     body: '오르빗이 오늘의 리추얼을 준비했습니다. 지금 확인하세요.',
                 });
-            }, msUntilMidnight);
-            console.log(`[Notification] 웹 알림 예약: ${nextMidnight.toLocaleString()}`);
+            }, msUntil9AM);
+            console.log(`[Notification] 웹 알림 예약: ${next9AM.toLocaleString()}`);
         } else {
-            // 모바일 스케줄 알림 (자정에 알림)
+            // 모바일 스케줄 알림 (아침 9시에 알림)
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title: '🌅 새로운 미션이 공개되었습니다!',
@@ -168,11 +172,11 @@ class NotificationService {
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.DAILY,
-                    hour: 0,
+                    hour: 9,
                     minute: 0,
                 },
             });
-            console.log(`[Notification] 모바일 알림 예약: 매일 자정`);
+            console.log(`[Notification] 모바일 알림 예약: 매일 아침 9시`);
         }
     }
 

@@ -369,17 +369,35 @@ app.use((req, res, next) => {
     next();
 });
 
-// Helper function to extract JSON
-function extractJSON(text) {
+// Helper function to extract JSON with robust fallback
+function extractJSON(text, fallbackResponse = null) {
     try {
-        const match = text.match(/\{[\s\S]*\}/);
+        // JSON 코드 블록 제거
+        const cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+        // JSON 객체 패턴 매칭
+        const match = cleanText.match(/\{[\s\S]*\}/);
         if (match) {
             return JSON.parse(match[0]);
         }
-        return JSON.parse(text);
+        return JSON.parse(cleanText);
     } catch (e) {
-        console.error("Failed to extract JSON:", text);
-        throw e;
+        console.error("Failed to extract JSON from text:", text?.substring(0, 200) + '...');
+        console.error("Parse error:", e.message);
+
+        // 폴백 응답 반환 (예외를 던지지 않음)
+        if (fallbackResponse) {
+            console.log("[extractJSON] Using fallback response");
+            return fallbackResponse;
+        }
+
+        // 기본 폴백 응답
+        return {
+            signal: "당신의 내면에서 흥미로운 패턴이 감지됩니다. 숨겨진 키워드가 표면으로 드러나려 합니다.",
+            ritual: "5분간 고요히 앉아라",
+            score: 80,
+            feedback: "분석 중 일시적인 오류가 발생했습니다. 다시 시도해주세요."
+        };
     }
 }
 
@@ -422,7 +440,13 @@ app.post('/api/analysis/profile', async (req, res) => {
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
-        const jsonResponse = extractJSON(text);
+
+        // 폴백 응답 정의 (JSON 파싱 실패 시 사용)
+        const profileFallback = {
+            signal: "당신의 내면에서 흥미로운 패턴이 감지됩니다. 숨겨진 키워드가 표면으로 드러나려 합니다.",
+            ritual: "5분간 고요히 앉아라"
+        };
+        const jsonResponse = extractJSON(text, profileFallback);
 
         console.log('ORBIT Profile Analysis Result:', jsonResponse);
 

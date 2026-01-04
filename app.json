@@ -2,7 +2,7 @@
   "expo": {
     "name": "ORBIT",
     "slug": "TheInnerCircle",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -15,7 +15,7 @@
     "ios": {
       "bundleIdentifier": "com.theinnercircle.app",
       "supportsTablet": false,
-      "buildNumber": "32",
+      "buildNumber": "35",
       "infoPlist": {
         "NSCameraUsageDescription": "리추얼 기록 사진 촬영에 사용됩니다.",
         "NSPhotoLibraryUsageDescription": "리추얼 기록에 사진을 첨부하기 위해 사용됩니다.",
@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.theinnercircle.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000020"
