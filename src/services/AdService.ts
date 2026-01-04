@@ -14,21 +14,39 @@ const AD_CONFIG = {
     AD_REMOVAL_PRICE: 7900,
     AD_REMOVAL_PRICE_USD: 6.99,
 
-    // AdMob Unit IDs (테스트용)
-    // 실제 배포 시 실제 광고 Unit ID로 교체 필요
+    // AdMob Unit IDs
+    // TODO: 실제 배포 시 아래 PRODUCTION_* 값을 실제 광고 Unit ID로 교체하세요!
+    // 테스트 ID (개발용)
+    TEST_BANNER_IOS: 'ca-app-pub-3940256099942544/2934735716',
+    TEST_BANNER_ANDROID: 'ca-app-pub-3940256099942544/6300978111',
+    TEST_INTERSTITIAL_IOS: 'ca-app-pub-3940256099942544/4411468910',
+    TEST_INTERSTITIAL_ANDROID: 'ca-app-pub-3940256099942544/1033173712',
+    TEST_REWARDED_IOS: 'ca-app-pub-3940256099942544/1712485313',
+    TEST_REWARDED_ANDROID: 'ca-app-pub-3940256099942544/5224354917',
+
+    // 프로덕션 ID (실제 배포 시 교체 필요)
+    // 아래 ID들을 AdMob 콘솔에서 발급받은 실제 ID로 교체하세요
+    PRODUCTION_BANNER_IOS: '', // TODO: 실제 iOS 배너 광고 ID
+    PRODUCTION_BANNER_ANDROID: '', // TODO: 실제 Android 배너 광고 ID  
+    PRODUCTION_INTERSTITIAL_IOS: '', // TODO: 실제 iOS 전면 광고 ID
+    PRODUCTION_INTERSTITIAL_ANDROID: '', // TODO: 실제 Android 전면 광고 ID
+    PRODUCTION_REWARDED_IOS: '', // TODO: 실제 iOS 보상형 광고 ID
+    PRODUCTION_REWARDED_ANDROID: '', // TODO: 실제 Android 보상형 광고 ID
+
+    // 현재 사용할 ID (프로덕션 ID가 없으면 테스트 ID 사용)
     BANNER_AD_UNIT_ID: Platform.select({
-        ios: 'ca-app-pub-3940256099942544/2934735716', // 테스트 ID
-        android: 'ca-app-pub-3940256099942544/6300978111', // 테스트 ID
+        ios: '', // 아래 getBannerAdUnitId()에서 동적으로 결정
+        android: '',
         default: '',
     }),
     INTERSTITIAL_AD_UNIT_ID: Platform.select({
-        ios: 'ca-app-pub-3940256099942544/4411468910', // 테스트 ID
-        android: 'ca-app-pub-3940256099942544/1033173712', // 테스트 ID
+        ios: '',
+        android: '',
         default: '',
     }),
     REWARDED_AD_UNIT_ID: Platform.select({
-        ios: 'ca-app-pub-3940256099942544/1712485313', // 테스트 ID
-        android: 'ca-app-pub-3940256099942544/5224354917', // 테스트 ID
+        ios: '',
+        android: '',
         default: '',
     }),
 };
@@ -115,14 +133,39 @@ class AdService {
         }
     }
 
-    // 배너 광고 Unit ID 가져오기
+    // 배너 광고 Unit ID 가져오기 (프로덕션 ID가 있으면 사용, 없으면 테스트 ID)
     getBannerAdUnitId(): string {
-        return AD_CONFIG.BANNER_AD_UNIT_ID || '';
+        if (Platform.OS === 'ios') {
+            return AD_CONFIG.PRODUCTION_BANNER_IOS || AD_CONFIG.TEST_BANNER_IOS;
+        } else if (Platform.OS === 'android') {
+            return AD_CONFIG.PRODUCTION_BANNER_ANDROID || AD_CONFIG.TEST_BANNER_ANDROID;
+        }
+        return '';
     }
 
     // 전면 광고 Unit ID 가져오기
     getInterstitialAdUnitId(): string {
-        return AD_CONFIG.INTERSTITIAL_AD_UNIT_ID || '';
+        if (Platform.OS === 'ios') {
+            return AD_CONFIG.PRODUCTION_INTERSTITIAL_IOS || AD_CONFIG.TEST_INTERSTITIAL_IOS;
+        } else if (Platform.OS === 'android') {
+            return AD_CONFIG.PRODUCTION_INTERSTITIAL_ANDROID || AD_CONFIG.TEST_INTERSTITIAL_ANDROID;
+        }
+        return '';
+    }
+
+    // 보상형 광고 Unit ID 가져오기
+    getRewardedAdUnitId(): string {
+        if (Platform.OS === 'ios') {
+            return AD_CONFIG.PRODUCTION_REWARDED_IOS || AD_CONFIG.TEST_REWARDED_IOS;
+        } else if (Platform.OS === 'android') {
+            return AD_CONFIG.PRODUCTION_REWARDED_ANDROID || AD_CONFIG.TEST_REWARDED_ANDROID;
+        }
+        return '';
+    }
+
+    // 프로덕션 모드 여부 확인
+    isProductionMode(): boolean {
+        return !!(AD_CONFIG.PRODUCTION_BANNER_IOS || AD_CONFIG.PRODUCTION_BANNER_ANDROID);
     }
 
     // 전면 광고 표시 가능 여부 (쿨다운 체크)

@@ -30,6 +30,14 @@ import TabNavigator from './src/navigation/TabNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import DevPanel from './src/components/DevPanel';
 
+// 신규 서비스들
+import { offlineQueueService } from './src/services/OfflineQueueService';
+import { crashlyticsService } from './src/services/CrashlyticsService';
+import { analyticsService } from './src/services/AnalyticsService';
+import { deepLinkService } from './src/services/DeepLinkService';
+import { i18n } from './src/i18n';
+import AdService from './src/services/AdService';
+
 const Stack = createStackNavigator();
 
 // Web container styles for centering
@@ -186,7 +194,39 @@ export default function App() {
         setInitialRoute('MainTabs');
       }
     };
+
+    // 서비스 초기화 함수
+    const initializeServices = async () => {
+      try {
+        console.log('[App] 서비스 초기화 시작...');
+
+        // i18n (다국어)
+        await i18n.initialize();
+
+        // 에러 트래킹
+        await crashlyticsService.initialize();
+        crashlyticsService.setupGlobalErrorHandler();
+
+        // Analytics
+        await analyticsService.initialize();
+
+        // 오프라인 큐
+        await offlineQueueService.initialize();
+
+        // 딥링크
+        await deepLinkService.initialize();
+
+        // 광고 서비스
+        await AdService.initialize();
+
+        console.log('[App] 서비스 초기화 완료');
+      } catch (e) {
+        console.error('[App] 서비스 초기화 실패:', e);
+      }
+    };
+
     initializeUser();
+    initializeServices();
   }, []);
 
   // 사용자 데이터 변경 시 자동 저장 (주기적)
