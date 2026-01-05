@@ -229,6 +229,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Health Check endpoint for keep-alive pinging
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Support Page for App Store
 app.get('/support', (req, res) => {
     res.send(`<!DOCTYPE html>
