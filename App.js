@@ -277,39 +277,50 @@ export default function App() {
       </View>
     );
   }
+  // 네비게이션 레퍼런스
+  const navigationRef = React.useRef(null);
+
+  // 네비게이션 준비되면 딥링크 서비스에 연결
+  React.useEffect(() => {
+    if (navigationRef.current) {
+      deepLinkService.setNavigationRef(navigationRef.current);
+    }
+  }, [navigationRef.current]);
 
   // Web wrapper for centering
   const content = (
     <ErrorBoundary>
       <SafeAreaProvider>
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
-        <NavigationContainer linking={{
-          prefixes: [],
-          config: {
-            screens: {
-              Onboarding: 'onboarding',
-              MainTabs: {
-                screens: {
-                  Home: 'home',
-                  Log: 'log',
-                  Chat: 'chat',
-                  Profile: 'profile',
-                }
-              },
-              // Match: 'match', // Legacy - removed
-              CouplesMission: {
-                screens: {
-                  Home: 'couples-mission/Home',
-                  Log: 'couples-mission/Log',
-                  Profile: 'couples-mission/Profile',
-                }
-              },
-              Settings: 'settings',
+        <NavigationContainer
+          ref={navigationRef}
+          linking={{
+            prefixes: ['orbit://', 'https://theinnercircle.app'],
+            config: {
+              screens: {
+                Onboarding: 'onboarding',
+                MainTabs: {
+                  screens: {
+                    Home: 'home',
+                    Log: 'log',
+                    Chat: 'chat',
+                    Profile: 'profile',
+                  }
+                },
+                // Match: 'match', // Legacy - removed
+                CouplesMission: {
+                  screens: {
+                    Home: 'couples-mission/Home',
+                    Log: 'couples-mission/Log',
+                    Profile: 'couples-mission/Profile',
+                  }
+                },
+                Settings: 'settings',
 
-              SpecialMissionIntro: 'special-mission-intro',
+                SpecialMissionIntro: 'special-mission-intro',
+              }
             }
-          }
-        }}>
+          }}>
           <Stack.Navigator
             initialRouteName={initialRoute}
             screenOptions={{
