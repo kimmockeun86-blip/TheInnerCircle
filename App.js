@@ -37,6 +37,7 @@ import { analyticsService } from './src/services/AnalyticsService';
 import { deepLinkService } from './src/services/DeepLinkService';
 import { i18n } from './src/i18n';
 import AdService from './src/services/AdService';
+import { appReviewService } from './src/services/AppReviewService';
 
 const Stack = createStackNavigator();
 
@@ -218,6 +219,9 @@ export default function App() {
 
         // 광고 서비스
         await AdService.initialize();
+
+        // 앱 리뷰 서비스 - 앱 열기 트래킹
+        await appReviewService.trackAppOpen();
 
         console.log('[App] 서비스 초기화 완료');
       } catch (e) {

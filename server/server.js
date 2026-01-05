@@ -2104,6 +2104,168 @@ app.post('/api/advice/personalized', async (req, res) => {
     }
 });
 
+// =============================================
+// FCM Push Notification APIs
+// =============================================
+
+// Store FCM tokens
+const fcmTokens = new Map(); // In-memory storage (production should use database)
+
+// Register FCM token
+app.post('/api/fcm/register', async (req, res) => {
+    try {
+        const { userId, token, platform } = req.body;
+
+        if (!userId || !token) {
+            return res.json({ success: false, error: 'userId and token required' });
+        }
+
+        // Save to Firestore if available
+        if (firestore) {
+            await firestore.collection('fcmTokens').doc(userId).set({
+                token,
+                platform,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+
+        // Also keep in memory
+        fcmTokens.set(userId, { token, platform });
+
+        console.log(`[FCM] Token registered for ${userId}`);
+        res.json({ success: true, message: 'Token registered' });
+    } catch (error) {
+        console.error('[FCM] Register error:', error.message);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// Send push to specific user
+app.post('/api/fcm/send/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { title, body, data } = req.body;
+
+        if (!firebaseInitialized) {
+            return res.json({ success: false, error: 'FCM not initialized' });
+        }
+
+        // Get token from Firestore
+        let token = null;
+        if (firestore) {
+            const doc = await firestore.collection('fcmTokens').doc(userId).get();
+            if (doc.exists) {
+                token = doc.data().token;
+            }
+        }
+
+        if (!token) {
+            return res.json({ success: false, error: 'Token not found for user' });
+        }
+
+        // Send notification
+        const message = {
+            notification: { title, body },
+            data: data || {},
+            token
+        };
+
+        await admin.messaging().send(message);
+        console.log(`[FCM] Sent to ${userId}: ${title}`);
+        res.json({ success: true, message: 'Push sent' });
+
+    } catch (error) {
+        console.error('[FCM] Send error:', error.message);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// Broadcast to all users
+app.post('/api/fcm/broadcast', async (req, res) => {
+    try {
+        const { title, body, data } = req.body;
+
+        if (!firebaseInitialized || !firestore) {
+            return res.json({ success: false, error: 'FCM not initialized' });
+        }
+
+        // Get all tokens
+        const tokensSnapshot = await firestore.collection('fcmTokens').get();
+        const tokens = [];
+        tokensSnapshot.forEach(doc => {
+            if (doc.data().token) {
+                tokens.push(doc.data().token);
+            }
+        });
+
+        if (tokens.length === 0) {
+            return res.json({ success: true, sent: 0, message: 'No tokens registered' });
+        }
+
+        // Send to all (batch)
+        const message = {
+            notification: { title: title || 'ORBIT', body },
+            data: data || {},
+            tokens
+        };
+
+        const response = await admin.messaging().sendEachForMulticast(message);
+        console.log(`[FCM] Broadcast sent: ${response.successCount}/${tokens.length}`);
+
+        res.json({
+            success: true,
+            sent: response.successCount,
+            failed: response.failureCount
+        });
+
+    } catch (error) {
+        console.error('[FCM] Broadcast error:', error.message);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// Mission notification to all
+app.post('/api/fcm/mission-notification', async (req, res) => {
+    try {
+        if (!firebaseInitialized || !firestore) {
+            return res.json({ success: false, error: 'FCM not initialized' });
+        }
+
+        const tokensSnapshot = await firestore.collection('fcmTokens').get();
+        const tokens = [];
+        tokensSnapshot.forEach(doc => {
+            if (doc.data().token) {
+                tokens.push(doc.data().token);
+            }
+        });
+
+        if (tokens.length === 0) {
+            return res.json({ success: true, sent: 0, message: 'No tokens registered' });
+        }
+
+        const message = {
+            notification: {
+                title: '🌅 새로운 미션이 공개되었습니다!',
+                body: '오르빗이 오늘의 리추얼을 준비했습니다. 지금 확인하세요.'
+            },
+            data: { type: 'mission_unlock' },
+            tokens
+        };
+
+        const response = await admin.messaging().sendEachForMulticast(message);
+        console.log(`[FCM] Mission notification: ${response.successCount}/${tokens.length}`);
+
+        res.json({
+            success: true,
+            sent: response.successCount
+        });
+
+    } catch (error) {
+        console.error('[FCM] Mission notification error:', error.message);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`ORBIT Server running on port ${PORT} (0.0.0.0)`);
 });
