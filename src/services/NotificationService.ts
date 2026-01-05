@@ -139,8 +139,11 @@ class NotificationService {
 
     // 🌅 아침 미션 알림 (자정에서 아침 9시로 변경 - 사용자 수면 방해 방지)
     async scheduleMissionNotification(): Promise<void> {
-        // 중복 방지를 위해 미션 알림만 취소 (identifier 사용)
-        // 조언 알림은 유지
+        // ⭐ 중복 방지: 기존 예약된 모든 알림 취소
+        if (Platform.OS !== 'web') {
+            await Notifications.cancelAllScheduledNotificationsAsync();
+            console.log('[Notification] 기존 알림 모두 취소됨');
+        }
 
         const now = new Date();
         const next9AM = new Date();
