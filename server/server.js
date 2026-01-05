@@ -290,6 +290,12 @@ app.get('/support', (req, res) => {
 </html>`);
 });
 
+// AdMob app-ads.txt for ad verification
+app.get('/app-ads.txt', (req, res) => {
+    res.type('text/plain');
+    res.send('google.com, pub-7689737888273944, DIRECT, f08c47fec0942fa0');
+});
+
 // Privacy Policy Page for App Store
 app.get('/privacy', (req, res) => {
     res.send(`<!DOCTYPE html>
