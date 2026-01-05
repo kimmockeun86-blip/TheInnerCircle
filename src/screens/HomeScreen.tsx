@@ -20,6 +20,7 @@ import JournalModal from '../components/JournalModal';
 import AnalysisModal from '../components/AnalysisModal';
 import IntroModal from '../components/IntroModal';
 import { getSpecialDayMission } from '../services/MissionData';
+import { OrbitTrustService, StreakService, MilestoneService, CrisisDetectionService } from '../services/OrbitTrustService';
 
 // Placeholder images
 const malePlaceholder = require('../../assets/male_placeholder.png');
@@ -118,6 +119,11 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     const [adviceResponse, setAdviceResponse] = useState<'yes' | 'no' | null>(null);
     const [adviceFollowUp, setAdviceFollowUp] = useState<string | null>(null);
 
+    // 🔥 ORBIT 신뢰 시스템 상태
+    const [currentStreak, setCurrentStreak] = useState<number>(0);
+    const [streakMilestone, setStreakMilestone] = useState<string | null>(null);
+    const [specialMessage, setSpecialMessage] = useState<string | null>(null);
+    const [careMessage, setCareMessage] = useState<string | null>(null);
 
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
     const sparkleAnim2 = useRef(new Animated.Value(0)).current;

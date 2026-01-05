@@ -242,7 +242,11 @@ export const api = {
         recentJournals: Array<{ day: number; content: string; mission?: string }>,
         timeOfDay: 'morning' | 'noon' | 'evening',
         dayCount: number,
-        growthLevel: number
+        growthLevel: number,
+        // 신뢰 시스템 추가 파라미터
+        streakDays?: number,
+        daysSinceSignup?: number,
+        moodTrend?: 'positive' | 'negative' | 'neutral'
     }) => {
         try {
             logger.log('[API] getPersonalizedAdvice calling:', { name: data.name, timeOfDay: data.timeOfDay });

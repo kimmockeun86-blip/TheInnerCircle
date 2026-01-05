@@ -2033,8 +2033,12 @@ app.post('/api/fcm/match-notification', async (req, res) => {
 // ============================================
 app.post('/api/advice/personalized', async (req, res) => {
     try {
-        const { name, deficit, currentMission, recentJournals, timeOfDay, dayCount, growthLevel } = req.body;
-        console.log(`[Advice] Generating ${timeOfDay} advice for: ${name}, Day ${dayCount}`);
+        const {
+            name, deficit, currentMission, recentJournals, timeOfDay, dayCount, growthLevel,
+            // 신뢰 시스템 추가 파라미터
+            streakDays, daysSinceSignup, moodTrend, isSpecialDay, specialDayType
+        } = req.body;
+        console.log(`[Advice] Generating ${timeOfDay} advice for: ${name}, Day ${dayCount}, Streak: ${streakDays || 0}`);
 
         let timeGreeting = '';
         let icon = '';
@@ -2057,6 +2061,22 @@ app.post('/api/advice/personalized', async (req, res) => {
             ).join('\n');
         }
 
+        // 신뢰 시스템 컨텍스트 구성
+        let trustContext = '';
+        if (streakDays && streakDays >= 3) {
+            trustContext += `사용자가 ${streakDays}일 연속으로 기록하고 있습니다. 꾸준함을 자연스럽게 인정해주세요.\n`;
+        }
+        if (daysSinceSignup === 7) {
+            trustContext += `오늘은 사용자가 ORBIT과 함께한 지 일주일이 되는 날입니다. 가볍게 언급해주세요.\n`;
+        } else if (daysSinceSignup === 30) {
+            trustContext += `오늘은 사용자가 ORBIT과 함께한 지 한 달이 되는 날입니다. 따뜻하게 축하해주세요.\n`;
+        } else if (daysSinceSignup === 100) {
+            trustContext += `오늘은 사용자가 ORBIT과 함께한 지 100일이 되는 날입니다. 특별한 메시지를 전해주세요.\n`;
+        }
+        if (moodTrend === 'negative') {
+            trustContext += `최근 기록이 부정적인 경향이 있습니다. 부드럽게 위로하고 격려해주세요.\n`;
+        }
+
         const prompt = `
         ${ORBIT_SYSTEM_PROMPT}
 
@@ -2070,6 +2090,9 @@ app.post('/api/advice/personalized', async (req, res) => {
         
         【최근 기록】
         ${journalContext || '(최근 기록 없음)'}
+
+        【특별 컨텍스트 (자연스럽게 녹여서 전달)】
+        ${trustContext || '(특별 사항 없음)'}
 
         【지시사항】
         1. ${timeOfDay === 'morning' ? '하루를 시작하는 따뜻한 인사와 오늘의 리추얼을 떠올리게 하는 조언' :

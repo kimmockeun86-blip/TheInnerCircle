@@ -38,6 +38,7 @@ import { deepLinkService } from './src/services/DeepLinkService';
 import { i18n } from './src/i18n';
 import AdService from './src/services/AdService';
 import { appReviewService } from './src/services/AppReviewService';
+import { OrbitTrustService } from './src/services/OrbitTrustService';
 
 const Stack = createStackNavigator();
 
@@ -222,6 +223,9 @@ export default function App() {
 
         // 앱 리뷰 서비스 - 앱 열기 트래킹
         await appReviewService.trackAppOpen();
+
+        // ORBIT 신뢰 시스템 초기화 (스트릭, 기념일 등)
+        await OrbitTrustService.initialize();
 
         console.log('[App] 서비스 초기화 완료');
       } catch (e) {
