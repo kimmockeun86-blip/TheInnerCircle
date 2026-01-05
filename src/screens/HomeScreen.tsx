@@ -550,12 +550,20 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                             const res = await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`);
                             const data = await res.json();
                             if (data.success && data.user?.assignedMission) {
-                                const adminMission = data.user.assignedMission;
-                                console.log(`[ORBIT Solo] 🎯 관리자 미션 발견: ${adminMission}`);
-                                setCurrentMissionText(adminMission);
-                                await AsyncStorage.setItem(`mission_day_${currentDayCount}`, adminMission);
-                                await AsyncStorage.setItem('hasAdminMission', 'true'); // 관리자 미션 플래그
-                                adminMissionApplied = true;
+                                // 만료 시간 체크 - 만료되었으면 무시
+                                const expiresAt = data.user.missionExpiresAt;
+                                const isExpired = expiresAt && new Date(expiresAt._seconds ? expiresAt._seconds * 1000 : expiresAt) < new Date();
+
+                                if (!isExpired) {
+                                    const adminMission = data.user.assignedMission;
+                                    console.log(`[ORBIT Solo] 🎯 관리자 미션 발견: ${adminMission}`);
+                                    setCurrentMissionText(adminMission);
+                                    await AsyncStorage.setItem(`mission_day_${currentDayCount}`, adminMission);
+                                    await AsyncStorage.setItem('hasAdminMission', 'true'); // 관리자 미션 플래그
+                                    adminMissionApplied = true;
+                                } else {
+                                    console.log('[ORBIT Solo] ⏰ 관리자 미션 만료됨 - AI 미션 사용');
+                                }
                             }
                         }
                     } catch (adminErr) {

@@ -156,23 +156,20 @@ const CouplesMissionScreen = () => {
                     const res = await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`);
                     const data = await res.json();
                     if (data.success && data.user?.assignedMission) {
-                        const adminMission = data.user.assignedMission;
-                        const missionDay = data.user.missionDay;
-                        const today = new Date().toISOString().split('T')[0];
+                        // 만료 시간 체크 - 만료되었으면 무시
+                        const expiresAt = data.user.missionExpiresAt;
+                        const isExpired = expiresAt && new Date(expiresAt._seconds ? expiresAt._seconds * 1000 : expiresAt) < new Date();
 
-                        // 오늘 부여된 미션이거나 최근 미션이면 적용
-                        console.log(`[ORBIT Couple] 🎯 관리자 미션 발견: ${adminMission}`);
-                        setCurrentMissionText(adminMission);
-                        await AsyncStorage.setItem(`couple_mission_day_${currentDay}`, adminMission);
-                        await AsyncStorage.setItem('hasCoupleAdminMission', 'true'); // 관리자 미션 플래그
-                        setAiAnalysis('관리자가 특별히 부여한 리추얼입니다.');
-
-                        // 미션 적용 후 서버에서 삭제 (선택사항)
-                        // await fetch(`${adminApiUrl}/api/users/${encodeURIComponent(userId)}`, {
-                        //     method: 'PUT',
-                        //     headers: { 'Content-Type': 'application/json' },
-                        //     body: JSON.stringify({ assignedMission: null })
-                        // });
+                        if (!isExpired) {
+                            const adminMission = data.user.assignedMission;
+                            console.log(`[ORBIT Couple] 🎯 관리자 미션 발견: ${adminMission}`);
+                            setCurrentMissionText(adminMission);
+                            await AsyncStorage.setItem(`couple_mission_day_${currentDay}`, adminMission);
+                            await AsyncStorage.setItem('hasCoupleAdminMission', 'true'); // 관리자 미션 플래그
+                            setAiAnalysis('관리자가 특별히 부여한 리추얼입니다.');
+                        } else {
+                            console.log('[ORBIT Couple] ⏰ 관리자 미션 만료됨 - AI 미션 사용');
+                        }
                     }
                 }
             } catch (adminErr) {
