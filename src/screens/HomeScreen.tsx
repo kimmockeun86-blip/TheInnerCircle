@@ -110,7 +110,13 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
         focusPrompt: string;
         timeOfDay: 'morning' | 'noon' | 'evening';
         icon: string;
+        yesResponse?: string;  // 예 선택 시 AI 응답
+        noResponse?: string;   // 아니오 선택 시 AI 응답
     } | null>(null);
+
+    // 조언 질문 응답 상태
+    const [adviceResponse, setAdviceResponse] = useState<'yes' | 'no' | null>(null);
+    const [adviceFollowUp, setAdviceFollowUp] = useState<string | null>(null);
 
 
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
@@ -1337,10 +1343,57 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                     <Text style={styles.signalText}>
                                         {personalizedAdvice.advice}
                                     </Text>
-                                    {personalizedAdvice.focusPrompt && (
-                                        <Text style={[styles.signalText, { marginTop: 10, fontStyle: 'italic', color: 'rgba(255, 255, 255, 0.6)' }]}>
-                                            {personalizedAdvice.focusPrompt}
-                                        </Text>
+
+                                    {/* 질문 + 예/아니오 버튼 */}
+                                    {personalizedAdvice.focusPrompt && !adviceResponse && (
+                                        <View style={{ marginTop: 15 }}>
+                                            <Text style={[styles.signalText, { fontStyle: 'italic', color: 'rgba(255, 255, 255, 0.8)', marginBottom: 12 }]}>
+                                                {personalizedAdvice.focusPrompt}
+                                            </Text>
+                                            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
+                                                <TouchableOpacity
+                                                    onPress={() => {
+                                                        setAdviceResponse('yes');
+                                                        setAdviceFollowUp(personalizedAdvice.yesResponse || '좋아요! 작은 행동 하나가 오늘 하루를 바꿀 수 있어요.');
+                                                    }}
+                                                    style={{
+                                                        backgroundColor: 'rgba(167, 139, 250, 0.3)',
+                                                        paddingVertical: 10,
+                                                        paddingHorizontal: 24,
+                                                        borderRadius: 20,
+                                                        borderWidth: 1,
+                                                        borderColor: '#A78BFA',
+                                                    }}
+                                                >
+                                                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>예</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => {
+                                                        setAdviceResponse('no');
+                                                        setAdviceFollowUp(personalizedAdvice.noResponse || '괜찮아요. 지금 이 순간을 기억해두세요. 때가 되면 마음이 움직일 거예요.');
+                                                    }}
+                                                    style={{
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                        paddingVertical: 10,
+                                                        paddingHorizontal: 24,
+                                                        borderRadius: 20,
+                                                        borderWidth: 1,
+                                                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                    }}
+                                                >
+                                                    <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 15, fontWeight: '600' }}>아니오</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {/* AI 후속 응답 */}
+                                    {adviceFollowUp && (
+                                        <View style={{ marginTop: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                            <Text style={[styles.signalText, { color: '#A78BFA' }]}>
+                                                {adviceFollowUp}
+                                            </Text>
+                                        </View>
                                     )}
                                 </GlassCard>
                             </View>

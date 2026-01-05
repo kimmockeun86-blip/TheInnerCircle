@@ -2078,12 +2078,15 @@ app.post('/api/advice/personalized', async (req, res) => {
         2. 사용자의 키워드(${deficit})와 연결지어 개인화된 메시지를 전달하세요.
         3. 최근 기록이 있다면 그 내용을 참고하여 연속성 있는 조언을 하세요.
         4. 2-3문장으로 간결하게 작성하세요.
-        5. 마지막에 사용자가 스스로 생각해볼 수 있는 질문을 하나 추가하세요.
+        5. 마지막에 사용자가 "예" 또는 "아니오"로 답할 수 있는 질문을 하나 추가하세요.
+        6. 사용자가 "예"라고 답했을 때와 "아니오"라고 답했을 때 각각 다른 후속 메시지를 준비하세요.
 
         응답 형식 (JSON):
         {
             "advice": "맞춤 조언 내용 (2-3문장)",
-            "focusPrompt": "사용자가 생각해볼 질문"
+            "focusPrompt": "예/아니오로 답할 수 있는 질문 (예: 오늘 연인에게 먼저 연락해보셨나요?)",
+            "yesResponse": "사용자가 '예'라고 답했을 때 AI 한마디 (1-2문장, 격려)",
+            "noResponse": "사용자가 '아니오'라고 답했을 때 AI 한마디 (1-2문장, 부드러운 제안)"
         }
         `;
 
@@ -2096,7 +2099,9 @@ app.post('/api/advice/personalized', async (req, res) => {
         res.json({
             success: true,
             advice: parsed.advice || `${timeGreeting}, ${name}님! 오늘의 리추얼을 떠올려보세요.`,
-            focusPrompt: parsed.focusPrompt || '오늘의 리추얼은 어떻게 되어가고 있나요?',
+            focusPrompt: parsed.focusPrompt || '오늘 리추얼을 실천해보셨나요?',
+            yesResponse: parsed.yesResponse || '좋아요! 작은 실천이 큰 변화를 만들어요.',
+            noResponse: parsed.noResponse || '괜찮아요. 지금 이 순간을 기억해두세요. 때가 되면 마음이 움직일 거예요.',
             timeOfDay: timeOfDay,
             icon: icon
         });
