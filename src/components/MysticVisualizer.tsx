@@ -27,7 +27,7 @@ const MysticVisualizer: React.FC<MysticVisualizerProps> = ({
     sceneUrl,
     style = {},
     showLoading = false,
-    disableSpline = Platform.OS === 'ios', // iOS에서는 기본적으로 Spline 비활성화 (발열 방지)
+    disableSpline = false, // iOS도 Spline 사용 (기본값 false)
 }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const [isLoading, setIsLoading] = useState(true);
