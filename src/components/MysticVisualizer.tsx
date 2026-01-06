@@ -1,6 +1,6 @@
 // MysticVisualizer - Spline 배경 애니메이션 (개선 버전)
 import React, { useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, Animated, Platform, ActivityIndicator, Text } from 'react-native';
+import { View, StyleSheet, Animated, Platform, ActivityIndicator, Text, AppState } from 'react-native';
 import { COLORS } from '../theme/theme';
 import { SPLINE_URLS, SPLINE_CONFIG } from '../config/splineConfig';
 
@@ -18,6 +18,7 @@ interface MysticVisualizerProps {
     sceneUrl?: string;
     style?: object;
     showLoading?: boolean;
+    disableSpline?: boolean; // iOS 발열 방지용 - Spline 비활성화
 }
 
 const MysticVisualizer: React.FC<MysticVisualizerProps> = ({
@@ -26,10 +27,21 @@ const MysticVisualizer: React.FC<MysticVisualizerProps> = ({
     sceneUrl,
     style = {},
     showLoading = false,
+    disableSpline = Platform.OS === 'ios', // iOS에서는 기본적으로 Spline 비활성화 (발열 방지)
 }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
+    const [appState, setAppState] = useState(AppState.currentState);
+
+    // 앱이 백그라운드로 가면 Spline 렌더링 중지 (배터리 절약)
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', nextAppState => {
+            setAppState(nextAppState);
+            console.log('[MysticVisualizer] AppState changed:', nextAppState);
+        });
+        return () => subscription?.remove();
+    }, []);
 
     useEffect(() => {
         Animated.timing(fadeAnim, {
@@ -98,6 +110,10 @@ const MysticVisualizer: React.FC<MysticVisualizerProps> = ({
         );
     }
 
+    // iOS 발열 방지: Spline 비활성화시 정적 배경만 표시
+    // 또는 앱이 백그라운드에 있을 때 렌더링 중지
+    const shouldRenderSpline = !disableSpline && appState === 'active';
+
     // Web: Use regular View instead of LinearGradient
     if (Platform.OS === 'web') {
         return (
@@ -124,7 +140,20 @@ const MysticVisualizer: React.FC<MysticVisualizerProps> = ({
         );
     }
 
-    // Native: Use LinearGradient
+    // Native iOS/Android: LinearGradient 배경
+    // iOS에서 Spline 비활성화 (발열 방지)
+    if (!shouldRenderSpline) {
+        return (
+            <LinearGradient
+                colors={COLORS.backgroundGradient}
+                style={[styles.container, style, { pointerEvents: 'none' }]}
+            >
+                {/* Spline 없이 정적 배경만 표시 - 발열 방지 */}
+            </LinearGradient>
+        );
+    }
+
+    // Android 또는 Spline 허용시: WebView로 Spline 렌더링
     return (
         <LinearGradient
             colors={COLORS.backgroundGradient}
