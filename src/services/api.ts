@@ -271,9 +271,11 @@ export const api = {
             return {
                 success: true,
                 advice: fallbackAdvice,
-                focusPrompt: '오늘의 리추얼은 어떻게 되어가고 있나요?',
+                focusPrompt: '오늘 리추얼을 실천해보셨나요?',  // 예/아니오로 답할 수 있는 폐쇄형 질문
                 timeOfDay: data.timeOfDay,
-                icon: fallbackIcon
+                icon: fallbackIcon,
+                yesResponse: '멋져요! 꾸준한 실천이 큰 변화를 만들어냅니다.',
+                noResponse: '괜찮아요. 지금 이 순간 떠올린 것만으로도 의미가 있어요.'
             };
         }
     }
