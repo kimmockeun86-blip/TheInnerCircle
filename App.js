@@ -138,6 +138,10 @@ export default function App() {
 
   const [initialRoute, setInitialRoute] = useState(null);
   const [currentUserId, setCurrentUserIdState] = useState(null);
+  const [appIsReady, setAppIsReady] = useState(false);
+
+  // 네비게이션 레퍼런스 (조건부 return 전에 선언해야 함)
+  const navigationRef = React.useRef(null);
 
   let [fontsLoaded] = useFonts({
     Orbitron_400Regular,
@@ -263,9 +267,7 @@ export default function App() {
     };
   }, [currentUserId]);
 
-  // 앱 준비 완료 확인 (스플래시 대기 제거)
-  const [appIsReady, setAppIsReady] = useState(false);
-
+  // 앱 준비 완료 확인 (스플래시 대기)
   useEffect(() => {
     if (fontsLoaded && initialRoute) {
       setAppIsReady(true);
@@ -277,6 +279,13 @@ export default function App() {
     }
   }, [fontsLoaded, initialRoute]);
 
+  // 네비게이션 준비되면 딥링크 서비스에 연결
+  React.useEffect(() => {
+    if (navigationRef.current) {
+      deepLinkService.setNavigationRef(navigationRef.current);
+    }
+  }, []);
+
   // 앱 준비 완료 전 로딩 화면 표시
   if (!appIsReady) {
     return (
@@ -285,15 +294,6 @@ export default function App() {
       </View>
     );
   }
-  // 네비게이션 레퍼런스
-  const navigationRef = React.useRef(null);
-
-  // 네비게이션 준비되면 딥링크 서비스에 연결
-  React.useEffect(() => {
-    if (navigationRef.current) {
-      deepLinkService.setNavigationRef(navigationRef.current);
-    }
-  }, [navigationRef.current]);
 
   // Web wrapper for centering
   const content = (
