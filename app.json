@@ -15,7 +15,7 @@
     "ios": {
       "bundleIdentifier": "com.theinnercircle.app",
       "supportsTablet": false,
-      "buildNumber": "43",
+      "buildNumber": "44",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "리추얼 기록 사진 촬영에 사용됩니다.",
