@@ -15,8 +15,7 @@
     "ios": {
       "bundleIdentifier": "com.theinnercircle.app",
       "supportsTablet": false,
-      "buildNumber": "45",
-      "googleServicesFile": "./GoogleService-Info.plist",
+      "buildNumber": "47",
       "infoPlist": {
         "NSCameraUsageDescription": "리추얼 기록 사진 촬영에 사용됩니다.",
         "NSPhotoLibraryUsageDescription": "리추얼 기록에 사진을 첨부하기 위해 사용됩니다.",
@@ -56,10 +55,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "15.1",
-            "extraPodfileProperties": {
-              "CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES": "YES"
-            }
+            "deploymentTarget": "15.1"
           }
         }
       ],
@@ -71,16 +67,7 @@
           "sounds": []
         }
       ],
-      "expo-audio",
-      [
-        "@react-native-firebase/app",
-        {
-          "ios": {
-            "useModularHeaders": true
-          }
-        }
-      ],
-      "@react-native-firebase/crashlytics"
+      "expo-audio"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
