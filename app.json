@@ -35,7 +35,7 @@
     },
     "android": {
       "package": "com.theinnercircle.app",
-      "versionCode": 9,
+      "versionCode": 10,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000020"
