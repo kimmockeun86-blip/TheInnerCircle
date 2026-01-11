@@ -223,22 +223,38 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                         <Text style={styles.sectionTitle}>일반 설정</Text>
                         <View style={styles.row}>
                             <Text style={styles.label}>일일 미션 알림</Text>
-                            <Switch
-                                value={notificationsEnabled}
-                                onValueChange={setNotificationsEnabled}
-                                trackColor={{ false: "#3a3a3a", true: "#4CAF50" }}
-                                thumbColor={notificationsEnabled ? "#FFFFFF" : "#888888"}
-                            />
+                            <View style={styles.toggleContainer}>
+                                <Text style={[styles.toggleLabel, !notificationsEnabled && styles.toggleLabelActive]}>
+                                    OFF
+                                </Text>
+                                <Switch
+                                    value={notificationsEnabled}
+                                    onValueChange={setNotificationsEnabled}
+                                    trackColor={{ false: "#3a3a3a", true: "#4CAF50" }}
+                                    thumbColor={notificationsEnabled ? "#FFFFFF" : "#888888"}
+                                />
+                                <Text style={[styles.toggleLabel, notificationsEnabled && styles.toggleLabelActive]}>
+                                    ON
+                                </Text>
+                            </View>
                         </View>
                         <View style={styles.divider} />
                         <View style={styles.row}>
                             <Text style={styles.label}>배경음 및 효과음</Text>
-                            <Switch
-                                value={soundEnabled}
-                                onValueChange={setSoundEnabled}
-                                trackColor={{ false: "#3a3a3a", true: "#4CAF50" }}
-                                thumbColor={soundEnabled ? "#FFFFFF" : "#888888"}
-                            />
+                            <View style={styles.toggleContainer}>
+                                <Text style={[styles.toggleLabel, !soundEnabled && styles.toggleLabelActive]}>
+                                    OFF
+                                </Text>
+                                <Switch
+                                    value={soundEnabled}
+                                    onValueChange={setSoundEnabled}
+                                    trackColor={{ false: "#3a3a3a", true: "#4CAF50" }}
+                                    thumbColor={soundEnabled ? "#FFFFFF" : "#888888"}
+                                />
+                                <Text style={[styles.toggleLabel, soundEnabled && styles.toggleLabelActive]}>
+                                    ON
+                                </Text>
+                            </View>
                         </View>
                     </GlassCard>
 
@@ -248,9 +264,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                         <HolyButton
                             title="모든 데이터 초기화"
                             onPress={handleReset}
-                            variant="outline"
-                            textStyle={{ color: COLORS.error, textShadowOpacity: 0 }}
-                            style={{ borderColor: COLORS.error, marginTop: 10, shadowOpacity: 0, elevation: 0 }}
+                            variant="ghost"
+                            textStyle={{ color: COLORS.error, textShadowColor: 'transparent', textShadowRadius: 0 }}
+                            style={{ borderWidth: 1, borderColor: COLORS.error, marginTop: 10, borderRadius: 10 }}
                         />
                         <Text style={styles.warningText}>
                             * 초기화 시 복구할 수 없으며, 온보딩부터 다시 시작합니다.
@@ -414,6 +430,11 @@ const styles = StyleSheet.create({
     adPurchaseDesc: { color: '#aaa', fontSize: 14, lineHeight: 22 },
     restoreButton: { marginTop: 15, alignItems: 'center', paddingVertical: 10 },
     restoreButtonText: { color: '#888', fontSize: 14, textDecorationLine: 'underline' },
+
+    // 토글 관련 스타일
+    toggleContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    toggleLabel: { color: '#666', fontSize: 12, fontWeight: '500', minWidth: 28 },
+    toggleLabelActive: { color: '#4CAF50', fontWeight: 'bold' },
 });
 
 export default SettingsScreen;

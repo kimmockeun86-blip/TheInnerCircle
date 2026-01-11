@@ -1003,7 +1003,9 @@ app.post('/api/advice/personalized', async (req, res) => {
         【출력 형식】 (반드시 JSON)
         {
             "advice": "3-4문장의 깊이 있는 맞춤 조언 (위 규칙 준수)",
-            "focusPrompt": "사용자가 깊이 생각하게 만드는 질문 또는 제안 (1문장, 없으면 빈 문자열)"
+            "focusPrompt": "사용자가 '예' 또는 '아니오'로만 답할 수 있는 폐쇄형 질문 (예: 오늘 리추얼을 실천해보셨나요?)",
+            "yesResponse": "사용자가 '예'라고 답했을 때 보여줄 긍정적 피드백 1문장",
+            "noResponse": "사용자가 '아니오'라고 답했을 때 보여줄 격려 피드백 1문장"
         }
         `;
 
@@ -1031,6 +1033,8 @@ app.post('/api/advice/personalized', async (req, res) => {
             success: true,
             advice: jsonResponse.advice,
             focusPrompt: jsonResponse.focusPrompt || '',
+            yesResponse: jsonResponse.yesResponse || '잘하고 있어요! 꾸준한 실천이 큰 변화를 만들어냅니다.',
+            noResponse: jsonResponse.noResponse || '괜찮아요. 지금 이 순간 떠올린 것만으로도 의미가 있어요.',
             timeOfDay: timeOfDay,
             icon: timeOfDay === 'noon' ? '🌞' : '🌙'
         });
@@ -1045,7 +1049,9 @@ app.post('/api/advice/personalized', async (req, res) => {
             advice: timeOfDay === 'noon'
                 ? `${name}님, 점심 시간입니다. 잠시 숨을 고르고 오늘의 리추얼을 떠올려보세요.`
                 : `${name}님, 오늘 하루 수고했어요. 오르빗에 기록을 남기면 내일이 더 명확해집니다.`,
-            focusPrompt: '오늘의 리추얼은 어떻게 되어가고 있나요?',
+            focusPrompt: '오늘 리추얼을 실천해보셨나요?',
+            yesResponse: '잘하고 있어요! 꾸준한 실천이 큰 변화를 만들어냅니다.',
+            noResponse: '괜찮아요. 지금 이 순간 떠올린 것만으로도 의미가 있어요.',
             timeOfDay: timeOfDay,
             icon: timeOfDay === 'noon' ? '🌞' : '🌙'
         });
@@ -2155,7 +2161,9 @@ app.post('/api/advice/personalized', async (req, res) => {
         res.json({
             success: true,
             advice: fallbackAdvice,
-            focusPrompt: '오늘의 리추얼은 어떻게 되어가고 있나요?',
+            focusPrompt: '오늘 연인에게 먼저 연락해보셨나요?',
+            yesResponse: '좋아요! 작은 관심이 큰 사랑을 만들어요.',
+            noResponse: '괜찮아요. 지금 이 순간 떠올린 것만으로도 의미가 있어요.',
             timeOfDay: timeOfDay,
             icon: fallbackIcon
         });
