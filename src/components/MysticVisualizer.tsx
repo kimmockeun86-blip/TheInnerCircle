@@ -110,9 +110,11 @@ const MysticVisualizer: React.FC<MysticVisualizerProps> = ({
         );
     }
 
-    // iOS 발열 방지: Spline 비활성화시 정적 배경만 표시
+    // iOS 발열 방지: iOS에서는 Spline 비활성화
+    // Android에서는 정상 작동
     // 또는 앱이 백그라운드에 있을 때 렌더링 중지
-    const shouldRenderSpline = !disableSpline && appState === 'active';
+    const isIOS = Platform.OS === 'ios';
+    const shouldRenderSpline = !disableSpline && !isIOS && appState === 'active';
 
     // Web: Use regular View instead of LinearGradient
     if (Platform.OS === 'web') {
