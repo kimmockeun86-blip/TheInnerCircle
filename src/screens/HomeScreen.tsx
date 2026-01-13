@@ -273,18 +273,26 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 setReceivedLetter(simulatedLetter);
                 await AsyncStorage.setItem('receivedLetter', JSON.stringify(simulatedLetter));
 
-                // 답장 도착 알림 표시 후 협의 모달 열기
-                Alert.alert(
-                    '💌 답장이 도착했습니다!',
-                    `${matchCandidate?.name || '상대방'}님이 만남에 동의했어요.\n날짜와 장소를 정해볼까요?`,
-                    [{
-                        text: '날짜/장소 정하기',
-                        onPress: () => {
-                            setNegotiationPhase('date');
-                            setNegotiationModalVisible(true);
-                        }
-                    }]
-                );
+                // 웹/모바일 모두 호환: 바로 협의 모달 열기
+                console.log('[ORBIT] 답장 도착 - 협의 모달 열기');
+                if (Platform.OS === 'web') {
+                    // 웹에서는 Alert 대신 바로 모달 열기
+                    setNegotiationPhase('date');
+                    setNegotiationModalVisible(true);
+                } else {
+                    // 모바일에서는 Alert로 안내
+                    Alert.alert(
+                        '💌 답장이 도착했습니다!',
+                        `${matchCandidate?.name || '상대방'}님이 만남에 동의했어요.\n날짜와 장소를 정해볼까요?`,
+                        [{
+                            text: '날짜/장소 정하기',
+                            onPress: () => {
+                                setNegotiationPhase('date');
+                                setNegotiationModalVisible(true);
+                            }
+                        }]
+                    );
+                }
             }, 3000);
         } else {
             // Fallback to old API
@@ -318,25 +326,31 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             } else {
                 // API도 실패 - 시뮬레이션 모드로 진행 (테스트용)
                 console.log('[ORBIT] Firebase/API 모두 실패 - 시뮬레이션 모드로 진행');
-                Alert.alert('알림', '편지가 전송되었습니다. (시뮬레이션)');
                 setMatchCandidateModalVisible(false);
                 setLetterContent('');
                 setLetterSent(true);
                 await AsyncStorage.setItem('letterSent', 'true');
 
-                // 시뮬레이션 모드에서도 협의 모달 열기
+                // 시뮬레이션 모드에서도 협의 모달 열기 (웹 호환)
                 setTimeout(() => {
-                    Alert.alert(
-                        '💌 답장이 도착했습니다!',
-                        '상대방이 만남에 동의했어요. 날짜와 장소를 정해볼까요?',
-                        [{
-                            text: '날짜/장소 정하기',
-                            onPress: () => {
-                                setNegotiationPhase('date');
-                                setNegotiationModalVisible(true);
-                            }
-                        }]
-                    );
+                    console.log('[ORBIT] 시뮬레이션 - 협의 모달 열기');
+                    if (Platform.OS === 'web') {
+                        // 웹에서는 바로 모달 열기
+                        setNegotiationPhase('date');
+                        setNegotiationModalVisible(true);
+                    } else {
+                        Alert.alert(
+                            '💌 답장이 도착했습니다!',
+                            '상대방이 만남에 동의했어요. 날짜와 장소를 정해볼까요?',
+                            [{
+                                text: '날짜/장소 정하기',
+                                onPress: () => {
+                                    setNegotiationPhase('date');
+                                    setNegotiationModalVisible(true);
+                                }
+                            }]
+                        );
+                    }
                 }, 3000);
             }
         }
