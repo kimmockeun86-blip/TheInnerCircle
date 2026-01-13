@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, SafeAreaView, Alert, Image, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, SafeAreaView, Alert, Image, Platform, useWindowDimensions, ActivityIndicator, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MysticVisualizer from '../components/MysticVisualizer';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -757,53 +757,68 @@ const CouplesMissionScreen = () => {
 
             {/* Journal Modal - Same style as HomeScreen */}
             <Modal visible={journalModalVisible} animationType="slide" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <GlassCard style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>
-                            {currentMissionText ? "커플 리추얼 기록" : "여정의 시작"}
-                        </Text>
-                        <Text style={styles.modalSubtitle}>
-                            {currentMissionText
-                                ? "함께 나눈 대화나 감정을 기록해주세요"
-                                : "서로에게 하고 싶은 말이나 현재의 마음을 적어주세요"}
-                        </Text>
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <KeyboardAvoidingView
+                        style={styles.modalOverlay}
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+                    >
+                        <ScrollView
+                            contentContainerStyle={styles.modalScrollContent}
+                            keyboardShouldPersistTaps="handled"
+                            showsVerticalScrollIndicator={false}
+                            bounces={false}
+                        >
+                            <GlassCard style={styles.modalContent}>
+                                <Text style={styles.modalTitle}>
+                                    {currentMissionText ? "커플 리추얼 기록" : "여정의 시작"}
+                                </Text>
+                                <Text style={styles.modalSubtitle}>
+                                    {currentMissionText
+                                        ? "함께 나눈 대화나 감정을 기록해주세요"
+                                        : "서로에게 하고 싶은 말이나 현재의 마음을 적어주세요"}
+                                </Text>
 
-                        <TextInput
-                            style={styles.journalInput}
-                            placeholder="오늘의 수행을 기록하세요..."
-                            placeholderTextColor="#666"
-                            multiline
-                            value={reflection}
-                            onChangeText={setReflection}
-                            editable={!isLoading}
-                        />
+                                <TextInput
+                                    style={styles.journalInput}
+                                    placeholder="오늘의 수행을 기록하세요..."
+                                    placeholderTextColor="#666"
+                                    multiline
+                                    value={reflection}
+                                    onChangeText={setReflection}
+                                    editable={!isLoading}
+                                    returnKeyType="done"
+                                    blurOnSubmit={true}
+                                />
 
-                        <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
-                            <Text style={styles.imagePickerText}>
-                                {selectedImage ? "사진 변경하기" : "추억을 사진으로 남기세요"}
-                            </Text>
-                        </TouchableOpacity>
+                                <TouchableOpacity onPress={() => { Keyboard.dismiss(); pickImage(); }} style={styles.imagePickerButton}>
+                                    <Text style={styles.imagePickerText}>
+                                        {selectedImage ? "사진 변경하기" : "추억을 사진으로 남기세요"}
+                                    </Text>
+                                </TouchableOpacity>
 
-                        {selectedImage && (
-                            <Image source={{ uri: selectedImage }} style={styles.previewImage} />
-                        )}
+                                {selectedImage && (
+                                    <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+                                )}
 
-                        <View style={styles.modalButtons}>
-                            <HolyButton
-                                title="취소"
-                                onPress={() => setJournalModalVisible(false)}
-                                variant="ghost"
-                                style={{ flex: 1, marginRight: 10 }}
-                            />
-                            <HolyButton
-                                title={isLoading ? "분석 중..." : "기록 완료"}
-                                onPress={handleAnalyze}
-                                disabled={isLoading}
-                                style={{ flex: 1 }}
-                            />
-                        </View>
-                    </GlassCard>
-                </View>
+                                <View style={styles.modalButtons}>
+                                    <HolyButton
+                                        title="취소"
+                                        onPress={() => { Keyboard.dismiss(); setJournalModalVisible(false); }}
+                                        variant="ghost"
+                                        style={{ flex: 1, marginRight: 10 }}
+                                    />
+                                    <HolyButton
+                                        title={isLoading ? "분석 중..." : "기록 완료"}
+                                        onPress={() => { Keyboard.dismiss(); handleAnalyze(); }}
+                                        disabled={isLoading}
+                                        style={{ flex: 1 }}
+                                    />
+                                </View>
+                            </GlassCard>
+                        </ScrollView>
+                    </KeyboardAvoidingView>
+                </TouchableWithoutFeedback>
             </Modal>
 
             {/* Analysis Result Modal - Same style as HomeScreen */}
