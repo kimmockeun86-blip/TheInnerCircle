@@ -104,6 +104,17 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     const [meetingResultModalVisible, setMeetingResultModalVisible] = useState(false);
     const [isMeetingDay, setIsMeetingDay] = useState(false);
 
+    // 🤝 양방향 협의 시스템 (2026-01-13 추가)
+    const [negotiationModalVisible, setNegotiationModalVisible] = useState(false);
+    const [negotiationPhase, setNegotiationPhase] = useState<'date' | 'place' | 'confirmed'>('date');
+    const [proposedDate, setProposedDate] = useState('');
+    const [proposedPlace, setProposedPlace] = useState('');
+    const [partnerResponse, setPartnerResponse] = useState<{ accepted: boolean; counterOffer?: string } | null>(null);
+    const [isWaitingPartnerResponse, setIsWaitingPartnerResponse] = useState(false);
+    const [dateConfirmed, setDateConfirmed] = useState(false);
+    const [placeConfirmed, setPlaceConfirmed] = useState(false);
+
+
     // 🌟 아침/점심/저녁 맞춤 조언 상태
     const [personalizedAdvice, setPersonalizedAdvice] = useState<{
         advice: string;
@@ -252,43 +263,28 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             setLetterSent(true);
             await AsyncStorage.setItem('letterSent', 'true');
 
-            // 상대방 편지 수신 시뮬레이션 (5초 후)
+            // 상대방 편지 수신 시뮬레이션 (3초 후)
             setTimeout(async () => {
                 const simulatedLetter = {
                     from: matchCandidate?.name || '비밀의 상대',
-                    content: '안녕하세요! 편지 잘 받았어요. 저도 정말 설레네요. 커피 한잔 하면서 이야기 나눠요. 연락 기다릴게요!',
+                    content: '안녕하세요! 편지 잘 받았어요. 저도 정말 설레네요. 만나서 이야기 나눠봐요! 언제 어디서 만날까요?',
                     date: new Date().toLocaleDateString('ko-KR')
                 };
                 setReceivedLetter(simulatedLetter);
                 await AsyncStorage.setItem('receivedLetter', JSON.stringify(simulatedLetter));
-                Alert.alert('편지 도착', '상대방에게서 답장이 도착했습니다.');
-            }, 5000);
 
-            // Check for replies after 3 seconds (simulation for now)
-            setTimeout(async () => {
-                // In real app, this would be a push notification or real-time listener
-                const letters = await MatchingService.getReceivedLetters(storedUserId || `user_${name}`);
-                if (letters.length > 0) {
-                    const reply = letters[0];
-
-                    // Save match to Firestore
-                    const matchResult = await MatchingService.acceptMatch(
-                        storedUserId || `user_${name}`,
-                        matchCandidate.id
-                    );
-
-                    if (matchResult.success) {
-                        console.log('[ORBIT] 매칭 저장 완료:', matchResult.matchId);
-                    }
-
-                    setMatchResult('success');
-                    await AsyncStorage.setItem('matchResult', 'success');
-                    await AsyncStorage.setItem('matchedPartner', JSON.stringify(matchCandidate));
-                    await AsyncStorage.setItem('isCoupled', 'coupled');
-                    Alert.alert('🎉 축하합니다!', `${matchCandidate.name}님도 만남을 원했습니다!\n커플 미션이 시작됩니다.`, [
-                        { text: '시작하기', onPress: () => navigation.replace('CouplesMission', {} as any) }
-                    ]);
-                }
+                // 답장 도착 알림 표시 후 협의 모달 열기
+                Alert.alert(
+                    '💌 답장이 도착했습니다!',
+                    `${matchCandidate?.name || '상대방'}님이 만남에 동의했어요.\n날짜와 장소를 정해볼까요?`,
+                    [{
+                        text: '날짜/장소 정하기',
+                        onPress: () => {
+                            setNegotiationPhase('date');
+                            setNegotiationModalVisible(true);
+                        }
+                    }]
+                );
             }, 3000);
         } else {
             // Fallback to old API
@@ -303,19 +299,113 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 Alert.alert('성공', '편지가 전송되었습니다.');
                 setMatchCandidateModalVisible(false);
                 setLetterContent('');
-                setTimeout(async () => {
-                    setMatchResult('success');
-                    await AsyncStorage.setItem('matchResult', 'success');
-                    await AsyncStorage.setItem('matchedPartner', JSON.stringify(matchCandidate));
-                    Alert.alert('🎉 축하합니다!', `${matchCandidate.name}님도 만남을 원했습니다!\n커플 미션이 시작됩니다.`, [
-                        { text: '시작하기', onPress: () => navigation.replace('CouplesMission', {} as any) }
-                    ]);
+                setLetterSent(true);
+
+                // 3초 후 협의 모달 열기
+                setTimeout(() => {
+                    Alert.alert(
+                        '💌 답장이 도착했습니다!',
+                        '상대방이 만남에 동의했어요. 날짜와 장소를 정해볼까요?',
+                        [{
+                            text: '날짜/장소 정하기',
+                            onPress: () => {
+                                setNegotiationPhase('date');
+                                setNegotiationModalVisible(true);
+                            }
+                        }]
+                    );
                 }, 3000);
             } else {
-                Alert.alert('알림', result.message);
+                // API도 실패 - 시뮬레이션 모드로 진행 (테스트용)
+                console.log('[ORBIT] Firebase/API 모두 실패 - 시뮬레이션 모드로 진행');
+                Alert.alert('알림', '편지가 전송되었습니다. (시뮬레이션)');
+                setMatchCandidateModalVisible(false);
+                setLetterContent('');
+                setLetterSent(true);
+                await AsyncStorage.setItem('letterSent', 'true');
+
+                // 시뮬레이션 모드에서도 협의 모달 열기
+                setTimeout(() => {
+                    Alert.alert(
+                        '💌 답장이 도착했습니다!',
+                        '상대방이 만남에 동의했어요. 날짜와 장소를 정해볼까요?',
+                        [{
+                            text: '날짜/장소 정하기',
+                            onPress: () => {
+                                setNegotiationPhase('date');
+                                setNegotiationModalVisible(true);
+                            }
+                        }]
+                    );
+                }, 3000);
             }
         }
     };
+
+    // 🤝 날짜/장소 제안 처리
+    const handleProposal = async (type: 'date' | 'place', value: string) => {
+        if (!value.trim()) {
+            Alert.alert('알림', type === 'date' ? '날짜를 입력해주세요.' : '장소를 입력해주세요.');
+            return;
+        }
+
+        setIsWaitingPartnerResponse(true);
+
+        // 시뮬레이션: 상대방 응답 (3초 후)
+        setTimeout(() => {
+            const response = MatchingService.simulatePartnerResponse(type);
+            setPartnerResponse(response);
+            setIsWaitingPartnerResponse(false);
+
+            if (response.accepted) {
+                // 수락됨
+                if (type === 'date') {
+                    setDateConfirmed(true);
+                    setMeetingDate(value);
+                    AsyncStorage.setItem('meetingDate', value);
+                    Alert.alert('✅ 날짜 확정!', `${value}에 만나기로 했어요.`, [
+                        { text: '장소 정하기', onPress: () => setNegotiationPhase('place') }
+                    ]);
+                } else {
+                    setPlaceConfirmed(true);
+                    setProposedPlace(value);
+                    AsyncStorage.setItem('meetingPlace', value);
+
+                    // 날짜 + 장소 모두 확정 → 만남 확정!
+                    setMeetingConfirmed(true);
+                    AsyncStorage.setItem('meetingConfirmed', 'true');
+                    setNegotiationPhase('confirmed');
+
+                    Alert.alert(
+                        '🎉 만남 확정!',
+                        `${proposedDate || meetingDate}에 ${value}에서 만나기로 했어요!`,
+                        [{ text: '확인', onPress: () => setNegotiationModalVisible(false) }]
+                    );
+                }
+            } else {
+                // 역제안
+                Alert.alert(
+                    '💬 상대방 의견',
+                    response.counterOffer || '다른 제안이 있어요',
+                    [
+                        {
+                            text: '수락', onPress: () => {
+                                if (type === 'date') {
+                                    setProposedDate(response.counterOffer || '');
+                                } else {
+                                    setProposedPlace(response.counterOffer || '');
+                                }
+                                // 역제안 수락 처리
+                                handleProposal(type, response.counterOffer || value);
+                            }
+                        },
+                        { text: '다시 제안', style: 'cancel' }
+                    ]
+                );
+            }
+        }, 3000);
+    };
+
 
     // 특별 미션 완료 후 만남 결정 요청
     const handleSpecialMissionComplete = async () => {
@@ -1950,6 +2040,97 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     userDeficit={deficit}
                 />
 
+                {/* 🤝 협의 모달 (날짜/장소 제안) */}
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={negotiationModalVisible}
+                    onRequestClose={() => setNegotiationModalVisible(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <GlassCard style={styles.negotiationModal}>
+                            <Text style={styles.negotiationTitle}>
+                                {negotiationPhase === 'date' ? '📅 날짜 정하기' :
+                                    negotiationPhase === 'place' ? '📍 장소 정하기' : '🎉 만남 확정!'}
+                            </Text>
+
+                            {negotiationPhase === 'date' && (
+                                <>
+                                    <Text style={styles.negotiationSubtitle}>
+                                        언제 만날까요? 상대방과 함께 정해봐요.
+                                    </Text>
+                                    <TextInput
+                                        style={styles.negotiationInput}
+                                        placeholder="예: 1월 20일 토요일 오후 3시"
+                                        placeholderTextColor="#888"
+                                        value={proposedDate}
+                                        onChangeText={setProposedDate}
+                                    />
+                                    <HolyButton
+                                        title={isWaitingPartnerResponse ? "상대방 응답 대기 중..." : "날짜 제안하기"}
+                                        onPress={() => handleProposal('date', proposedDate)}
+                                        disabled={isWaitingPartnerResponse}
+                                        style={{ marginTop: 15 }}
+                                    />
+                                    {isWaitingPartnerResponse && (
+                                        <ActivityIndicator size="small" color={COLORS.gold} style={{ marginTop: 10 }} />
+                                    )}
+                                </>
+                            )}
+
+                            {negotiationPhase === 'place' && (
+                                <>
+                                    <Text style={styles.negotiationSubtitle}>
+                                        ✅ 날짜: {meetingDate || proposedDate}{'\n'}
+                                        어디서 만날까요?
+                                    </Text>
+                                    <TextInput
+                                        style={styles.negotiationInput}
+                                        placeholder="예: 강남역 스타벅스"
+                                        placeholderTextColor="#888"
+                                        value={proposedPlace}
+                                        onChangeText={setProposedPlace}
+                                    />
+                                    <HolyButton
+                                        title={isWaitingPartnerResponse ? "상대방 응답 대기 중..." : "장소 제안하기"}
+                                        onPress={() => handleProposal('place', proposedPlace)}
+                                        disabled={isWaitingPartnerResponse}
+                                        style={{ marginTop: 15 }}
+                                    />
+                                    {isWaitingPartnerResponse && (
+                                        <ActivityIndicator size="small" color={COLORS.gold} style={{ marginTop: 10 }} />
+                                    )}
+                                </>
+                            )}
+
+                            {negotiationPhase === 'confirmed' && (
+                                <>
+                                    <Text style={styles.negotiationSubtitle}>
+                                        만남이 확정되었습니다!{'\n\n'}
+                                        📅 {meetingDate}{'\n'}
+                                        📍 {proposedPlace}
+                                    </Text>
+                                    <Text style={styles.negotiationHint}>
+                                        만남일에 특별 미션이 생성됩니다.
+                                    </Text>
+                                    <HolyButton
+                                        title="확인"
+                                        onPress={() => setNegotiationModalVisible(false)}
+                                        style={{ marginTop: 20 }}
+                                    />
+                                </>
+                            )}
+
+                            <TouchableOpacity
+                                style={styles.negotiationClose}
+                                onPress={() => setNegotiationModalVisible(false)}
+                            >
+                                <Text style={styles.negotiationCloseText}>닫기</Text>
+                            </TouchableOpacity>
+                        </GlassCard>
+                    </View>
+                </Modal>
+
             </SafeAreaView>
         </View>
     );
@@ -2586,7 +2767,56 @@ const styles = StyleSheet.create({
         marginTop: 6,
         textAlign: 'center',
     },
+
+    // 협의 모달 스타일 (2026-01-13 추가)
+    negotiationModal: {
+        width: '90%',
+        maxWidth: 400,
+        padding: 25,
+        alignItems: 'center',
+    },
+    negotiationTitle: {
+        color: COLORS.gold,
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    negotiationSubtitle: {
+        color: '#ddd',
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: 20,
+        lineHeight: 24,
+    },
+    negotiationInput: {
+        width: '100%',
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderRadius: 12,
+        padding: 15,
+        color: '#fff',
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 215, 0, 0.3)',
+        textAlign: 'center',
+    },
+    negotiationHint: {
+        color: '#888',
+        fontSize: 14,
+        textAlign: 'center',
+        marginTop: 15,
+        fontStyle: 'italic',
+    },
+    negotiationClose: {
+        marginTop: 20,
+        padding: 10,
+    },
+    negotiationCloseText: {
+        color: '#888',
+        fontSize: 14,
+    },
 });
+
 
 
 

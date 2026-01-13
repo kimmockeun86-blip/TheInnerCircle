@@ -375,6 +375,169 @@ class MatchingService {
         const sorted = [uid1, uid2].sort();
         return `match_${sorted[0]}_${sorted[1]}`;
     }
+
+    // ============================================
+    // 양방향 협의 기능 (2026-01-13 추가)
+    // ============================================
+
+    // 날짜 제안
+    async proposeDate(
+        matchId: string,
+        fromUid: string,
+        proposedDate: string
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            const proposalRef = doc(db, 'meetingProposals', `${matchId}_date`);
+            await setDoc(proposalRef, {
+                matchId,
+                type: 'date',
+                proposedBy: fromUid,
+                value: proposedDate,
+                status: 'pending',
+                createdAt: Timestamp.now()
+            });
+            console.log('[MatchingService] 날짜 제안:', proposedDate);
+            return { success: true, message: '날짜가 제안되었습니다.' };
+        } catch (error) {
+            console.error('[MatchingService] 날짜 제안 실패:', error);
+            return { success: false, message: '날짜 제안에 실패했습니다.' };
+        }
+    }
+
+    // 장소 제안
+    async proposePlace(
+        matchId: string,
+        fromUid: string,
+        proposedPlace: string
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            const proposalRef = doc(db, 'meetingProposals', `${matchId}_place`);
+            await setDoc(proposalRef, {
+                matchId,
+                type: 'place',
+                proposedBy: fromUid,
+                value: proposedPlace,
+                status: 'pending',
+                createdAt: Timestamp.now()
+            });
+            console.log('[MatchingService] 장소 제안:', proposedPlace);
+            return { success: true, message: '장소가 제안되었습니다.' };
+        } catch (error) {
+            console.error('[MatchingService] 장소 제안 실패:', error);
+            return { success: false, message: '장소 제안에 실패했습니다.' };
+        }
+    }
+
+    // 제안 수락
+    async acceptProposal(
+        matchId: string,
+        type: 'date' | 'place'
+    ): Promise<{ success: boolean }> {
+        try {
+            const proposalRef = doc(db, 'meetingProposals', `${matchId}_${type}`);
+            await updateDoc(proposalRef, {
+                status: 'accepted',
+                acceptedAt: Timestamp.now()
+            });
+            console.log(`[MatchingService] ${type} 제안 수락됨`);
+            return { success: true };
+        } catch (error) {
+            console.error(`[MatchingService] ${type} 제안 수락 실패:`, error);
+            return { success: false };
+        }
+    }
+
+    // 제안 거절 + 역제안
+    async rejectWithCounterOffer(
+        matchId: string,
+        type: 'date' | 'place',
+        fromUid: string,
+        counterOffer: string
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            const proposalRef = doc(db, 'meetingProposals', `${matchId}_${type}`);
+            await setDoc(proposalRef, {
+                matchId,
+                type,
+                proposedBy: fromUid,
+                value: counterOffer,
+                status: 'pending',
+                isCounterOffer: true,
+                createdAt: Timestamp.now()
+            });
+            console.log(`[MatchingService] ${type} 역제안:`, counterOffer);
+            return { success: true, message: '역제안이 전송되었습니다.' };
+        } catch (error) {
+            console.error(`[MatchingService] ${type} 역제안 실패:`, error);
+            return { success: false, message: '역제안에 실패했습니다.' };
+        }
+    }
+
+    // 제안 상태 조회
+    async getProposalStatus(
+        matchId: string,
+        type: 'date' | 'place'
+    ): Promise<{ status: string; value: string; proposedBy: string } | null> {
+        try {
+            const proposalRef = doc(db, 'meetingProposals', `${matchId}_${type}`);
+            const proposalDoc = await getDoc(proposalRef);
+            if (proposalDoc.exists()) {
+                const data = proposalDoc.data();
+                return {
+                    status: data.status,
+                    value: data.value,
+                    proposedBy: data.proposedBy
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error(`[MatchingService] ${type} 제안 조회 실패:`, error);
+            return null;
+        }
+    }
+
+    // 만남 확정 (날짜 + 장소 모두 수락됨)
+    async confirmMeeting(
+        matchId: string,
+        date: string,
+        place: string
+    ): Promise<{ success: boolean }> {
+        try {
+            const meetingRef = doc(db, 'confirmedMeetings', matchId);
+            await setDoc(meetingRef, {
+                matchId,
+                date,
+                place,
+                status: 'confirmed',
+                confirmedAt: Timestamp.now()
+            });
+            console.log('[MatchingService] 만남 확정!', { date, place });
+            return { success: true };
+        } catch (error) {
+            console.error('[MatchingService] 만남 확정 실패:', error);
+            return { success: false };
+        }
+    }
+
+    // 시뮬레이션: 상대방 응답 생성 (80% 수락, 20% 역제안)
+    simulatePartnerResponse(type: 'date' | 'place'): { accepted: boolean; counterOffer?: string } {
+        const acceptRate = 0.8;
+        const accepted = Math.random() < acceptRate;
+
+        if (accepted) {
+            return { accepted: true };
+        }
+
+        // 역제안 생성
+        const dateCounters = ['다음 주 토요일은 어떨까요?', '일요일 오후는요?', '평일 저녁도 괜찮아요'];
+        const placeCounters = ['홍대 카페는 어떨까요?', '강남 쪽은요?', '신촌쪽이 더 편해요'];
+
+        const counters = type === 'date' ? dateCounters : placeCounters;
+        const counterOffer = counters[Math.floor(Math.random() * counters.length)];
+
+        return { accepted: false, counterOffer };
+    }
 }
 
 export default MatchingService.getInstance();
+
