@@ -501,9 +501,7 @@ const DevPanel: React.FC<DevPanelProps> = ({ visible = true }) => {
                                 <TouchableOpacity style={styles.navButton} onPress={() => navigateTo('Settings')}>
                                     <Text style={styles.navButtonText}>Settings{'\n'}(설정)</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={styles.navButton} onPress={() => navigateTo('Match')}>
-                                    <Text style={styles.navButtonText}>Match{'\n'}(매칭)</Text>
-                                </TouchableOpacity>
+                                {/* Match 화면은 _archived로 이동됨 - 버튼 제거 */}
                                 <TouchableOpacity style={styles.navButton} onPress={() => navigateTo('SpecialMissionIntro')}>
                                     <Text style={styles.navButtonText}>SpecialMission{'\n'}(특별미션)</Text>
                                 </TouchableOpacity>
