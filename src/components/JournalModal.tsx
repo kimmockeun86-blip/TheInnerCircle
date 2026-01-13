@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Modal, Text, TextInput, TouchableOpacity, Image, StyleSheet, ImageStyle, Platform, Alert, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Modal, Text, TextInput, TouchableOpacity, Image, StyleSheet, ImageStyle, Platform, Alert, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import GlassCard from './GlassCard';
 import HolyButton from './HolyButton';
@@ -41,6 +41,9 @@ const JournalModal: React.FC<JournalModalProps> = ({
     };
 
     const pickImage = async () => {
+        // 이미지 선택 전 키보드 닫기
+        dismissKeyboard();
+
         if (Platform.OS === 'web') {
             const input = document.createElement('input');
             input.type = 'file';
@@ -110,49 +113,56 @@ const JournalModal: React.FC<JournalModalProps> = ({
             <TouchableWithoutFeedback onPress={dismissKeyboard}>
                 <KeyboardAvoidingView
                     style={styles.modalOverlay}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
                 >
-                    <GlassCard style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>{title}</Text>
-                        <Text style={styles.modalSubtitle}>{subtitle}</Text>
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                        bounces={false}
+                    >
+                        <GlassCard style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>{title}</Text>
+                            <Text style={styles.modalSubtitle}>{subtitle}</Text>
 
-                        <TextInput
-                            style={styles.journalInput}
-                            placeholder="내면의 목소리를 이곳에 담아주세요..."
-                            placeholderTextColor="#666"
-                            multiline
-                            value={journalInput}
-                            onChangeText={onJournalInputChange}
-                            returnKeyType="done"
-                            blurOnSubmit={true}
-                        />
-
-                        <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
-                            <Text style={styles.imagePickerText}>
-                                {selectedImage ? "📷 사진 변경하기" : "📷 오늘의 미소를 기록하세요"}
-                            </Text>
-                        </TouchableOpacity>
-
-                        {selectedImage && (
-                            <Image source={{ uri: selectedImage }} style={styles.previewImage as ImageStyle} />
-                        )}
-
-                        <View style={styles.modalButtons}>
-                            <HolyButton
-                                title="취소"
-                                onPress={() => { dismissKeyboard(); onClose(); }}
-                                variant="ghost"
-                                style={{ minWidth: 100, paddingHorizontal: 20 }}
+                            <TextInput
+                                style={styles.journalInput}
+                                placeholder="내면의 목소리를 이곳에 담아주세요..."
+                                placeholderTextColor="#666"
+                                multiline
+                                value={journalInput}
+                                onChangeText={onJournalInputChange}
+                                returnKeyType="done"
+                                blurOnSubmit={true}
                             />
-                            <HolyButton
-                                title={isSubmitting ? "전송 중..." : "기록 완료"}
-                                onPress={() => { dismissKeyboard(); onSubmit(); }}
-                                disabled={isSubmitting}
-                                style={{ minWidth: 100, paddingHorizontal: 20 }}
-                            />
-                        </View>
-                    </GlassCard>
+
+                            <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
+                                <Text style={styles.imagePickerText}>
+                                    {selectedImage ? "📷 사진 변경하기" : "📷 오늘의 미소를 기록하세요"}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {selectedImage && (
+                                <Image source={{ uri: selectedImage }} style={styles.previewImage as ImageStyle} />
+                            )}
+
+                            <View style={styles.modalButtons}>
+                                <HolyButton
+                                    title="취소"
+                                    onPress={() => { dismissKeyboard(); onClose(); }}
+                                    variant="ghost"
+                                    style={{ minWidth: 100, paddingHorizontal: 20 }}
+                                />
+                                <HolyButton
+                                    title={isSubmitting ? "전송 중..." : "기록 완료"}
+                                    onPress={() => { dismissKeyboard(); onSubmit(); }}
+                                    disabled={isSubmitting}
+                                    style={{ minWidth: 100, paddingHorizontal: 20 }}
+                                />
+                            </View>
+                        </GlassCard>
+                    </ScrollView>
                 </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
         </Modal>
@@ -166,6 +176,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 20,
     },
     modalContent: {
         width: '100%',
