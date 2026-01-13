@@ -801,6 +801,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
     },
+    modalScrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%',
+    },
     modalContent: {
         width: '100%',
         maxWidth: 600,

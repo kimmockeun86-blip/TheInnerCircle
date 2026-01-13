@@ -52,6 +52,7 @@ class AnalyticsService {
         try {
             if (Platform.OS !== 'web') {
                 try {
+                    // @ts-ignore - 동적 import, 모듈 미설치 시 catch에서 처리
                     const analyticsModule = await import('@react-native-firebase/analytics');
                     this.analytics = analyticsModule.default();
                     console.log('[Analytics] Firebase Analytics 초기화됨');

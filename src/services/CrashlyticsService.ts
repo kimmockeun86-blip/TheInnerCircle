@@ -37,6 +37,7 @@ class CrashlyticsService {
             // 설치되지 않은 경우 로컬 로깅으로 폴백
             if (Platform.OS !== 'web') {
                 try {
+                    // @ts-ignore - 동적 import, 모듈 미설치 시 catch에서 처리
                     const crashlyticsModule = await import('@react-native-firebase/crashlytics');
                     this.crashlytics = crashlyticsModule.default();
                     console.log('[Crashlytics] Firebase Crashlytics 초기화됨');

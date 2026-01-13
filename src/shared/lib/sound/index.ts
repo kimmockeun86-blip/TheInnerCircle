@@ -55,4 +55,4 @@ class SoundWrapper {
 
 const sound = new SoundWrapper();
 export default sound;
-export { SoundWrapper, SoundType };
+export { SoundWrapper };

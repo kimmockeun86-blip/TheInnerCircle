@@ -163,6 +163,9 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.m,
         fontStyle: 'italic',
     },
+    userContentSection: {
+        marginBottom: SPACING.m,
+    },
     analysisSection: {
         borderTopWidth: 1,
         borderTopColor: 'rgba(255,255,255,0.1)',
