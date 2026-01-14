@@ -199,6 +199,49 @@ const DevPanel: React.FC<DevPanelProps> = ({ visible = true }) => {
         Alert.alert('특별미션', '특별미션 완료됨 ✅');
     };
 
+    // 🗓️ 만남 당일 시뮬레이션 (약속 확정 + 오늘이 만남 날짜)
+    const simulateMeetingDay = async () => {
+        // 오늘 날짜를 한국어 형식으로 설정 (HomeScreen에서 비교하는 형식과 동일)
+        const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+
+        await AsyncStorage.setItem('meetingConfirmed', 'true');
+        await AsyncStorage.setItem('meetingDate', today);
+        await AsyncStorage.setItem('letterSent', 'true');
+
+        // 상대방 정보도 설정
+        await AsyncStorage.setItem('matchCandidate', JSON.stringify({
+            id: 'test_partner_123',
+            name: '테스트 상대',
+            age: 28,
+            job: '개발자',
+            deficit: '성장',
+            location: '서울'
+        }));
+
+        Alert.alert('🗓️ 만남 당일 시뮬레이션',
+            `오늘(${today})이 만남 날짜로 설정되었습니다.\n\n홈 화면을 새로고침하면 "특별 미션 기록하기" 버튼이 표시됩니다.`,
+            [{ text: '확인', onPress: () => navigateTo('MainTabs') }]
+        );
+    };
+
+    // 🔄 매칭 상태 초기화 (매칭 처음부터 다시)
+    const resetMatchingState = async () => {
+        await AsyncStorage.removeItem('meetingConfirmed');
+        await AsyncStorage.removeItem('meetingDate');
+        await AsyncStorage.removeItem('letterSent');
+        await AsyncStorage.removeItem('matchCandidate');
+        await AsyncStorage.removeItem('specialMissionCompleted');
+        await AsyncStorage.removeItem('myMeetingDecision');
+        await AsyncStorage.removeItem('partnerMeetingDecision');
+        await AsyncStorage.removeItem('isCoupled');
+        await AsyncStorage.removeItem('receivedLetter');
+
+        Alert.alert('매칭 초기화', '매칭 관련 데이터가 모두 초기화되었습니다.\n솔로 홈으로 이동합니다.',
+            [{ text: '확인', onPress: () => navigateTo('MainTabs') }]
+        );
+    };
+
+
     // 시간 가속 시작/정지
     const toggleTimeAccel = () => {
         if (timeAccelRunning) {
@@ -654,6 +697,22 @@ const DevPanel: React.FC<DevPanelProps> = ({ visible = true }) => {
                                 </TouchableOpacity>
                                 <TouchableOpacity style={styles.navButton} onPress={completeSpecialMission}>
                                     <Text style={styles.navButtonText}>✨ 특별미션{'\n'}완료 처리</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* 만남 당일 시뮬레이션 & 매칭 초기화 */}
+                            <View style={[styles.buttonGrid, { marginTop: 10 }]}>
+                                <TouchableOpacity
+                                    style={[styles.navButton, { backgroundColor: '#2a6a4a' }]}
+                                    onPress={simulateMeetingDay}
+                                >
+                                    <Text style={styles.navButtonText}>🗓️ 만남 당일{'\n'}시뮬레이션</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.navButton, { backgroundColor: '#6a3a3a' }]}
+                                    onPress={resetMatchingState}
+                                >
+                                    <Text style={styles.navButtonText}>🔄 매칭{'\n'}초기화</Text>
                                 </TouchableOpacity>
                             </View>
 
