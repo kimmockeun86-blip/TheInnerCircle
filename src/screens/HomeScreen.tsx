@@ -20,6 +20,8 @@ import JournalModal from '../components/JournalModal';
 import AnalysisModal from '../components/AnalysisModal';
 import IntroModal from '../components/IntroModal';
 import { getSpecialDayMission } from '../services/MissionData';
+import { streakService, StreakData } from '../services/StreakService';
+import { rewardService, RewardResult } from '../services/RewardService';
 
 // Placeholder images
 const malePlaceholder = require('../../assets/male_placeholder.png');
@@ -128,6 +130,10 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
     // 조언 질문 응답 상태
     const [adviceResponse, setAdviceResponse] = useState<'yes' | 'no' | null>(null);
     const [adviceFollowUp, setAdviceFollowUp] = useState<string | null>(null);
+
+    // 🔥 스트릭 시스템 (2026-01-15 추가)
+    const [streakData, setStreakData] = useState<StreakData | null>(null);
+    const [rewardMessage, setRewardMessage] = useState<RewardResult | null>(null);
 
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
     const sparkleAnim2 = useRef(new Animated.Value(0)).current;
@@ -747,6 +753,13 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
                     await loadJournalHistory();
 
+                    // 🔥 스트릭 데이터 로드 (2026-01-15 추가)
+                    const streak = await streakService.getStreakData();
+                    setStreakData(streak);
+                    if (streak.isAtRisk) {
+                        console.log(`[Streak] ⚠️ 위험! ${streak.currentStreak}일 스트릭 끊길 수 있음`);
+                    }
+
                     // GPS 위치 수집 (매칭 시스템용)
                     try {
                         const location = await LocationService.getCurrentLocation();
@@ -1177,6 +1190,29 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 if (response.nextMission || response.recommendedMission) {
                     const nextRitual = response.nextMission || response.recommendedMission;
                     await AsyncStorage.setItem('currentMission', nextRitual);
+                }
+
+                // 🔥 스트릭 업데이트 및 Variable Reward (2026-01-15 추가)
+                try {
+                    const previousStreak = streakData?.currentStreak || 0;
+                    const newStreakData = await streakService.recordCompleted();
+                    setStreakData(newStreakData);
+
+                    // Variable Reward 생성
+                    const wasStreakBroken = previousStreak > 0 && newStreakData.currentStreak === 1 && previousStreak !== 1;
+                    const reward = await rewardService.getRecordReward(newStreakData.currentStreak, wasStreakBroken);
+                    setRewardMessage(reward);
+
+                    console.log(`[Streak] ${reward.emoji} ${reward.message}`);
+
+                    // 특별 보상이면 Alert 표시
+                    if (reward.type === 'special' || reward.type === 'levelup') {
+                        setTimeout(() => {
+                            Alert.alert(reward.emoji, reward.message);
+                        }, 1000);
+                    }
+                } catch (streakError) {
+                    console.log('[Streak] 업데이트 실패:', streakError);
                 }
 
 
