@@ -26,6 +26,26 @@ class NotificationService {
     private hasPermission: boolean = false;
     private expoPushToken: string | null = null;
 
+    // 🆕 현재 저장된 미션 내용 조회
+    private async getCurrentMissionContent(): Promise<string> {
+        try {
+            const mission = await AsyncStorage.getItem('currentMission');
+            if (mission) return mission;
+
+            // 백업: AI 분석 결과에서 미션 조회
+            const aiAnalysis = await AsyncStorage.getItem('aiAnalysis');
+            if (aiAnalysis) {
+                const parsed = JSON.parse(aiAnalysis);
+                if (parsed.recommendedMission) return parsed.recommendedMission;
+            }
+
+            return '오늘의 리추얼을 확인하세요';
+        } catch (error) {
+            console.log('[Notification] 미션 조회 실패:', error);
+            return '오늘의 리추얼을 확인하세요';
+        }
+    }
+
     // 푸시 토큰 가져오기 (모바일용)
     async registerForPushNotifications(userId?: string): Promise<string | null> {
         if (Platform.OS === 'web') {
@@ -137,6 +157,17 @@ class NotificationService {
         }
     }
 
+    // 🆕 동적 미션 내용을 포함한 즉시 알림
+    async showMissionNotificationNow(): Promise<void> {
+        const mission = await this.getCurrentMissionContent();
+        await this.showNotification({
+            title: '🌅 오늘의 리추얼',
+            body: mission,
+            data: { type: 'mission' },
+        });
+        console.log(`[Notification] 동적 미션 알림 표시: ${mission}`);
+    }
+
     // 🌅 아침 미션 알림 (자정에서 아침 9시로 변경 - 사용자 수면 방해 방지)
     async scheduleMissionNotification(): Promise<void> {
         // ⭐ 중복 방지: 기존 예약된 모든 알림 취소
@@ -183,8 +214,12 @@ class NotificationService {
         }
     }
 
-    // 🔔 미션 미완료 리마인더 (저녁 8시)
+    // 🔔 미션 미완료 리마인더 (저녁 8시) - 동적 미션 내용 포함
     async scheduleMissionReminderNotification(): Promise<void> {
+        // 🆕 현재 미션 내용 조회
+        const currentMission = await this.getCurrentMissionContent();
+        const reminderBody = `오늘의 미션: "${currentMission}" - 잠들기 전에 기록해보세요.`;
+
         if (Platform.OS === 'web') {
             const now = new Date();
             const next8PM = new Date();
@@ -197,16 +232,16 @@ class NotificationService {
             const msUntil8PM = next8PM.getTime() - now.getTime();
             setTimeout(() => {
                 this.showNotification({
-                    title: '🌟 ORBIT',
-                    body: '오늘의 미션을 아직 완료하지 않으셨네요. 잠들기 전에 기록해보세요.',
+                    title: '🌟 ORBIT 리마인더',
+                    body: reminderBody,
                 });
             }, msUntil8PM);
         } else {
-            // 모바일 저녁 리마인더
+            // 모바일 저녁 리마인더 - 고정 메시지 (스케줄 알림은 동적 조회 불가)
             await Notifications.scheduleNotificationAsync({
                 content: {
-                    title: '🌟 ORBIT',
-                    body: '오늘의 미션을 아직 완료하지 않으셨네요. 잠들기 전에 기록해보세요.',
+                    title: '🌟 ORBIT 리마인더',
+                    body: '오늘의 미션을 아직 완료하지 않으셨네요. 앱을 열어 확인하세요!',
                     sound: true,
                 },
                 trigger: {
