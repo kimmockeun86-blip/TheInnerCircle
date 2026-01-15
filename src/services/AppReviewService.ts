@@ -129,15 +129,16 @@ class AppReviewService {
             await AsyncStorage.setItem(STORAGE_KEYS.PROMPT_COUNT, (promptCount + 1).toString());
 
             // In-App Review 사용 (expo-store-review)
-            // 주석 해제하려면 npx expo install expo-store-review 필요
-            /*
-            const StoreReview = require('expo-store-review');
-            if (await StoreReview.isAvailableAsync()) {
-                await StoreReview.requestReview();
-                console.log('[AppReview] In-app review requested');
-                return true;
+            try {
+                const StoreReview = require('expo-store-review');
+                if (await StoreReview.isAvailableAsync()) {
+                    await StoreReview.requestReview();
+                    console.log('[AppReview] In-app review requested');
+                    return true;
+                }
+            } catch (storeError) {
+                console.log('[AppReview] StoreReview not available:', storeError);
             }
-            */
 
             // In-App Review 불가능하면 스토어 링크로 이동
             this.openStoreLink();
