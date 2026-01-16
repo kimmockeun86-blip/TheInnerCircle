@@ -59,14 +59,8 @@ class RewardService {
             return this.getComebackReward();
         }
 
-        // 레벨업 체크 (7일, 14일, 21일...)
-        if (LEVEL_UP_MESSAGES[currentStreak]) {
-            return {
-                type: 'levelup',
-                message: LEVEL_UP_MESSAGES[currentStreak],
-                emoji: this.getStreakEmoji(currentStreak),
-            };
-        }
+        // ❌ 레벨업 메시지 제거됨 (사용자가 레벨 존재를 모르게)
+        // 대신 연속 기록 달성만 특별 메시지로 처리
 
         // Variable Reward: 20% 확률로 특별 메시지
         if (await this.shouldShowSpecialReward()) {

@@ -110,61 +110,65 @@ const JournalModal: React.FC<JournalModalProps> = ({
 
     return (
         <Modal visible={visible} animationType="slide" transparent={true}>
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <KeyboardAvoidingView
-                    style={styles.modalOverlay}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-                >
+            <KeyboardAvoidingView
+                style={styles.modalOverlay}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+            >
+                <TouchableWithoutFeedback onPress={dismissKeyboard} accessible={false}>
                     <ScrollView
                         contentContainerStyle={styles.scrollContent}
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                         bounces={false}
+                        onScrollBeginDrag={dismissKeyboard}
                     >
-                        <GlassCard style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>{title}</Text>
-                            <Text style={styles.modalSubtitle}>{subtitle}</Text>
+                        <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                            <GlassCard style={styles.modalContent}>
+                                <Text style={styles.modalTitle}>{title}</Text>
+                                <Text style={styles.modalSubtitle}>{subtitle}</Text>
 
-                            <TextInput
-                                style={styles.journalInput}
-                                placeholder="내면의 목소리를 이곳에 담아주세요..."
-                                placeholderTextColor="#666"
-                                multiline
-                                value={journalInput}
-                                onChangeText={onJournalInputChange}
-                                returnKeyType="done"
-                                blurOnSubmit={true}
-                            />
-
-                            <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
-                                <Text style={styles.imagePickerText}>
-                                    {selectedImage ? "📷 사진 변경하기" : "📷 오늘의 미소를 기록하세요"}
-                                </Text>
-                            </TouchableOpacity>
-
-                            {selectedImage && (
-                                <Image source={{ uri: selectedImage }} style={styles.previewImage as ImageStyle} />
-                            )}
-
-                            <View style={styles.modalButtons}>
-                                <HolyButton
-                                    title="취소"
-                                    onPress={() => { dismissKeyboard(); onClose(); }}
-                                    variant="ghost"
-                                    style={{ minWidth: 100, paddingHorizontal: 20 }}
+                                <TextInput
+                                    style={styles.journalInput}
+                                    placeholder="내면의 목소리를 이곳에 담아주세요..."
+                                    placeholderTextColor="#666"
+                                    multiline
+                                    value={journalInput}
+                                    onChangeText={onJournalInputChange}
+                                    returnKeyType="done"
+                                    blurOnSubmit={true}
+                                    onSubmitEditing={dismissKeyboard}
                                 />
-                                <HolyButton
-                                    title={isSubmitting ? "전송 중..." : "기록 완료"}
-                                    onPress={() => { dismissKeyboard(); onSubmit(); }}
-                                    disabled={isSubmitting}
-                                    style={{ minWidth: 100, paddingHorizontal: 20 }}
-                                />
-                            </View>
-                        </GlassCard>
+
+                                <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
+                                    <Text style={styles.imagePickerText}>
+                                        {selectedImage ? "📷 사진 변경하기" : "📷 오늘의 미소를 기록하세요"}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {selectedImage && (
+                                    <Image source={{ uri: selectedImage }} style={styles.previewImage as ImageStyle} />
+                                )}
+
+                                <View style={styles.modalButtons}>
+                                    <HolyButton
+                                        title="취소"
+                                        onPress={() => { dismissKeyboard(); onClose(); }}
+                                        variant="ghost"
+                                        style={{ minWidth: 100, paddingHorizontal: 20 }}
+                                    />
+                                    <HolyButton
+                                        title={isSubmitting ? "전송 중..." : "기록 완료"}
+                                        onPress={() => { dismissKeyboard(); onSubmit(); }}
+                                        disabled={isSubmitting}
+                                        style={{ minWidth: 100, paddingHorizontal: 20 }}
+                                    />
+                                </View>
+                            </GlassCard>
+                        </TouchableWithoutFeedback>
                     </ScrollView>
-                </KeyboardAvoidingView>
-            </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };
