@@ -76,9 +76,9 @@
       "apiUrl": "https://theinnercircle-9xye.onrender.com/api",
       "appEnv": "production",
       "eas": {
-        "projectId": "c071b646-217f-41ad-9839-4b44dd28257a"
+        "projectId": "6994a27e-c819-4dfb-899a-32297b065c1c"
       }
     },
-    "owner": "orbitappkorea"
+    "owner": "humanpd"
   }
 }
