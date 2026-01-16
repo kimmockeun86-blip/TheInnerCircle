@@ -15,6 +15,9 @@ import MatchingService from '../services/MatchingService';
 import HeaderSpline from '../components/HeaderSpline';
 import { WebView } from 'react-native-webview';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MISSION_PACKS, getTodaysMission, MissionPack } from '../data/MissionPacks';
+import { getTodaysQuestion, CATEGORY_NAMES, DailyQuestion } from '../data/DailyQuestions';
+import anniversaryService from '../services/AnniversaryService';
 
 // Couple placeholder image - 솔로모드와 유사한 스타일
 const couplePlaceholder = require('../../assets/couple_placeholder.png');
@@ -67,6 +70,16 @@ const CouplesMissionScreen = () => {
         focusPrompt: string;
         timeOfDay: 'morning' | 'noon' | 'evening';
     } | null>(null);
+
+    // 🆕 테마별 미션팩
+    const [selectedMissionPack, setSelectedMissionPack] = useState<string>('newlywed');
+    const [missionPackModalVisible, setMissionPackModalVisible] = useState(false);
+
+    // 🆕 데일리 질문
+    const [todaysQuestion, setTodaysQuestion] = useState<DailyQuestion | null>(null);
+
+    // 🆕 다가오는 기념일
+    const [upcomingAnniversaries, setUpcomingAnniversaries] = useState<Array<{ name: string; emoji: string; dDay: number }>>([]);
 
 
     // Visualizer Mode
@@ -266,6 +279,38 @@ const CouplesMissionScreen = () => {
             }
         } catch (adviceError) {
             console.log('[CouplesMissionScreen] 맞춤 조언 로드 실패 (무시):', adviceError);
+        }
+
+        // 🆕 데일리 질문 로드
+        try {
+            const question = getTodaysQuestion();
+            setTodaysQuestion(question);
+            console.log('[CouplesMissionScreen] 오늘의 질문:', question.question);
+        } catch (e) {
+            console.log('[CouplesMissionScreen] 데일리 질문 로드 실패:', e);
+        }
+
+        // 🆕 기념일 서비스 초기화 및 다가오는 기념일 로드
+        try {
+            await anniversaryService.initialize();
+            const upcoming = anniversaryService.getUpcoming(7);
+            setUpcomingAnniversaries(upcoming.map(a => ({
+                name: a.name,
+                emoji: a.emoji,
+                dDay: a.dDay
+            })));
+        } catch (e) {
+            console.log('[CouplesMissionScreen] 기념일 로드 실패:', e);
+        }
+
+        // 🆕 선택된 미션팩 로드
+        try {
+            const savedPack = await AsyncStorage.getItem('selectedMissionPack');
+            if (savedPack) {
+                setSelectedMissionPack(savedPack);
+            }
+        } catch (e) {
+            console.log('[CouplesMissionScreen] 미션팩 설정 로드 실패:', e);
         }
     };
 
@@ -718,6 +763,71 @@ const CouplesMissionScreen = () => {
                             </View>
                         )}
 
+                        {/* 🆕 다가오는 기념일 알림 */}
+                        {upcomingAnniversaries.length > 0 && (
+                            <View style={styles.missionContainer}>
+                                <GlassCard style={[styles.analysisCard, { backgroundColor: 'rgba(251, 113, 133, 0.15)' }]}>
+                                    <Text style={[styles.analysisLabel, { color: '#FB7185' }]}>📅 다가오는 기념일</Text>
+                                    {upcomingAnniversaries.slice(0, 2).map((a, i) => (
+                                        <Text key={i} style={{ color: '#fff', fontSize: 15, marginTop: 6 }}>
+                                            {a.emoji} {a.name} - {a.dDay === 0 ? '오늘!' : `D-${a.dDay}`}
+                                        </Text>
+                                    ))}
+                                </GlassCard>
+                            </View>
+                        )}
+
+                        {/* 🆕 데일리 질문 카드 */}
+                        {todaysQuestion && (
+                            <View style={styles.missionContainer}>
+                                <GlassCard style={[styles.analysisCard, { backgroundColor: 'rgba(34, 211, 238, 0.1)' }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                        <Text style={{ fontSize: 18, marginRight: 8 }}>
+                                            {CATEGORY_NAMES[todaysQuestion.category].emoji}
+                                        </Text>
+                                        <Text style={[styles.analysisLabel, { color: '#22D3EE', marginBottom: 0 }]}>
+                                            오늘의 질문
+                                        </Text>
+                                    </View>
+                                    <Text style={[styles.analysisText, { fontSize: 17, lineHeight: 26 }]}>
+                                        "{todaysQuestion.question}"
+                                    </Text>
+                                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 8, textAlign: 'right' }}>
+                                        #{CATEGORY_NAMES[todaysQuestion.category].name}
+                                    </Text>
+                                </GlassCard>
+                            </View>
+                        )}
+
+                        {/* 🆕 미션팩 선택 버튼 */}
+                        <View style={styles.missionContainer}>
+                            <TouchableOpacity
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    borderRadius: 12,
+                                    paddingVertical: 12,
+                                    paddingHorizontal: 20,
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                                }}
+                                onPress={() => setMissionPackModalVisible(true)}
+                            >
+                                <Text style={{ color: '#fff', fontSize: 14, marginRight: 8 }}>
+                                    {MISSION_PACKS.find(p => p.id === selectedMissionPack)?.emoji || '🎯'}
+                                </Text>
+                                <Text style={{ color: '#fff', fontSize: 14 }}>
+                                    미션팩: {MISSION_PACKS.find(p => p.id === selectedMissionPack)?.name || '신혼 부부'}
+                                </Text>
+                                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginLeft: 8 }}>
+                                    변경하기 →
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+
                         {/* Ritual Card - Same style as HomeScreen */}
                         <View style={styles.missionContainer}>
                             <GlassCard style={[styles.missionCard, isSpecialMission && styles.specialCard, nextMissionUnlockTime && styles.lockedCard]}>
@@ -880,6 +990,60 @@ const CouplesMissionScreen = () => {
                         )}
                     </ScrollView>
                 </SafeAreaView>
+            </Modal>
+
+            {/* 🆕 미션팩 선택 모달 */}
+            <Modal visible={missionPackModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalOverlay}>
+                    <GlassCard style={[styles.modalContent, { maxHeight: '80%' }]}>
+                        <Text style={styles.modalTitle}>🎯 미션팩 선택</Text>
+                        <Text style={styles.modalSubtitle}>당신의 상황에 맞는 미션팩을 선택하세요</Text>
+
+                        <ScrollView style={{ marginVertical: 20 }} showsVerticalScrollIndicator={false}>
+                            {MISSION_PACKS.map((pack) => (
+                                <TouchableOpacity
+                                    key={pack.id}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        padding: 16,
+                                        marginBottom: 12,
+                                        borderRadius: 12,
+                                        borderWidth: selectedMissionPack === pack.id ? 2 : 1,
+                                        borderColor: selectedMissionPack === pack.id ? pack.color : 'rgba(255,255,255,0.2)',
+                                        backgroundColor: selectedMissionPack === pack.id ? `${pack.color}20` : 'transparent',
+                                    }}
+                                    onPress={async () => {
+                                        setSelectedMissionPack(pack.id);
+                                        await AsyncStorage.setItem('selectedMissionPack', pack.id);
+                                    }}
+                                >
+                                    <Text style={{ fontSize: 32, marginRight: 16 }}>{pack.emoji}</Text>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+                                            {pack.name}
+                                        </Text>
+                                        <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
+                                            {pack.description}
+                                        </Text>
+                                        <Text style={{ color: pack.color, fontSize: 12, marginTop: 4 }}>
+                                            {pack.missions.length}개의 미션
+                                        </Text>
+                                    </View>
+                                    {selectedMissionPack === pack.id && (
+                                        <Text style={{ fontSize: 20 }}>✓</Text>
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        <HolyButton
+                            title="확인"
+                            onPress={() => setMissionPackModalVisible(false)}
+                            style={{ marginTop: 10 }}
+                        />
+                    </GlassCard>
+                </View>
             </Modal>
         </View >
     );
