@@ -39,6 +39,7 @@ import { i18n } from './src/i18n';
 import AdService from './src/services/AdService';
 import { appReviewService } from './src/services/AppReviewService';
 import { OrbitTrustService } from './src/services/OrbitTrustService';
+import { updateService } from './src/services/UpdateService';
 
 const Stack = createStackNavigator();
 
@@ -230,6 +231,9 @@ export default function App() {
 
         // ORBIT 신뢰 시스템 초기화 (스트릭, 기념일 등)
         await OrbitTrustService.initialize();
+
+        // 앱 업데이트 체크 (In-App Update)
+        await updateService.checkForUpdate();
 
         console.log('[App] 서비스 초기화 완료');
       } catch (e) {

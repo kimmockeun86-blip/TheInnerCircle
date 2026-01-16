@@ -260,6 +260,26 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ============================================
+// APP VERSION CHECK ENDPOINT (In-App Update)
+// ============================================
+app.get('/api/version', (req, res) => {
+    // 버전 정보 - 새 버전 배포 시 여기만 업데이트
+    const versionInfo = {
+        latestVersion: '1.0.5',        // 최신 버전
+        minVersion: '1.0.0',           // 최소 지원 버전 (이 버전 미만은 강제 업데이트)
+        forceUpdate: false,            // 모든 사용자 강제 업데이트 여부
+        message: '새로운 기능이 추가되었습니다. 업데이트 후 이용해주세요.',
+        storeUrls: {
+            ios: 'https://apps.apple.com/app/id6740548498',
+            android: 'https://play.google.com/store/apps/details?id=com.theinnercircle.app'
+        }
+    };
+
+    console.log('[Version API] Returning version info:', versionInfo);
+    res.json(versionInfo);
+});
+
 // Support Page for App Store
 app.get('/support', (req, res) => {
     res.send(`<!DOCTYPE html>
