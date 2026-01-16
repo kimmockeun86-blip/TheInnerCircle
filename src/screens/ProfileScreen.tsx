@@ -1,6 +1,6 @@
 // ID: E-01
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Switch, Alert, ScrollView, SafeAreaView, StatusBar, TextInput, Modal, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Switch, Alert, ScrollView, SafeAreaView, StatusBar, TextInput, Modal, TouchableOpacity, Image, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SettingsScreenNavigationProp } from '../types/navigation';
 import { COLORS, FONTS, SPACING, LAYOUT } from '../theme/theme';
@@ -114,7 +114,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                     <View style={styles.headerRight} />
                 </View>
 
-                <ScrollView contentContainerStyle={styles.content}>
+                <ScrollView
+                    contentContainerStyle={styles.content}
+                    keyboardDismissMode="on-drag"
+                    keyboardShouldPersistTaps="handled"
+                >
                     {/* 1. Profile Summary */}
                     <GlassCard style={styles.profileSection}>
                         <View style={styles.profileHeader}>

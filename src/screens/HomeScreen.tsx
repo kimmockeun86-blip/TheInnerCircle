@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, SafeAreaView, Alert, Animated, useWindowDimensions, Image, ActivityIndicator, Platform, ImageStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, SafeAreaView, Alert, Animated, useWindowDimensions, Image, ActivityIndicator, Platform, ImageStyle, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MysticVisualizer from '../components/MysticVisualizer';
 import { HomeScreenNavigationProp, HomeScreenRouteProp } from '../types/navigation';
@@ -1439,6 +1439,8 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     showsHorizontalScrollIndicator={false}
+                    keyboardDismissMode="on-drag"
+                    keyboardShouldPersistTaps="handled"
                 >
 
                     <View style={styles.mainContent}>
@@ -1772,6 +1774,8 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                             <ScrollView
                                 showsVerticalScrollIndicator={false}
                                 contentContainerStyle={{ paddingBottom: 10 }}
+                                keyboardDismissMode="on-drag"
+                                keyboardShouldPersistTaps="handled"
                             >
                                 <Text style={styles.matchModalBadge}>특별 미션</Text>
                                 <Text style={styles.matchModalTitle}>운명의 신호</Text>
@@ -1813,6 +1817,9 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                     value={letterContent}
                                     onChangeText={setLetterContent}
                                     maxLength={500}
+                                    blurOnSubmit={true}
+                                    returnKeyType="done"
+                                    onBlur={() => Keyboard.dismiss()}
                                 />
                                 <Text style={styles.letterCharCount}>{letterContent.length}/500</Text>
                             </ScrollView>
@@ -2015,6 +2022,8 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                 multiline
                                 value={journalInput}
                                 onChangeText={setJournalInput}
+                                blurOnSubmit={true}
+                                returnKeyType="done"
                             />
 
                             <TouchableOpacity onPress={pickImage} style={styles.imagePickerButton}>
@@ -2115,6 +2124,8 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                         placeholderTextColor="#888"
                                         value={proposedDate}
                                         onChangeText={setProposedDate}
+                                        returnKeyType="done"
+                                        onSubmitEditing={() => Keyboard.dismiss()}
                                     />
                                     <HolyButton
                                         title={isWaitingPartnerResponse ? "상대방 응답 대기 중..." : "날짜 제안하기"}
@@ -2140,6 +2151,8 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                                         placeholderTextColor="#888"
                                         value={proposedPlace}
                                         onChangeText={setProposedPlace}
+                                        returnKeyType="done"
+                                        onSubmitEditing={() => Keyboard.dismiss()}
                                     />
                                     <HolyButton
                                         title={isWaitingPartnerResponse ? "상대방 응답 대기 중..." : "장소 제안하기"}
