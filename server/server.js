@@ -2231,6 +2231,117 @@ app.post('/api/advice/personalized', async (req, res) => {
     }
 });
 
+// ============================================
+// WEEKLY REPORT API - 주간 리포트 (SNS 공유용)
+// ============================================
+app.post('/api/report/weekly', async (req, res) => {
+    try {
+        const { userId, name, journals } = req.body;
+        // journals: 최근 7일간의 저널 기록 배열 [{ day, content, mission, date }]
+
+        console.log(`[Weekly Report] Generating for ${name}, ${journals?.length || 0} entries`);
+
+        if (!journals || journals.length === 0) {
+            return res.json({
+                success: true,
+                report: `${name}님, 이번 주는 함께한 기록이 없네요.\n\n괜찮아요. 새로운 한 주가 시작되면\n다시 함께 걸어가요. 💜\n\n─ 오르빗`
+            });
+        }
+
+        // 저널 내용 요약
+        const journalSummary = journals.map((j, idx) =>
+            `[${j.date || `Day ${j.day}`}] 리추얼: "${j.mission || '없음'}" / 기록: "${(j.content || '').substring(0, 150)}"`
+        ).join('\n');
+
+        const prompt = `
+${ORBIT_SYSTEM_PROMPT}
+
+【주간 리포트 작성 미션】
+사용자 "${name}"님의 이번 주 기록을 읽고, 
+SNS에 공유하고 싶을 정도로 감동적인 장문 코멘트를 작성하라.
+
+【이번 주 기록】
+${journalSummary}
+
+【작성 가이드라인 (매우 중요!)】
+1. ❌ 절대 사용 금지:
+   - 레벨, 스트릭, 완료율 같은 숫자/게임 용어
+   - "성장 레벨 Lv.2" 같은 표현
+   - "7일 연속 미션 완료" 같은 통계
+   - 딱딱한 분석 말투
+
+2. ✅ 반드시 포함:
+   - 구체적인 에피소드 언급 (어떤 날 어떤 기록을 보고 느낀 점)
+   - 진심 어린 격려와 응원
+   - 사용자의 작은 변화를 발견해서 칭찬
+   - 따뜻하고 감성적인 어조
+
+3. 🏆 상위 % 표현 (매우 중요!):
+   - 리포트 하단에 반드시 이 문구를 포함하라:
+   - "당신의 성장 속도는 전세계 이용자의 상위 XX%입니다."
+   - XX%는 기록의 질과 꾸준함을 분석해서 결정:
+     * 매일 기록 + 깊은 성찰 → 1~5%
+     * 꾸준히 기록 + 의미있는 내용 → 5~15%
+     * 가끔 기록 + 성실한 노력 → 15~30%
+     * 시작 단계 → 30~50%
+   - 이 문구는 사용자가 SNS 공유 시 자랑할 수 있게 해주는 핵심!
+
+4. 💜 톤 & 스타일:
+   - 친구가 진심으로 응원하는 느낌
+   - 읽으면 눈물 날 정도로 감동적
+   - 200~300자 분량
+   - 마지막에 "─ 오르빗" 서명
+
+【출력 형식】
+JSON 없이 순수 텍스트로만 출력하라.
+        `;
+
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text().trim();
+
+        // JSON이 아닌 순수 텍스트 응답 기대
+        let reportText = responseText;
+
+        // 혹시 JSON으로 왔을 경우 처리
+        try {
+            const parsed = JSON.parse(responseText);
+            reportText = parsed.report || parsed.content || parsed.message || responseText;
+        } catch (e) {
+            // JSON 아니면 그대로 사용
+        }
+
+        // 마크다운 코드블록 제거
+        reportText = reportText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+        console.log('[Weekly Report] Generated:', reportText.substring(0, 100) + '...');
+
+        res.json({
+            success: true,
+            report: reportText,
+            weekLabel: getWeekLabel() // 예: "1월 3주차"
+        });
+
+    } catch (error) {
+        console.error('[Weekly Report] Error:', error.message);
+
+        const { name } = req.body;
+        res.json({
+            success: true,
+            report: `${name || ''}님, 이번 주도 함께해주셔서 감사해요.\n\n당신이 걸어온 여정 하나하나가\n결코 작지 않다는 걸 알아주세요.\n\n다음 주에도 함께 걸어가요. 💜\n\n─ 오르빗`,
+            weekLabel: getWeekLabel()
+        });
+    }
+});
+
+// 주차 계산 헬퍼 함수
+function getWeekLabel() {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const weekOfMonth = Math.ceil(now.getDate() / 7);
+    return `${month}월 ${weekOfMonth}주차`;
+}
+
 app.listen(PORT, '0.0.0.0', () => {
+
     console.log(`ORBIT Server running on port ${PORT} (0.0.0.0)`);
 });

@@ -278,6 +278,28 @@ export const api = {
                 noResponse: '괜찮아요. 지금 이 순간 떠올린 것만으로도 의미가 있어요.'
             };
         }
+    },
+
+    // R. 주간 리포트 생성
+    getWeeklyReport: async (data: {
+        userId: string,
+        name: string,
+        journals: Array<{ day: number; content: string; mission?: string; date?: string }>
+    }) => {
+        try {
+            logger.log('[API] getWeeklyReport calling:', { name: data.name, journalCount: data.journals.length });
+            const response = await client.post('/report/weekly', data);
+            logger.log('[API] getWeeklyReport success');
+            return response.data;
+        } catch (error: any) {
+            console.error('API Error [getWeeklyReport]:', error.message);
+            // Fallback report
+            return {
+                success: true,
+                report: `${data.name}님, 이번 주도 함께해주셔서 감사해요.\n\n당신이 걸어온 여정 하나하나가\n결코 작지 않다는 걸 알아주세요.\n\n다음 주에도 함께 걸어가요. 💜\n\n─ 오르빗`,
+                weekLabel: `${new Date().getMonth() + 1}월 ${Math.ceil(new Date().getDate() / 7)}주차`
+            };
+        }
     }
 };
 

@@ -27,6 +27,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 // MatchingScreen moved to _archived
 import SpecialMissionIntroScreen from './src/screens/SpecialMissionIntroScreen';
 import PermissionExplainScreen from './src/screens/PermissionExplainScreen';
+import WeeklyReportScreen from './src/screens/WeeklyReportScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import DevPanel from './src/components/DevPanel';
@@ -358,6 +359,7 @@ export default function App() {
 
             <Stack.Screen name="SpecialMissionIntro" component={SpecialMissionIntroScreen} />
             <Stack.Screen name="Connections" component={ConnectionsScreen} />
+            <Stack.Screen name="WeeklyReport" component={WeeklyReportScreen} />
           </Stack.Navigator>
           {__DEV__ && <DevPanel />}
         </NavigationContainer>

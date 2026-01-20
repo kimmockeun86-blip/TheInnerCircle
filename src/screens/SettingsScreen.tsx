@@ -273,6 +273,19 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                         </Text>
                     </GlassCard>
 
+                    {/* 주간 리포트 */}
+                    <GlassCard style={styles.section}>
+                        <Text style={styles.sectionTitle}>나의 여정</Text>
+                        <HolyButton
+                            title="📊 주간 리포트 보기"
+                            onPress={() => navigation.navigate('WeeklyReport')}
+                            style={{ marginTop: 5 }}
+                        />
+                        <Text style={styles.warningText}>
+                            이번 주 여정을 돌아보고 SNS에 공유해보세요.
+                        </Text>
+                    </GlassCard>
+
                     {/* 3. 광고 제거 구매 */}
                     <GlassCard style={styles.section}>
                         <Text style={styles.sectionTitle}>프리미엄</Text>
