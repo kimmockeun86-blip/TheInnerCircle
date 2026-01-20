@@ -26,6 +26,7 @@ import CoupleTabNavigator from './src/navigation/CoupleTabNavigator';
 import SettingsScreen from './src/screens/SettingsScreen';
 // MatchingScreen moved to _archived
 import SpecialMissionIntroScreen from './src/screens/SpecialMissionIntroScreen';
+import PermissionExplainScreen from './src/screens/PermissionExplainScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import DevPanel from './src/components/DevPanel';
@@ -189,8 +190,15 @@ export default function App() {
 
         // 온보딩 완료 여부 확인
         const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
+        const permissionExplainSeen = await AsyncStorage.getItem('permissionExplainSeen');
+
         if (!hasOnboarded) {
-          setInitialRoute('Onboarding');
+          // 권한 설명 화면 먼저 봤는지 확인
+          if (!permissionExplainSeen) {
+            setInitialRoute('PermissionExplain');
+          } else {
+            setInitialRoute('Onboarding');
+          }
         } else if (isCoupled === 'true' || isCoupled === 'coupled') {
           setInitialRoute('CouplesMission');
         } else {
@@ -341,6 +349,7 @@ export default function App() {
               presentation: 'card',
             }}
           >
+            <Stack.Screen name="PermissionExplain" component={PermissionExplainScreen} />
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             <Stack.Screen name="MainTabs" component={TabNavigator} />
             {/* MatchScreen removed - legacy code moved to _archived */}
