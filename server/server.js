@@ -949,7 +949,9 @@ ${historyContext || '(첫 번째 기록입니다)'}
             shouldProgress: jsonResponse.shouldProgress !== false, // default true
             progressReason: jsonResponse.progressReason || '',
             // AI Extracted Profile
-            extractedProfile: extractedProfile
+            extractedProfile: extractedProfile,
+            // 📸 Firebase Storage Image URL
+            imageUrl: uploadedImageUrl
         });
         console.log(`[ORBIT Solo Lv.${growthLevel}] shouldProgress: ${jsonResponse.shouldProgress}, ExtractedProfile: ${extractedProfile ? 'Yes' : 'No'}`);
 

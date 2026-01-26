@@ -1144,26 +1144,21 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 setCurrentAnalysis({ result: response.result, feedback: response.feedback });
 
                 // Create new entry with feedback and nextMission from server
-                // ⚠️ imageUri는 저장하지 않음 - LocalStorage 용량 초과 방지
-                // 이미지는 Firebase Storage에만 저장됨 (서버에서 처리)
+                // ✅ Firebase Storage URL만 저장 (용량 문제 없음, base64 아님)
                 const newEntry: JournalEntry = {
                     day: dayCount,
                     content: journalInput,
                     date: new Date().toLocaleDateString(),
-                    imageUri: undefined, // 로컬에 이미지 저장 안함 (Firebase에만 저장)
+                    imageUri: response.imageUrl || undefined, // Firebase Storage URL 저장
                     mission: currentMissionText,
                     feedback: response.feedback,
                     signal: response.feedback
                 };
 
 
-                // 📌 용량 최적화: 최대 10개만 유지하고 이미지 데이터 제거
+                // 📌 용량 최적화: 최대 10개만 유지 (이미지는 URL만 저장하므로 용량 OK)
                 const cleanedHistory = [newEntry, ...journalHistory]
-                    .slice(0, 10)
-                    .map(entry => ({
-                        ...entry,
-                        imageUri: undefined // 로컬에 이미지 저장 안함
-                    }));
+                    .slice(0, 10);
                 setJournalHistory(cleanedHistory);
                 await AsyncStorage.setItem('journalHistory', JSON.stringify(cleanedHistory));
 
@@ -1329,12 +1324,9 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                     signal: ''
                 };
 
+                // 기존 이미지 URL 보존
                 const cleanedHistory = [newEntry, ...journalHistory]
-                    .slice(0, 10)
-                    .map(entry => ({
-                        ...entry,
-                        imageUri: undefined
-                    }));
+                    .slice(0, 10);
                 setJournalHistory(cleanedHistory);
                 await AsyncStorage.setItem('journalHistory', JSON.stringify(cleanedHistory));
 
@@ -1371,12 +1363,9 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
                 signal: ''
             };
 
+            // 기존 이미지 URL 보존
             const cleanedHistory = [newEntry, ...journalHistory]
-                .slice(0, 10)
-                .map(entry => ({
-                    ...entry,
-                    imageUri: undefined
-                }));
+                .slice(0, 10);
             setJournalHistory(cleanedHistory);
             await AsyncStorage.setItem('journalHistory', JSON.stringify(cleanedHistory));
 
