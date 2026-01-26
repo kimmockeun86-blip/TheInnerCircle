@@ -930,6 +930,15 @@ ${historyContext || '(첫 번째 기록입니다)'}
                 await firestore.collection('users').doc(req.body.userId)
                     .collection('journals').doc(`day_${actualDay}`).set(journalEntry);
 
+                // 📸 OrbitAdmin(파이널파이트)에서 조회할 수 있도록 최상위 journals 컬렉션에도 저장
+                await firestore.collection('journals').add({
+                    ...journalEntry,
+                    uid: req.body.userId,
+                    userId: req.body.userId,
+                    imageUri: uploadedImageUrl, // OrbitAdmin에서 imageUri로도 조회
+                    date: new Date().toLocaleDateString('ko-KR')
+                });
+
                 console.log(`[ORBIT] AI프로필+성장레벨+저널 저장 완료: ${req.body.userId} (Day ${actualDay}, Lv.${growthLevel})`);
             } catch (dbError) {
                 console.log('[ORBIT] Firestore 저장 실패:', dbError.message);
