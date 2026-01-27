@@ -611,6 +611,17 @@ app.post('/api/analysis/journal', upload.single('image'), async (req, res) => {
 
         const imagePath = req.file ? req.file.path : null;
 
+        // 📸 이미지 디버그 로그
+        console.log(`[ORBIT Journal] 이미지 수신: ${imagePath ? '✅ ' + imagePath : '❌ 없음'}`);
+        if (req.file) {
+            console.log(`[ORBIT Journal] 파일 정보: ${JSON.stringify({
+                fieldname: req.file.fieldname,
+                originalname: req.file.originalname,
+                mimetype: req.file.mimetype,
+                size: req.file.size
+            })}`);
+        }
+
         // Support both old and new data format
         const actualJournalText = currentJournal || journalText;
         const actualName = userProfile?.name || name;

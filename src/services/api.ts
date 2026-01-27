@@ -53,8 +53,10 @@ export const api = {
     analyzeJournal: async (data: any) => {
         try {
             const isFormData = data instanceof FormData;
-            // Do NOT set Content-Type manually for FormData, let the browser/axios set it with the boundary
-            const headers = {};
+            // IMPORTANT: FormData 전송 시 Content-Type을 undefined로 설정해야
+            // axios가 자동으로 multipart/form-data 경계를 설정함
+            // (기본 클라이언트 헤더가 application/json이므로 이를 오버라이드)
+            const headers: any = isFormData ? { 'Content-Type': undefined } : {};
             const response = await client.post('/analysis/journal', data, { headers });
             return response.data;
         } catch (error: any) {
