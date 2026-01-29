@@ -654,7 +654,7 @@ app.post('/api/analysis/journal', upload.single('image'), async (req, res) => {
                 analysis: "오늘 기록이 조금 아쉽네요. 💭 진심을 담아 다시 적어주시면 더 깊은 통찰을 드릴 수 있어요.",
                 feedback: "다음엔 오늘 있었던 일이나 느꼈던 감정을 구체적으로 적어주세요.",
                 nextMission: "오늘 하루 가장 기억에 남는 순간을 떠올려라",
-                growthLevel: parseInt(growthLevel) || 1
+                growthLevel: parseInt(req.body.growthLevel) || 1
             });
         }
 
@@ -896,6 +896,9 @@ ${historyContext || '(첫 번째 기록입니다)'}
         // Extract user profile from AI response
         const extractedProfile = jsonResponse.extractedProfile || null;
 
+        // 📸 uploadedImageUrl을 try 블록 최상위에서 선언 (스코프 문제 해결)
+        let uploadedImageUrl = null;
+
         // Save extracted profile to Firestore if available
         if (firestore && req.body.userId) {
             try {
@@ -919,7 +922,6 @@ ${historyContext || '(첫 번째 기록입니다)'}
                 await firestore.collection('users').doc(req.body.userId).set(updateData, { merge: true });
 
                 // 📸 Firebase Storage에 이미지 업로드 (있으면)
-                let uploadedImageUrl = null;
                 if (imagePath) {
                     uploadedImageUrl = await uploadImageToFirebase(imagePath, req.body.userId, actualDay);
                 }
